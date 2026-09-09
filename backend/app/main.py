@@ -4,6 +4,7 @@ from app.api.ai_routes import router as ai_router
 from app.api.audit_routes import router as audit_router
 from app.api.data_routes import router as data_router
 from app.api.decision_card_routes import router as decision_card_router
+from app.api.decision_center_routes import router as decision_center_router
 from app.api.decision_routes import router as decision_router
 from app.api.history_routes import router as history_router
 from app.api.intelligence_routes import router as intelligence_router
@@ -36,6 +37,7 @@ app.include_router(history_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(decision_router, prefix="/api")
 app.include_router(decision_card_router, prefix="/api")
+app.include_router(decision_center_router, prefix="/api")
 app.include_router(simulation_router, prefix="/api")
 app.include_router(rule_builder_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
