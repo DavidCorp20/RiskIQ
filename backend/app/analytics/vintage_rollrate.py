@@ -14,7 +14,7 @@ class VintageRollRateService:
         warnings: list[str] = []
         valid = [r for r in rows if self._balance(r) > 0]
         if not valid:
-            return {"vintages": [], "buckets": [], "roll_rates": [], "warnings": ["No hay exposición válida para calcular vintage o roll rate."]}
+            return {"vintages": [], "buckets": [], "roll_rates": [], "roll_rate_available": False, "warnings": ["No hay exposición válida para calcular vintage o roll rate."]}
 
         if not any(self._date(r.get("origination_date")) for r in valid):
             warnings.append("No hay fechas de originación suficientes para calcular vintage.")
@@ -23,7 +23,10 @@ class VintageRollRateService:
 
         vintages = self._vintages(valid)
         buckets = self._buckets(valid)
-        return {"vintages": vintages, "buckets": buckets, "roll_rates": [], "warnings": warnings + (["Roll rate requiere snapshots históricos de la misma cartera; no se infiere con una sola fotografía."] if not self._has_history(valid) else [])}
+        roll_rate_available = self._has_history(valid)
+        if not roll_rate_available:
+            warnings.append("Roll rate requiere snapshots históricos de la misma cartera; no se infiere con una sola fotografía.")
+        return {"vintages": vintages, "buckets": buckets, "roll_rates": [], "roll_rate_available": roll_rate_available, "warnings": warnings}
 
     def _vintages(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
