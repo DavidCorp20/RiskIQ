@@ -10,11 +10,13 @@ from app.data.discovery import DataDiscoveryService
 from app.data.ingestion import FileIngestionService
 from app.data.normalizer import DataNormalizer, FieldMapping
 from app.data.persistence import PortfolioPersistenceService
+from app.data.quality import DataQualityService
 
 router = APIRouter(prefix="/v1/data", tags=["data"])
 ingestion = FileIngestionService()
 discovery = DataDiscoveryService()
 normalizer = DataNormalizer()
+quality = DataQualityService()
 persistence = PortfolioPersistenceService()
 
 
@@ -47,11 +49,11 @@ async def ingest_dataset(
     mappings: str = Form(...),
     dataset_id: str | None = Form(default=None),
 ) -> dict:
-    """Discover, normalize and persist a confirmed mapping into MongoDB.
+    """Discover, normalize, quality-check and persist a confirmed mapping.
 
-    `mappings` is a JSON array of objects with `source`, `target` and optional
-    `required`. The endpoint deliberately requires explicit mappings so RiskIQ
-    never silently converts an uncertain source column into a canonical field.
+    Persistence is blocked when the deterministic Data Quality Gate reports
+    critical issues. Warning-quality datasets may be persisted, but their
+    quality status is retained as dataset metadata for downstream review.
     """
     try:
         content = await file.read()
@@ -70,11 +72,23 @@ async def ingest_dataset(
         if validation_errors:
             raise ValueError("Required field validation failed: " + "; ".join(validation_errors[:20]))
 
+        quality_result = quality.assess(normalized)
+        if quality_result["status"] == "blocked":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": "Dataset blocked by Data Quality Gate",
+                    "persistence_blocked": True,
+                    "quality": quality_result,
+                },
+            )
+
         resolved_dataset_id = dataset_id or str(uuid4())
         persisted = persistence.save_normalized_portfolio(
             normalized,
             dataset_id=resolved_dataset_id,
             source_name=filename,
+            quality_result=quality_result,
         )
 
         return {
@@ -84,10 +98,14 @@ async def ingest_dataset(
             "source_rows": len(rows),
             "normalized_rows": len(normalized),
             "persisted_rows": persisted,
+            "persistence_blocked": False,
+            "quality": quality_result,
             "discovery": {
                 "coverage_score": discovery_result.get("coverage_score", 0),
                 "warnings": discovery_result.get("warnings", []),
             },
         }
+    except HTTPException:
+        raise
     except (ValueError, json.JSONDecodeError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
