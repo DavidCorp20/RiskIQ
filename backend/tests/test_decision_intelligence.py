@@ -3,7 +3,13 @@ from app.decision.decision_intelligence import DecisionIntelligenceService
 
 def test_high_par30_recommends_origination_review():
     result = DecisionIntelligenceService().build(
-        {"facts": {"par30": {"value": 0.10}, "par90": {"value": 0.001}}, "alerts": ["PAR30_HIGH"]},
+        {
+            "facts": [
+                {"id": "par30", "value": 10.0},
+                {"id": "par90", "value": 0.1},
+            ],
+            "alerts": ["PAR30_HIGH"],
+        },
         [],
     )
     assert result["status"] == "high"
@@ -13,7 +19,13 @@ def test_high_par30_recommends_origination_review():
 
 def test_high_par90_prioritizes_collections():
     result = DecisionIntelligenceService().build(
-        {"facts": {"par30": {"value": 0.02}, "par90": {"value": 0.01}}, "alerts": ["PAR90_CRITICAL"]},
+        {
+            "facts": [
+                {"id": "par30", "value": 2.0},
+                {"id": "par90", "value": 1.0},
+            ],
+            "alerts": ["PAR90_CRITICAL"],
+        },
         [],
     )
     assert result["status"] == "critical"
