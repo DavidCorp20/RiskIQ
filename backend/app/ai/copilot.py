@@ -12,8 +12,17 @@ class RiskCopilotService:
         drivers: list[dict[str, Any]] | None = None,
         decisions: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
+        raw_facts = risk_facts.get("facts", {})
+        if isinstance(raw_facts, list):
+            facts = {str(item.get("id")): item for item in raw_facts if isinstance(item, dict) and item.get("id")}
+        elif isinstance(raw_facts, dict):
+            facts = dict(raw_facts)
+        else:
+            facts = {}
+        if "portfolio_size" in facts and "exposure" not in facts:
+            facts["exposure"] = facts["portfolio_size"]
         return {
-            "facts": risk_facts.get("facts", {}),
+            "facts": facts,
             "alerts": risk_facts.get("alerts", []),
             "summary": risk_facts.get("summary", {}),
             "drivers": drivers or [],
