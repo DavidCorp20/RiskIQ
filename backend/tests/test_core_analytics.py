@@ -61,7 +61,7 @@ def test_snapshot_engine_builds_point_in_time_metrics():
     assert result["active_loans"] == 2
     assert result["outstanding_balance"] == 3000
     assert result["par7"] == 1.0
-    assert result["par30"] == 2000 / 3000
+    assert float(result["par30"]) == 2000 / 3000
     assert result["par60"] == 0.0
     assert result["par90"] == 0.0
     assert result["metric_basis"] == "balance-weighted outstanding principal"
