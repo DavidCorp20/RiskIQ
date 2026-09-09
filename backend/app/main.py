@@ -7,6 +7,7 @@ from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_routes import router as decision_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.learning_routes import router as learning_router
+from app.api.projection_routes import router as projection_router
 from app.api.quality_routes import router as quality_router
 from app.api.risk_routes import router as risk_router
 from app.api.routes import router
@@ -22,6 +23,7 @@ app = FastAPI(
 
 app.include_router(router, prefix="/api")
 app.include_router(data_router, prefix="/api")
+app.include_router(projection_router, prefix="/api")
 app.include_router(quality_router, prefix="/api")
 app.include_router(risk_router, prefix="/api")
 app.include_router(intelligence_router, prefix="/api")
