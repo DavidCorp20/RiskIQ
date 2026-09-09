@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.config import settings
 from app.data.discovery import DataDiscoveryService
 from app.data.ingestion import FileIngestionService
 from app.data.normalizer import DataNormalizer, FieldMapping
@@ -34,7 +35,7 @@ def database_health() -> dict:
     health = persistence.health()
     return {
         "database": "mongodb",
-        "environment": __import__("app.config", fromlist=["settings"]).settings.app_env,
+        "environment": settings.app_env,
         "status": "ok" if all(health.values()) else "degraded",
         "collections": health,
     }
