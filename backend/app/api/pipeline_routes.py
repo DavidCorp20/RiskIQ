@@ -10,9 +10,10 @@ service = DecisionPipelineService()
 
 @router.post("/pipeline")
 def run_decision_pipeline(payload: dict) -> dict:
-    """Run history, facts, drivers, recommendations and decision cards together."""
+    """Run analytics, custom rules, recommendations and decision cards together."""
     return service.build(
         current=payload.get("current", {}),
         previous=payload.get("previous", {}),
         current_analysis=payload.get("current_analysis"),
+        custom_rules=payload.get("custom_rules", []),
     )
