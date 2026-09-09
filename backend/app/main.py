@@ -6,6 +6,7 @@ from app.api.decision_routes import router as decision_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.risk_routes import router as risk_router
 from app.api.routes import router
+from app.api.simulation_routes import router as simulation_router
 from app.api.vintage_routes import router as vintage_router
 
 app = FastAPI(
@@ -21,6 +22,7 @@ app.include_router(intelligence_router, prefix="/api")
 app.include_router(vintage_router, prefix="/api")
 app.include_router(decision_router, prefix="/api")
 app.include_router(decision_card_router, prefix="/api")
+app.include_router(simulation_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])
