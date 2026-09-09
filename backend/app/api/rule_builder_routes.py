@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from app.api.schemas import DecisionRule
 from app.engine.decision_engine import DecisionEngine
 from app.decision.rule_builder import RuleBuilder
 
@@ -27,7 +28,8 @@ def evaluate_rule(payload: dict) -> dict:
     compiled = service.compile(payload.get("rule", {}))
     if not compiled["valid"]:
         raise HTTPException(status_code=422, detail=compiled["errors"])
-    result = engine.evaluate(payload.get("facts", {}), [compiled["compiled_rule"]])
+    rule = DecisionRule.model_validate(compiled["compiled_rule"])
+    result = engine.evaluate(payload.get("facts", {}), [rule])
     return {
         "compiled_rule": compiled["compiled_rule"],
         "result": result,
