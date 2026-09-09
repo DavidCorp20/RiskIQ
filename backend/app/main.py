@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ai_routes import router as ai_router
 from app.api.audit_routes import router as audit_router
@@ -19,11 +20,21 @@ from app.api.simulation_routes import router as simulation_router
 from app.api.snapshot_routes import router as snapshot_router
 from app.api.vintage_routes import router as vintage_router
 from app.api.workspace_routes import router as workspace_router
+from app.config import settings
 
 app = FastAPI(
     title="RiskIQ API",
     version="0.1.0",
     description="Credit Risk & Portfolio Decision Intelligence API",
+)
+
+cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(router, prefix="/api")
