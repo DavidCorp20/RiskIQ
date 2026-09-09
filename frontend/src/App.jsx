@@ -1,0 +1,63 @@
+import { useMemo, useState } from 'react'
+import { runWorkspace, assessFile } from './api'
+
+const demoCurrent = { snapshot_date:'2026-09-08', business_id:'demo', active_loans:1000, outstanding_balance:1000000, par7:0.045, par30:0.09, par60:0.025, par90:0.008 }
+const demoPrevious = { snapshot_date:'2026-08-08', business_id:'demo', active_loans:980, outstanding_balance:980000, par7:0.035, par30:0.07, par60:0.02, par90:0.006 }
+const demoAnalysis = { total_loans:1000, total_balance:1000000, portfolio_par30:0.09, portfolio_par90:0.008, segments:[], drivers:[] }
+
+function pct(v){ return `${(Number(v || 0) * 100).toFixed(1)}%` }
+function Card({children, className=''}){ return <div className={`card ${className}`}>{children}</div> }
+function Badge({children, tone='neutral'}){ return <span className={`badge ${tone}`}>{children}</span> }
+
+export default function App(){
+  const [page,setPage]=useState('Dashboard')
+  const [result,setResult]=useState(null)
+  const [loading,setLoading]=useState(false)
+  const [error,setError]=useState('')
+  const [file,setFile]=useState(null)
+  const [rule,setRule]=useState({id:'par30_review',name:'Review high PAR30',field:'par30',operator:'gt',value:'0.08',action:'review',mode:'suggested'})
+
+  const center=result?.decision_center
+  const cards=center?.priority_cards || []
+  const metrics=useMemo(()=>result?.pipeline?.risk_facts?.metrics || {},[result])
+
+  async function execute(){
+    setLoading(true); setError('')
+    try { const r=await runWorkspace({current:demoCurrent,previous:demoPrevious,current_analysis:demoAnalysis,custom_rules:[{id:rule.id,name:rule.name,conditions:[{field:rule.field,operator:rule.operator,value:Number(rule.value)}],actions:[{type:rule.action,parameters:{}}],mode:rule.mode,enabled:true}]}); setResult(r); setPage('Decisions') }
+    catch(e){ setError(e.message) } finally { setLoading(false) }
+  }
+  async function upload(){ if(!file)return; setLoading(true);setError(''); try{ const r=await assessFile(file); setResult(r);setPage('Data') }catch(e){setError(e.message)}finally{setLoading(false)} }
+
+  return <div className="app">
+    <aside className="sidebar">
+      <div className="brand"><div className="brand-mark">R</div><div><strong>RiskIQ</strong><small>Decision Intelligence</small></div></div>
+      <nav>{['Dashboard','Data','Portfolio','Risk Analytics','Decisions','Decision Builder','Simulator','AI Copilot'].map(x=><button className={page===x?'active':''} onClick={()=>setPage(x)} key={x}>{x}</button>)}</nav>
+      <div className="side-footer"><Badge tone="ok">MVP</Badge><span>Human review enabled</span></div>
+    </aside>
+    <main>
+      <header><div><span className="eyebrow">CREDIT RISK</span><h1>{page}</h1></div><div className="header-actions"><span className="api-dot"/> API ready <button className="primary" onClick={execute}>{loading?'Running…':'Run analysis'}</button></div></header>
+      {error && <div className="error">{error}</div>}
+      {page==='Dashboard' && <Dashboard center={center} metrics={metrics} onRun={execute}/>} 
+      {page==='Data' && <Data file={file} setFile={setFile} upload={upload} result={result}/>} 
+      {page==='Portfolio' && <Portfolio current={demoCurrent} previous={demoPrevious}/>} 
+      {page==='Risk Analytics' && <RiskAnalytics current={demoCurrent}/>} 
+      {page==='Decisions' && <Decisions center={center} cards={cards} onRun={execute}/>} 
+      {page==='Decision Builder' && <Builder rule={rule} setRule={setRule} onRun={execute}/>} 
+      {page==='Simulator' && <Simulator current={demoCurrent}/>} 
+      {page==='AI Copilot' && <AI center={center}/>} 
+    </main>
+  </div>
+}
+
+function Dashboard({center,metrics,onRun}){ return <section className="content"><div className="hero"><div><h2>From portfolio data to better decisions.</h2><p>RiskIQ converts credit data into explainable risk signals, recommendations and governed actions.</p></div><button className="primary large" onClick={onRun}>Run demo portfolio</button></div><div className="grid four"><Metric title="Portfolio balance" value={metrics.outstanding_balance?`$${Number(metrics.outstanding_balance).toLocaleString()}`:'$1.0M'} /><Metric title="Active loans" value={metrics.active_loans||'1,000'} /><Metric title="PAR30" value={metrics.par30!=null?pct(metrics.par30):'9.0%'} tone="danger"/><Metric title="PAR90" value={metrics.par90!=null?pct(metrics.par90):'0.8%'} tone="danger"/></div><div className="grid two"><Card><SectionTitle title="Decision Center"/><div className="status-row"><Badge tone="danger">{center?.status||'critical'}</Badge><strong>{center?.executive_summary||'Portfolio requires review.'}</strong></div><div className="counts"><Count n={center?.counts?.critical||1} label="Critical"/><Count n={center?.counts?.high||0} label="High"/><Count n={center?.counts?.watch||0} label="Watch"/></div></Card><Card><SectionTitle title="Operating model"/><div className="flow"><span>Data</span><i>→</i><span>Analysis</span><i>→</i><span>Decision</span><i>→</i><span>Action</span></div><p className="muted">Deterministic analytics. Evidence required. Customer actions are never executed automatically in the MVP.</p></Card></div></section> }
+function Metric({title,value,tone=''}){return <Card className="metric"><span>{title}</span><strong className={tone}>{value}</strong><small>Current snapshot</small></Card>}
+function Count({n,label}){return <div><strong>{n}</strong><span>{label}</span></div>}
+function SectionTitle({title}){return <div className="section-title"><h3>{title}</h3></div>}
+
+function Data({file,setFile,upload,result}){return <section className="content"><Card className="upload"><SectionTitle title="Upload portfolio"/><p>Start with Excel or CSV. RiskIQ will discover fields, propose mappings, assess quality and build the canonical portfolio model.</p><label className="drop"><input type="file" accept=".csv,.xlsx,.xls" onChange={e=>setFile(e.target.files[0])}/><strong>{file?file.name:'Choose a CSV or Excel file'}</strong><span>Required: customer_id and loan_id</span></label><button className="primary" disabled={!file} onClick={upload}>Ingest and assess</button></Card>{result && <Card><SectionTitle title="Latest ingestion response"/><pre>{JSON.stringify(result,null,2)}</pre></Card>}</section>}
+function Portfolio({current,previous}){return <section className="content"><div className="grid four"><Metric title="Balance" value="$1,000,000"/><Metric title="Loans" value="1,000"/><Metric title="PAR30" value={pct(current.par30)} tone="danger"/><Metric title="PAR90" value={pct(current.par90)} tone="danger"/></div><Card><SectionTitle title="Portfolio trend"/><div className="trend"><div><span>PAR30</span><strong>{pct(previous.par30)} → {pct(current.par30)}</strong><Badge tone="danger">+2.0 pp</Badge></div><div className="bar"><i style={{width:'90%'}}/></div></div></Card></section>}
+function RiskAnalytics({current}){return <section className="content"><Card><SectionTitle title="Risk signals"/><div className="signal"><Badge tone="danger">CRITICAL</Badge><div><strong>PAR30 is above the 8% review threshold</strong><p>Current PAR30: {pct(current.par30)}. This is an observed risk signal, not a causal conclusion.</p></div></div><div className="signal"><Badge tone="danger">CRITICAL</Badge><div><strong>PAR90 requires collections prioritization</strong><p>Current PAR90: {pct(current.par90)}.</p></div></div></Card></section>}
+function Decisions({center,cards,onRun}){return <section className="content"><div className="grid three"><Metric title="Critical" value={center?.counts?.critical||1} tone="danger"/><Metric title="High" value={center?.counts?.high||0}/><Metric title="Total cards" value={center?.counts?.total_cards||cards.length||1}/></div><Card><SectionTitle title="Priority decisions"/><div className="cards-list">{cards.length?cards.map((c,i)=><div className="decision" key={c.id||i}><div><Badge tone={c.severity==='critical'?'danger':'warn'}>{c.severity||'high'}</Badge><h3>{c.title}</h3><p>{c.recommendation}</p><small>{c.rationale||c.trigger}</small></div><span className="confidence">{c.confidence||'evidence backed'}</span></div>):<div className="empty">Run the analysis to generate decision cards.</div>}</div><button className="primary" onClick={onRun}>Refresh decisions</button></Card></section>}
+function Builder({rule,setRule,onRun}){return <section className="content"><Card><SectionTitle title="Visual Decision Builder"/><p className="muted">Build declarative rules without customer code. The same Decision Engine executes the compiled contract.</p><div className="builder-grid"><label>Name<input value={rule.name} onChange={e=>setRule({...rule,name:e.target.value})}/></label><label>Field<select value={rule.field} onChange={e=>setRule({...rule,field:e.target.value})}><option value="par30">PAR30</option><option value="par90">PAR90</option><option value="outstanding_balance">Outstanding balance</option></select></label><label>Operator<select value={rule.operator} onChange={e=>setRule({...rule,operator:e.target.value})}><option value="gt">greater than</option><option value="gte">greater or equal</option><option value="lt">less than</option><option value="eq">equals</option></select></label><label>Value<input type="number" step="0.01" value={rule.value} onChange={e=>setRule({...rule,value:e.target.value})}/></label><label>Action<select value={rule.action} onChange={e=>setRule({...rule,action:e.target.value})}><option value="review">Review</option><option value="alert">Alert</option><option value="recommend">Recommend</option><option value="set_risk_level">Set risk level</option><option value="block">Block</option></select></label><label>Mode<select value={rule.mode} onChange={e=>setRule({...rule,mode:e.target.value})}><option value="suggested">Suggested</option><option value="approval">Approval</option><option value="manual">Manual</option><option value="automatic">Automatic</option></select></label></div><div className="rule-preview"><span>IF</span><b>{rule.field}</b><span>{rule.operator}</span><b>{rule.value}</b><span>THEN</span><b>{rule.action}</b><Badge>{rule.mode}</Badge></div><button className="primary" onClick={onRun}>Compile and test rule</button></Card></section>}
+function Simulator({current}){const [cut,setCut]=useState(0);return <section className="content"><Card><SectionTitle title="Scenario Simulator"/><p className="muted">Transparent sensitivity analysis — not an ML forecast.</p><label className="slider">Approval cutoff adjustment: {cut} points<input type="range" min="-20" max="20" value={cut} onChange={e=>setCut(e.target.value)}/></label><div className="scenario"><div><span>Baseline PAR30</span><strong>{pct(current.par30)}</strong></div><div><span>Scenario sensitivity</span><strong>{pct(Math.max(0,current.par30 - cut*0.001))}</strong></div></div></Card></section>}
+function AI({center}){return <section className="content"><Card><SectionTitle title="AI Copilot"/><div className="ai-message"><Badge tone="ok">Grounded</Badge><h2>What needs attention?</h2><p>{center?.executive_summary||'Run the Decision Workspace to generate an evidence-backed portfolio explanation.'}</p><ul><li>Analytics remain deterministic.</li><li>Any AI interpretation must use supplied evidence.</li><li>Hypotheses are labeled and causality is not inferred.</li></ul></div></Card></section>}
