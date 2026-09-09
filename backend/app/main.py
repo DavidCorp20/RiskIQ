@@ -12,6 +12,7 @@ from app.api.decision_routes import router as decision_router
 from app.api.history_routes import router as history_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.learning_routes import router as learning_router
+from app.api.npl_routes import router as npl_router
 from app.api.pipeline_routes import router as pipeline_router
 from app.api.projection_routes import router as projection_router
 from app.api.quality_routes import router as quality_router
@@ -34,6 +35,7 @@ app.include_router(dataset_intelligence_router,prefix="/api")
 app.include_router(projection_router,prefix="/api")
 app.include_router(quality_router,prefix="/api")
 app.include_router(risk_router,prefix="/api")
+app.include_router(npl_router,prefix="/api")
 app.include_router(intelligence_router,prefix="/api")
 app.include_router(vintage_router,prefix="/api")
 app.include_router(snapshot_router,prefix="/api")
