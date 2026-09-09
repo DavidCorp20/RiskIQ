@@ -10,6 +10,7 @@ from app.data.discovery import DataDiscoveryService
 from app.data.ingestion import FileIngestionService
 from app.data.normalizer import DataNormalizer, FieldMapping
 from app.data.persistence import PortfolioPersistenceService
+from app.data.portfolio_projection import PortfolioProjectionService
 from app.data.quality import DataQualityService
 
 router = APIRouter(prefix="/v1/data", tags=["data"])
@@ -17,6 +18,7 @@ ingestion = FileIngestionService()
 discovery = DataDiscoveryService()
 normalizer = DataNormalizer()
 quality = DataQualityService()
+projection = PortfolioProjectionService()
 persistence = PortfolioPersistenceService()
 
 
@@ -43,17 +45,22 @@ def database_health() -> dict:
     }
 
 
+@router.post("/project")
+def project_dataset(rows: list[dict]) -> dict:
+    """Project normalized records into the canonical RiskIQ portfolio model."""
+    return projection.project(rows)
+
+
 @router.post("/ingest")
 async def ingest_dataset(
     file: UploadFile = File(...),
     mappings: str = Form(...),
     dataset_id: str | None = Form(default=None),
 ) -> dict:
-    """Discover, normalize, quality-check and persist a confirmed mapping.
+    """Discover, normalize, quality-check and persist a confirmed dataset.
 
-    Persistence is blocked when the deterministic Data Quality Gate reports
-    critical issues. Warning-quality datasets may be persisted, but their
-    quality status is retained as dataset metadata for downstream review.
+    Critical quality issues block persistence. Successful ingestion also
+    projects the normalized landing data into the canonical portfolio model.
     """
     try:
         content = await file.read()
@@ -84,11 +91,24 @@ async def ingest_dataset(
             )
 
         resolved_dataset_id = dataset_id or str(uuid4())
+        portfolio = projection.project(normalized)
+
         persisted = persistence.save_normalized_portfolio(
             normalized,
             dataset_id=resolved_dataset_id,
             source_name=filename,
             quality_result=quality_result,
+        )
+        projection_persisted = persistence.save_projection(
+            portfolio,
+            dataset_id=resolved_dataset_id,
+        )
+        persistence.save_dataset_metadata(
+            dataset_id=resolved_dataset_id,
+            source_name=filename,
+            source_rows=len(rows),
+            quality_result=quality_result,
+            projection_summary=portfolio["summary"],
         )
 
         return {
@@ -100,6 +120,10 @@ async def ingest_dataset(
             "persisted_rows": persisted,
             "persistence_blocked": False,
             "quality": quality_result,
+            "projection": {
+                **portfolio["summary"],
+                "persisted": projection_persisted,
+            },
             "discovery": {
                 "coverage_score": discovery_result.get("coverage_score", 0),
                 "warnings": discovery_result.get("warnings", []),
