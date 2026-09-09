@@ -6,7 +6,7 @@ def test_high_par30_recommends_origination_review():
         {
             "facts": [
                 {"id": "par30", "value": 10.0},
-                {"id": "par90", "value": 0.1},
+                {"id": "par90", "value": 0.001},
             ],
             "alerts": ["PAR30_HIGH"],
         },
