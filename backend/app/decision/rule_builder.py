@@ -5,10 +5,11 @@ from typing import Any
 
 SUPPORTED_OPERATORS = {"eq", "neq", "gt", "gte", "lt", "lte", "in", "not_in"}
 SUPPORTED_ACTIONS = {"alert", "recommend", "set_risk_level", "review", "block"}
+SUPPORTED_MODES = {"manual", "suggested", "approval", "automatic"}
 
 
 class RuleBuilder:
-    """Validates UI-generated rules before they reach the Decision Engine."""
+    """Validates and compiles UI-generated rules for the declarative engine."""
 
     def validate(self, rule: dict[str, Any]) -> dict[str, Any]:
         errors: list[str] = []
@@ -16,6 +17,9 @@ class RuleBuilder:
             errors.append("id is required")
         if not rule.get("name"):
             errors.append("name is required")
+
+        if rule.get("mode", "suggested") not in SUPPORTED_MODES:
+            errors.append("unsupported mode")
 
         conditions = rule.get("conditions", [])
         if not conditions:
@@ -35,10 +39,13 @@ class RuleBuilder:
             if action.get("type") not in SUPPORTED_ACTIONS:
                 errors.append(f"action {index}: unsupported action")
 
-        return {"valid": not errors, "errors": errors, "normalized_rule": rule if not errors else None}
+        normalized = dict(rule)
+        normalized.setdefault("mode", "suggested")
+        normalized.setdefault("enabled", True)
+        return {"valid": not errors, "errors": errors, "normalized_rule": normalized if not errors else None}
 
     def from_visual(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Convert visual-builder fields into the existing declarative rule contract."""
+        """Convert visual-builder fields into the declarative rule contract."""
         rule = {
             "id": payload.get("id", "visual-rule"),
             "name": payload.get("name", "Visual risk rule"),
@@ -48,3 +55,13 @@ class RuleBuilder:
             "enabled": payload.get("enabled", True),
         }
         return self.validate(rule)
+
+    def compile(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Validate and emit the exact contract consumed by DecisionEngine."""
+        result = self.from_visual(payload)
+        if not result["valid"]:
+            return result
+        rule = dict(result["normalized_rule"] or {})
+        rule["builder_version"] = "1.0"
+        rule["contract"] = "decision-engine-v1"
+        return {"valid": True, "errors": [], "compiled_rule": rule}
