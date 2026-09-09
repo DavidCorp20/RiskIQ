@@ -80,10 +80,16 @@ class DecisionCardService:
 
     @staticmethod
     def _trigger(code: str, evidence: dict[str, Any]) -> str:
+        def format_pct(value: Any) -> str:
+            try:
+                return f"{float(value):.2%}"
+            except (TypeError, ValueError):
+                return str(value) if value is not None else "—"
+
         if code == "PRIORITIZE_COLLECTIONS":
-            return f"PAR90 = {evidence.get('par90', 0):.2%}"
+            return f"PAR90 = {format_pct(evidence.get('par90'))}"
         if code == "REVIEW_ORIGINATION_RISK":
-            return f"PAR30 = {evidence.get('par30', 0):.2%}"
+            return f"PAR30 = {format_pct(evidence.get('par30'))}"
         return "Risk driver identificado por el motor analítico"
 
     @staticmethod
