@@ -22,6 +22,7 @@ CANONICAL_FIELDS = {
     "outstanding_principal",
     "status",
     "segment",
+    "dpd",
 }
 
 
