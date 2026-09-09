@@ -143,7 +143,7 @@ def test_dataset_run_endpoint_returns_unified_contract(monkeypatch) -> None:
     assert body["contract_version"] == "dataset-intelligence-v3"
     assert body["dataset_id"] == "api-e2e"
     assert body["snapshot"]["active_loans"] == 3
-    assert body["snapshot"]["outstanding_balance"] == 4500
+    assert float(body["snapshot"]["outstanding_balance"]) == 4500
     assert body["risk_analytics"]["npl"]["available"] is True
     assert body["risk_analytics"]["npl"]["regulatory_definition"] is False
     assert body["vintage"]["roll_rate_available"] is False
