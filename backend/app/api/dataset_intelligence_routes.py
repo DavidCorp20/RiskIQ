@@ -58,16 +58,11 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         key=lambda row: str(row.get("snapshot_date") or ""),
         default=None,
     )
-    workspace_previous = previous or {
-        "snapshot_date": as_of,
-        "business_id": dataset_id,
-        "active_loans": 0,
-        "outstanding_balance": 0,
-        "par7": 0,
-        "par30": 0,
-        "par60": 0,
-        "par90": 0,
-    }
+
+    # Without a prior observation there is no valid trend comparison.
+    # Passing the current snapshot as the comparison baseline keeps the
+    # first analysis neutral instead of inventing deterioration from zero.
+    workspace_previous = previous or current
 
     result = workspace.run({
         "current": current,
