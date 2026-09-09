@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.ai_routes import router as ai_router
 from app.api.audit_routes import router as audit_router
 from app.api.data_routes import router as data_router
+from app.api.dataset_intelligence_routes import router as dataset_intelligence_router
 from app.api.dataset_routes import router as dataset_router
 from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_center_routes import router as decision_center_router
@@ -29,6 +30,7 @@ app.add_middleware(CORSMiddleware,allow_origins=cors_origins,allow_credentials=T
 app.include_router(router,prefix="/api")
 app.include_router(data_router,prefix="/api")
 app.include_router(dataset_router,prefix="/api")
+app.include_router(dataset_intelligence_router,prefix="/api")
 app.include_router(projection_router,prefix="/api")
 app.include_router(quality_router,prefix="/api")
 app.include_router(risk_router,prefix="/api")
