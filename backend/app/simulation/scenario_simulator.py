@@ -25,9 +25,6 @@ class ScenarioSimulator:
         collection_change = self._number(changes.get("collection_effectiveness_pct"))
         approval_change = self._number(changes.get("approval_cutoff_points"))
 
-        # Transparent sensitivity assumptions. Negative originations reduce exposure;
-        # improved collections reduce delinquency. Approval cutoff has a conservative
-        # directional effect only and is reported as an assumption, not a forecast.
         balance_factor = max(0.0, 1.0 + originations_change)
         estimated_balance = balance * balance_factor
         collection_factor = max(0.0, 1.0 - collection_change)
@@ -38,14 +35,18 @@ class ScenarioSimulator:
             estimated_par30 *= max(0.0, 1.0 - min(0.20, approval_change / 1000.0))
             estimated_par90 *= max(0.0, 1.0 - min(0.20, approval_change / 1000.0))
 
+        estimated_balance = self._round(estimated_balance)
+        estimated_par30 = self._round(estimated_par30)
+        estimated_par90 = self._round(estimated_par90)
+
         return {
             "name": name,
             "baseline": {"balance": balance, "par30": par30, "par90": par90},
             "scenario": {"balance": estimated_balance, "par30": estimated_par30, "par90": estimated_par90},
             "delta": {
-                "balance": estimated_balance - balance,
-                "par30": estimated_par30 - par30,
-                "par90": estimated_par90 - par90,
+                "balance": self._round(estimated_balance - balance),
+                "par30": self._round(estimated_par30 - par30),
+                "par90": self._round(estimated_par90 - par90),
             },
             "assumptions": {
                 "originations_pct": originations_change,
@@ -55,6 +56,10 @@ class ScenarioSimulator:
             "interpretation": "Sensibilidad histórica/transparente; no constituye una predicción ML.",
             "confidence": "medium",
         }
+
+    @staticmethod
+    def _round(value: float) -> float:
+        return round(value, 10)
 
     @staticmethod
     def _number(value: Any) -> float:
