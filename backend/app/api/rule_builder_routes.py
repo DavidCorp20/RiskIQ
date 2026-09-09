@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.decision.decision_engine import DecisionEngine
+from app.engine.decision_engine import DecisionEngine
 from app.decision.rule_builder import RuleBuilder
 
 router = APIRouter(prefix="/v1/decision-builder", tags=["decision-builder"])
