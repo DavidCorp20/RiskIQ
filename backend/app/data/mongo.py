@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pymongo import ASCENDING, MongoClient
@@ -23,10 +23,11 @@ class MongoRepository:
     def ensure_indexes(self) -> None:
         self._collection.create_index([("business_id", ASCENDING)])
         self._collection.create_index([("created_at", ASCENDING)])
+        self._collection.create_index([("dataset_id", ASCENDING)])
 
     def insert(self, document: dict[str, Any]) -> str:
         payload = dict(document)
-        payload.setdefault("created_at", datetime.utcnow().isoformat())
+        payload.setdefault("created_at", datetime.now(timezone.utc).isoformat())
         result = self._collection.insert_one(payload)
         return str(result.inserted_id)
 
