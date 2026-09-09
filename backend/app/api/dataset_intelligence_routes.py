@@ -38,7 +38,8 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     if not portfolio["loans"]:
         raise HTTPException(status_code=422, detail="Dataset has no canonical loans to analyze")
 
-    as_of = str((payload or {}).get("snapshot_date") or date.today().isoformat())
+    body = payload or {}
+    as_of = str(body.get("snapshot_date") or date.today().isoformat())
     current = snapshot_engine.build(
         loans=portfolio["loans"],
         installments=portfolio["installments"],
@@ -47,19 +48,52 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     )
     analysis = intelligence.analyze(records)
 
-    custom_rules = list((payload or {}).get("custom_rules") or [])
+    snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
+    previous_candidates = [
+        row for row in snapshots
+        if str(row.get("snapshot_date") or "") < as_of
+    ]
+    previous = max(
+        previous_candidates,
+        key=lambda row: str(row.get("snapshot_date") or ""),
+        default=None,
+    )
+    workspace_previous = previous or {
+        "snapshot_date": as_of,
+        "business_id": dataset_id,
+        "active_loans": 0,
+        "outstanding_balance": 0,
+        "par7": 0,
+        "par30": 0,
+        "par60": 0,
+        "par90": 0,
+    }
+
     result = workspace.run({
         "current": current,
-        "previous": current,
+        "previous": workspace_previous,
         "current_analysis": analysis,
-        "custom_rules": custom_rules,
+        "custom_rules": list(body.get("custom_rules") or []),
+    })
+
+    snapshot_id = persistence.snapshots.insert({
+        **current,
+        "dataset_id": dataset_id,
     })
 
     return {
+        "status": result.get("status", "healthy"),
+        "contract_version": "dataset-intelligence-v1",
         "dataset": metadata,
         "dataset_id": dataset_id,
-        "snapshot": current,
+        "snapshot": {"id": snapshot_id, **current},
+        "previous_snapshot": previous,
         "analysis": analysis,
         "workspace": result,
-        "governance": result.get("governance", {}),
+        "governance": {
+            "real_dataset": True,
+            "analytics_are_deterministic": True,
+            "customer_actions_executed": False,
+            "trend_available": previous is not None,
+        },
     }
