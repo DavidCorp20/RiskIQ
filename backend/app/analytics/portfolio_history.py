@@ -13,8 +13,8 @@ class PortfolioHistoryService:
         for metric in self.METRICS:
             current_value = self._number(current.get(metric))
             previous_value = self._number(previous.get(metric))
-            delta = current_value - previous_value
-            pct_change = None if previous_value == 0 else delta / abs(previous_value)
+            delta = self._round(current_value - previous_value)
+            pct_change = None if previous_value == 0 else self._round(delta / abs(previous_value))
             changes[metric] = {
                 "current": current_value,
                 "previous": previous_value,
@@ -48,6 +48,10 @@ class PortfolioHistoryService:
             "interpretation": self._interpretation(status, par30_delta, par90_delta, balance_delta),
             "causality": "not_inferred",
         }
+
+    @staticmethod
+    def _round(value: float) -> float:
+        return round(value, 10)
 
     @staticmethod
     def _interpretation(status: str, par30_delta: float, par90_delta: float, balance_delta: float) -> str:
