@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.data_routes import router as data_router
+from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_routes import router as decision_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.risk_routes import router as risk_router
@@ -19,6 +20,7 @@ app.include_router(risk_router, prefix="/api")
 app.include_router(intelligence_router, prefix="/api")
 app.include_router(vintage_router, prefix="/api")
 app.include_router(decision_router, prefix="/api")
+app.include_router(decision_card_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])
