@@ -13,6 +13,7 @@ def test_projection_deduplicates_customers_and_loans() -> None:
             "due_date": "2026-02-15",
             "scheduled_amount": "100",
             "paid_amount": "50",
+            "payment_date": "2026-02-16",
         },
         {
             "customer_id": "C1",
@@ -24,6 +25,7 @@ def test_projection_deduplicates_customers_and_loans() -> None:
             "due_date": "2026-03-15",
             "scheduled_amount": "100",
             "paid_amount": "100",
+            "payment_date": "2026-03-15",
         },
     ]
 
