@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.data_routes import router as data_router
 from app.api.routes import router
 
 app = FastAPI(
@@ -9,6 +10,7 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api")
+app.include_router(data_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])
