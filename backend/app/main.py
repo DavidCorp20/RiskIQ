@@ -18,6 +18,7 @@ from app.api.rule_builder_routes import router as rule_builder_router
 from app.api.simulation_routes import router as simulation_router
 from app.api.snapshot_routes import router as snapshot_router
 from app.api.vintage_routes import router as vintage_router
+from app.api.workspace_routes import router as workspace_router
 
 app = FastAPI(
     title="RiskIQ API",
@@ -43,6 +44,7 @@ app.include_router(rule_builder_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(learning_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
+app.include_router(workspace_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])
