@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.ai_routes import router as ai_router
 from app.api.audit_routes import router as audit_router
 from app.api.data_routes import router as data_router
+from app.api.dataset_routes import router as dataset_router
 from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_center_routes import router as decision_center_router
 from app.api.decision_routes import router as decision_router
@@ -22,42 +23,30 @@ from app.api.vintage_routes import router as vintage_router
 from app.api.workspace_routes import router as workspace_router
 from app.config import settings
 
-app = FastAPI(
-    title="RiskIQ API",
-    version="0.1.0",
-    description="Credit Risk & Portfolio Decision Intelligence API",
-)
+app = FastAPI(title="RiskIQ API",version="0.1.0",description="Credit Risk & Portfolio Decision Intelligence API")
+cors_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+app.add_middleware(CORSMiddleware,allow_origins=cors_origins,allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
+app.include_router(router,prefix="/api")
+app.include_router(data_router,prefix="/api")
+app.include_router(dataset_router,prefix="/api")
+app.include_router(projection_router,prefix="/api")
+app.include_router(quality_router,prefix="/api")
+app.include_router(risk_router,prefix="/api")
+app.include_router(intelligence_router,prefix="/api")
+app.include_router(vintage_router,prefix="/api")
+app.include_router(snapshot_router,prefix="/api")
+app.include_router(history_router,prefix="/api")
+app.include_router(pipeline_router,prefix="/api")
+app.include_router(decision_router,prefix="/api")
+app.include_router(decision_card_router,prefix="/api")
+app.include_router(decision_center_router,prefix="/api")
+app.include_router(simulation_router,prefix="/api")
+app.include_router(rule_builder_router,prefix="/api")
+app.include_router(audit_router,prefix="/api")
+app.include_router(learning_router,prefix="/api")
+app.include_router(ai_router,prefix="/api")
+app.include_router(workspace_router,prefix="/api")
 
-cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(router, prefix="/api")
-app.include_router(data_router, prefix="/api")
-app.include_router(projection_router, prefix="/api")
-app.include_router(quality_router, prefix="/api")
-app.include_router(risk_router, prefix="/api")
-app.include_router(intelligence_router, prefix="/api")
-app.include_router(vintage_router, prefix="/api")
-app.include_router(snapshot_router, prefix="/api")
-app.include_router(history_router, prefix="/api")
-app.include_router(pipeline_router, prefix="/api")
-app.include_router(decision_router, prefix="/api")
-app.include_router(decision_card_router, prefix="/api")
-app.include_router(decision_center_router, prefix="/api")
-app.include_router(simulation_router, prefix="/api")
-app.include_router(rule_builder_router, prefix="/api")
-app.include_router(audit_router, prefix="/api")
-app.include_router(learning_router, prefix="/api")
-app.include_router(ai_router, prefix="/api")
-app.include_router(workspace_router, prefix="/api")
-
-
-@app.get("/health", tags=["system"])
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "riskiq-api"}
+@app.get("/health",tags=["system"])
+def health()->dict[str,str]:
+    return {"status":"ok","service":"riskiq-api"}
