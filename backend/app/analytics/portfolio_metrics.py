@@ -5,6 +5,15 @@ from decimal import Decimal
 from app.domain.models import Installment, Loan
 
 
+def _decimal(value: object) -> Decimal:
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value or 0))
+    except (TypeError, ValueError):
+        return Decimal("0")
+
+
 def days_past_due(due_date: date, as_of: date, paid_amount: Decimal, scheduled_amount: Decimal) -> int:
     if paid_amount >= scheduled_amount:
         return 0
@@ -20,13 +29,13 @@ def loan_dpd(loan: Loan, installments: Iterable[Installment], as_of: date) -> in
 
 def par_ratio(loans: Iterable[Loan], installments: Iterable[Installment], as_of: date, threshold_days: int) -> Decimal:
     loan_list = list(loans)
-    denominator = sum((loan.outstanding_principal for loan in loan_list), Decimal("0"))
+    denominator = sum((_decimal(loan.outstanding_principal) for loan in loan_list), Decimal("0"))
     if denominator == 0:
         return Decimal("0")
 
     installment_list = list(installments)
     numerator = sum(
-        (loan.outstanding_principal for loan in loan_list if loan_dpd(loan, installment_list, as_of) >= threshold_days),
+        (_decimal(loan.outstanding_principal) for loan in loan_list if loan_dpd(loan, installment_list, as_of) >= threshold_days),
         Decimal("0"),
     )
     return numerator / denominator
@@ -37,7 +46,7 @@ def portfolio_health(loans: Iterable[Loan], installments: Iterable[Installment],
     installment_list = list(installments)
     return {
         "active_loans": len([loan for loan in loan_list if loan.status == "active"]),
-        "outstanding_balance": sum((loan.outstanding_principal for loan in loan_list), Decimal("0")),
+        "outstanding_balance": sum((_decimal(loan.outstanding_principal) for loan in loan_list), Decimal("0")),
         "par7": par_ratio(loan_list, installment_list, as_of, 7),
         "par30": par_ratio(loan_list, installment_list, as_of, 30),
         "par60": par_ratio(loan_list, installment_list, as_of, 60),
