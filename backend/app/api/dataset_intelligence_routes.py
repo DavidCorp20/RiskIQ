@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.snapshot_engine import SnapshotEngine
+from app.analytics.vintage_rollrate import VintageRollRateService
 from app.data.persistence import PortfolioPersistenceService
 from app.decision.workspace import DecisionWorkspaceService
 
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/v1/datasets", tags=["dataset-intelligence"])
 persistence = PortfolioPersistenceService()
 intelligence = PortfolioIntelligenceService()
 snapshot_engine = SnapshotEngine()
+vintage = VintageRollRateService()
 workspace = DecisionWorkspaceService()
 
 
@@ -47,21 +49,11 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         business_id=dataset_id,
     )
     analysis = intelligence.analyze(records)
+    vintage_analysis = vintage.analyze(records)
 
     snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
-    previous_candidates = [
-        row for row in snapshots
-        if str(row.get("snapshot_date") or "") < as_of
-    ]
-    previous = max(
-        previous_candidates,
-        key=lambda row: str(row.get("snapshot_date") or ""),
-        default=None,
-    )
-
-    # Without a prior observation there is no valid trend comparison.
-    # Passing the current snapshot as the comparison baseline keeps the
-    # first analysis neutral instead of inventing deterioration from zero.
+    previous_candidates = [row for row in snapshots if str(row.get("snapshot_date") or "") < as_of]
+    previous = max(previous_candidates, key=lambda row: str(row.get("snapshot_date") or ""), default=None)
     workspace_previous = previous or current
 
     result = workspace.run({
@@ -71,24 +63,24 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         "custom_rules": list(body.get("custom_rules") or []),
     })
 
-    snapshot_id = persistence.snapshots.insert({
-        **current,
-        "dataset_id": dataset_id,
-    })
+    snapshot_id = persistence.snapshots.insert({**current, "dataset_id": dataset_id})
 
     return {
         "status": result.get("status", "healthy"),
-        "contract_version": "dataset-intelligence-v1",
+        "contract_version": "dataset-intelligence-v2",
         "dataset": metadata,
         "dataset_id": dataset_id,
         "snapshot": {"id": snapshot_id, **current},
         "previous_snapshot": previous,
         "analysis": analysis,
+        "vintage": vintage_analysis,
         "workspace": result,
         "governance": {
             "real_dataset": True,
             "analytics_are_deterministic": True,
             "customer_actions_executed": False,
             "trend_available": previous is not None,
+            "roll_rate_requires_historical_snapshots": True,
+            "causality_inferred": False,
         },
     }
