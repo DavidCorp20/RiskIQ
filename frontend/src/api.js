@@ -8,4 +8,7 @@ export const getDatasetPortfolio=id=>request(`/api/v1/datasets/${encodeURICompon
 export const getDatasetRecords=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/records`)
 export const analyzePortfolio=rows=>request('/api/v1/portfolio/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
 export const buildSnapshot=p=>request('/api/v1/portfolio/snapshot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
-export const runDataset=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+export const runDataset=(id,payload={})=>request(`/api/v1/datasets/${encodeURIComponent(id)}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+export const runSimulator=payload=>request('/api/v1/simulator/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+export const runNPL=rows=>request('/api/v1/risk/npl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
+export const askCopilot=payload=>request('/api/v1/ai/copilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
