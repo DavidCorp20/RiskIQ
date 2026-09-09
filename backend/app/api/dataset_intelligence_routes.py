@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from app.analytics.npl import NPLAnalyticsService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.snapshot_engine import SnapshotEngine
 from app.analytics.vintage_rollrate import VintageRollRateService
@@ -16,6 +17,7 @@ persistence = PortfolioPersistenceService()
 intelligence = PortfolioIntelligenceService()
 snapshot_engine = SnapshotEngine()
 vintage = VintageRollRateService()
+npl = NPLAnalyticsService()
 workspace = DecisionWorkspaceService()
 
 
@@ -50,6 +52,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     )
     analysis = intelligence.analyze(records)
     vintage_analysis = vintage.analyze(records)
+    npl_analysis = npl.analyze(records)
 
     snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
     previous_candidates = [row for row in snapshots if str(row.get("snapshot_date") or "") < as_of]
@@ -63,16 +66,21 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         "custom_rules": list(body.get("custom_rules") or []),
     })
 
-    snapshot_id = persistence.snapshots.insert({**current, "dataset_id": dataset_id})
+    existing = persistence.snapshots.find(
+        {"dataset_id": dataset_id, "snapshot_date": as_of},
+        limit=1,
+    )
+    snapshot_id = existing[0].get("id") if existing else persistence.snapshots.insert({**current, "dataset_id": dataset_id})
 
     return {
         "status": result.get("status", "healthy"),
-        "contract_version": "dataset-intelligence-v2",
+        "contract_version": "dataset-intelligence-v3",
         "dataset": metadata,
         "dataset_id": dataset_id,
         "snapshot": {"id": snapshot_id, **current},
         "previous_snapshot": previous,
         "analysis": analysis,
+        "risk_analytics": {"npl": npl_analysis},
         "vintage": vintage_analysis,
         "workspace": result,
         "governance": {
@@ -82,5 +90,6 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
             "trend_available": previous is not None,
             "roll_rate_requires_historical_snapshots": True,
             "causality_inferred": False,
+            "npl_is_regulatory_definition": False,
         },
     }
