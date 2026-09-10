@@ -4,6 +4,8 @@ export const runWorkspace=p=>request('/api/v1/workspace/run',{method:'POST',head
 export async function discoverFile(file){const f=new FormData();f.append('file',file);return request('/api/v1/data/discover',{method:'POST',body:f})}
 export async function ingestFile(file,mappings,datasetId=''){const f=new FormData();f.append('file',file);f.append('mappings',JSON.stringify(mappings));if(datasetId)f.append('dataset_id',datasetId);return request('/api/v1/data/ingest',{method:'POST',body:f})}
 export const databaseHealth=()=>request('/api/v1/data/health')
+export const listDatasets=()=>request('/api/v1/datasets')
+export const getDataset=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}`)
 export const getDatasetPortfolio=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/portfolio`)
 export const getDatasetRecords=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/records`)
 export const analyzePortfolio=rows=>request('/api/v1/portfolio/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
