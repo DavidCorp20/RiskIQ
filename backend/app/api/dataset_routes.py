@@ -20,24 +20,31 @@ def list_datasets() -> dict:
     """Return persisted datasets ordered newest-first for workspace restoration."""
     rows = persistence.datasets.find({}, limit=1000)
     rows.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
-
-    # A dataset can have multiple ingestion records. Keep the newest record per
-    # dataset_id so the UI has one canonical registry entry per dataset.
     latest: dict[str, dict] = {}
     for row in rows:
         dataset_id = str(row.get("dataset_id") or "")
         if dataset_id and dataset_id not in latest:
             latest[dataset_id] = row
-
-    return {
-        "count": len(latest),
-        "datasets": list(latest.values()),
-    }
+    return {"count": len(latest), "datasets": list(latest.values())}
 
 
 @router.get("/{dataset_id}")
 def get_dataset(dataset_id: str) -> dict:
     return _require_dataset(dataset_id)
+
+
+@router.get("/{dataset_id}/history")
+def get_dataset_history(dataset_id: str) -> dict:
+    """Return chronological snapshots for portfolio trend and audit views."""
+    _require_dataset(dataset_id)
+    rows = persistence.snapshots.find({"dataset_id": dataset_id}, limit=1000)
+    rows.sort(key=lambda row: str(row.get("snapshot_date") or ""))
+    return {
+        "dataset_id": dataset_id,
+        "count": len(rows),
+        "snapshots": rows,
+        "trend_available": len(rows) >= 2,
+    }
 
 
 @router.get("/{dataset_id}/portfolio")
