@@ -6,6 +6,7 @@ export async function ingestFile(file,mappings,datasetId=''){const f=new FormDat
 export const databaseHealth=()=>request('/api/v1/data/health')
 export const listDatasets=()=>request('/api/v1/datasets')
 export const getDataset=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}`)
+export const getDatasetHistory=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/history`)
 export const getDatasetPortfolio=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/portfolio`)
 export const getDatasetRecords=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/records`)
 export const analyzePortfolio=rows=>request('/api/v1/portfolio/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
