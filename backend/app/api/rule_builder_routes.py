@@ -61,17 +61,25 @@ def evaluate_scorecard(payload:dict)->dict:
     except ValueError as exc: raise HTTPException(status_code=422,detail=[str(exc)])
     return {"result":result,"execution_mode":"sandboxed","customer_actions_executed":False}
 
-@router.post("/pipeline")
-def run_pipeline(payload:dict)->dict:
-    facts=dict(payload.get("facts",{})); normalization=payload.get("normalization_code"); stages=[]
+def _calculate_facts(raw_facts:dict,normalization:str|None,formulas:dict|None)->tuple[dict,list[dict]]:
+    facts=dict(raw_facts); trace=[]
     if normalization:
         errors=engine.code.validate(normalization)
-        if errors: raise HTTPException(status_code=422,detail=errors)
-        try: facts=engine.normalize_rows([facts],normalization)[0]
-        except ValueError as exc: raise HTTPException(status_code=422,detail=[str(exc)])
-        stages.append("normalize")
+        if errors: raise ValueError("; ".join(errors))
+        facts=engine.normalize_rows([facts],normalization)[0]
+    if formulas:
+        calculated=formula_engine.evaluate(facts,formulas); facts=calculated["facts"]; trace=calculated["trace"]
+    return facts,trace
+
+@router.post("/pipeline")
+def run_pipeline(payload:dict)->dict:
+    facts=dict(payload.get("facts",{})); normalization=payload.get("normalization_code"); formulas=payload.get("formulas") or None; stages=[]; formula_trace=[]
+    try:
+        facts,formula_trace=_calculate_facts(facts,normalization,formulas)
+    except ValueError as exc: raise HTTPException(status_code=422,detail=[str(exc)])
+    if normalization: stages.append("normalize")
     stages.append("facts")
-    if payload.get("formulas"): stages.append("formulas")
+    if formulas: stages.append("formulas")
     scorecard=payload.get("scorecard"); scorecard_result=None
     if scorecard:
         try: scorecard_result=scorecard_engine.evaluate(facts,scorecard); facts=scorecard_result["facts"]; stages.append("scorecard")
@@ -80,9 +88,9 @@ def run_pipeline(payload:dict)->dict:
     if not rule: raise HTTPException(status_code=422,detail=["rule is required"])
     compiled=compile_rule(rule)
     if not compiled["valid"]: raise HTTPException(status_code=422,detail=compiled["errors"])
-    result=engine.evaluate(facts,[DecisionRule.model_validate(compiled["compiled_rule"])],payload.get("formulas") or None)
+    result=engine.evaluate(facts,[DecisionRule.model_validate(compiled["compiled_rule"])])
     stages += ["logic","decision"]
-    return {"stages":stages,"facts":facts,"scorecard":scorecard_result,"result":result,"execution_mode":"test_only","customer_actions_executed":False}
+    return {"stages":stages,"facts":facts,"formula_trace":formula_trace,"scorecard":scorecard_result,"result":result,"execution_mode":"test_only","customer_actions_executed":False}
 
 @router.post("/portfolio-simulate")
 def simulate_portfolio(payload:dict)->dict:
@@ -95,26 +103,27 @@ def simulate_portfolio(payload:dict)->dict:
     if normalization:
         errors=engine.code.validate(normalization)
         if errors: raise HTTPException(status_code=422,detail=errors)
-    results=[]; counts={}; bands={}; triggered={}; total_exposure=0.0
+    results=[]; counts={}; bands={}; triggered={}; total_exposure=0.0; scores=[]
     for index,row in enumerate(rows):
         try:
-            facts=dict(row)
-            if normalization: facts=engine.normalize_rows([facts],normalization)[0]
+            facts,formula_trace=_calculate_facts(row,normalization,formulas)
             score_result=None
             if scorecard:
                 score_result=scorecard_engine.evaluate(facts,scorecard); facts=score_result["facts"]
-            result=engine.evaluate(facts,[decision_rule],formulas)
+            result=engine.evaluate(facts,[decision_rule])
             decision=result.get("decision") or "NO_DECISION"; counts[decision]=counts.get(decision,0)+1
             band=(score_result or {}).get("band") or {}; label=band.get("label") if isinstance(band,dict) else None
             if label: bands[label]=bands.get(label,0)+1
             for rule_id in result.get("triggered_rules",[]): triggered[rule_id]=triggered.get(rule_id,0)+1
+            score=(score_result or {}).get("score")
+            if isinstance(score,(int,float)): scores.append(float(score))
             try: total_exposure+=float(facts.get("outstanding_balance",0) or 0)
             except (TypeError,ValueError): pass
-            results.append({"index":index,"customer_id":facts.get("customer_id"),"decision":decision,"score":(score_result or {}).get("score"),"band":label,"triggered_rules":result.get("triggered_rules",[]),"reason_codes":result.get("reason_codes",[])})
+            results.append({"index":index,"customer_id":facts.get("customer_id"),"decision":decision,"score":score,"band":label,"triggered_rules":result.get("triggered_rules",[]),"reason_codes":result.get("reason_codes",[]),"formula_trace":formula_trace})
         except (ValueError,TypeError) as exc:
             raise HTTPException(status_code=422,detail=[f"row {index}: {exc}"])
-    total=len(results)
-    return {"summary":{"records":total,"decisions":counts,"bands":bands,"triggered_rules":triggered,"total_exposure":round(total_exposure,2),"decision_rate":round(sum(counts.values())/total,4) if total else 0},"results":results,"policy":{"id":decision_rule.id,"name":decision_rule.name,"version":decision_rule.version},"execution_mode":"portfolio_test_only","customer_actions_executed":False}
+    total=len(results); decision_share={k:round(v/total,4) for k,v in counts.items()} if total else {}
+    return {"summary":{"records":total,"decisions":counts,"decision_share":decision_share,"bands":bands,"triggered_rules":triggered,"total_exposure":round(total_exposure,2),"average_score":round(sum(scores)/len(scores),2) if scores else None,"scored_records":len(scores)},"results":results,"policy":{"id":decision_rule.id,"name":decision_rule.name,"version":decision_rule.version},"execution_mode":"portfolio_test_only","customer_actions_executed":False}
 
 @router.post("/normalize")
 def normalize_rows(payload:dict)->dict:
