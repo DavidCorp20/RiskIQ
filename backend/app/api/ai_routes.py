@@ -17,10 +17,23 @@ def _require_dataset(dataset_id: str) -> dict:
     return rows[0]
 
 
+def _resolve_dataset_id(payload: dict) -> str:
+    """Resolve an explicit dataset first; only infer when exactly one dataset exists."""
+    explicit = str(payload.get("dataset_id") or "").strip()
+    if explicit:
+        return explicit
+
+    candidates = persistence.datasets.find({}, limit=2)
+    if len(candidates) == 1:
+        return str(candidates[0].get("dataset_id") or "").strip()
+
+    return ""
+
+
 @router.post("/copilot")
 def copilot(payload: dict) -> dict:
     """Answer using deterministic evidence explicitly tied to one persisted dataset."""
-    dataset_id = str(payload.get("dataset_id") or "").strip()
+    dataset_id = _resolve_dataset_id(payload)
     if not dataset_id:
         raise HTTPException(status_code=400, detail="dataset_id is required for dataset-bound Copilot")
 
