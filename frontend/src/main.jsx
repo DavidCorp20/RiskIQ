@@ -8,5 +8,6 @@ import './visual-system.css'
 import './builder.css'
 import './light-ui.css'
 import './palette.css'
+import './readability.css'
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)
