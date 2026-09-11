@@ -35,15 +35,39 @@ def get_dataset(dataset_id: str) -> dict:
 
 @router.get("/{dataset_id}/history")
 def get_dataset_history(dataset_id: str) -> dict:
-    """Return chronological snapshots for portfolio trend and audit views."""
+    """Return unique chronological snapshots and explicit trend availability."""
     _require_dataset(dataset_id)
     rows = persistence.snapshots.find({"dataset_id": dataset_id}, limit=1000)
     rows.sort(key=lambda row: str(row.get("snapshot_date") or ""))
+
+    # A rerun of the same cut must not create another historical observation.
+    # Keep the latest persisted row for each snapshot date.
+    by_date: dict[str, dict] = {}
+    undated: list[dict] = []
+    for row in rows:
+        snapshot_date = str(row.get("snapshot_date") or "")
+        if snapshot_date:
+            by_date[snapshot_date] = row
+        else:
+            undated.append(row)
+
+    snapshots = [by_date[key] for key in sorted(by_date)] + undated
+    comparable_count = len(by_date)
     return {
         "dataset_id": dataset_id,
-        "count": len(rows),
-        "snapshots": rows,
-        "trend_available": len(rows) >= 2,
+        "count": len(snapshots),
+        "snapshots": snapshots,
+        "trend_available": comparable_count >= 2,
+        "history": {
+            "status": "available" if comparable_count >= 2 else "baseline",
+            "comparable_snapshots": comparable_count,
+            "reason": None if comparable_count >= 2 else "insufficient_history",
+            "message": (
+                "Hay al menos dos cortes comparables para evaluar tendencia."
+                if comparable_count >= 2
+                else "Primer corte o histórico insuficiente: no se debe inferir tendencia."
+            ),
+        },
     }
 
 
