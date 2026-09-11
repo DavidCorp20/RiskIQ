@@ -12,7 +12,7 @@ def test_compile_emits_engine_contract():
     })
 
     assert result["valid"] is True
-    assert result["compiled_rule"]["contract"] == "decision-engine-v1"
+    assert result["compiled_rule"]["contract"] == "decision-engine-v2"
     assert DecisionRule.model_validate(result["compiled_rule"]).id == "par30-alert"
 
 
