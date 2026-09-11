@@ -3,7 +3,7 @@ async function request(url,options={}){const response=await fetch(`${API_URL}${u
 const activeDatasetId=()=>{try{return JSON.parse(localStorage.getItem('riskiq.activeDataset')||'null')?.dataset_id||''}catch{return ''}}
 export const runWorkspace=p=>request('/api/v1/workspace/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
 export async function discoverFile(file){const f=new FormData();f.append('file',file);return request('/api/v1/data/discover',{method:'POST',body:f})}
-export async function ingestFile(file,mappings,datasetId=''){const f=new FormData();f.append('file',file);f.append('mappings',JSON.stringify(mappings));if(datasetId)f.append('dataset_id',datasetId);return request('/api/v1/data/ingest',{method:'POST',body:f)}
+export async function ingestFile(file,mappings,datasetId=''){const f=new FormData();f.append('file',file);f.append('mappings',JSON.stringify(mappings));if(datasetId)f.append('dataset_id',datasetId);return request('/api/v1/data/ingest',{method:'POST',body:f})}
 export const databaseHealth=()=>request('/api/v1/data/health')
 export const listDatasets=()=>request('/api/v1/datasets')
 export const getDataset=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}`)
@@ -13,21 +13,11 @@ export const getDatasetRecords=id=>request(`/api/v1/datasets/${encodeURIComponen
 export const analyzePortfolio=rows=>request('/api/v1/portfolio/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
 export const buildSnapshot=p=>request('/api/v1/portfolio/snapshot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
 
-// The API is the single source of truth for risk metrics. The UI may still consume
-// legacy snapshot fields, so normalize those fields from the deterministic analytics
-// contract without recalculating risk client-side.
 function normalizeDatasetResult(result){
   const deterministic=result?.risk_analytics?.deterministic
   if(!deterministic)return result
   const par=deterministic.par||{}
-  const snapshot={...(result.snapshot||{}),
-    active_loans:deterministic.loan_count,
-    outstanding_balance:deterministic.exposure,
-    par7:Number(par.par7?.ratio||0),
-    par30:Number(par.par30?.ratio||0),
-    par60:Number(par.par60?.ratio||0),
-    par90:Number(par.par90?.ratio||0),
-  }
+  const snapshot={...(result.snapshot||{}),active_loans:deterministic.loan_count,outstanding_balance:deterministic.exposure,par7:Number(par.par7?.ratio||0),par30:Number(par.par30?.ratio||0),par60:Number(par.par60?.ratio||0),par90:Number(par.par90?.ratio||0)}
   const analysis={...(result.analysis||{})}
   if(!analysis.drivers?.length&&deterministic.drivers?.length)analysis.drivers=deterministic.drivers
   return {...result,snapshot,analysis}
