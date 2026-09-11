@@ -30,7 +30,13 @@ class DecisionEngineService:
                 "rationale": reason,
                 "evidence": evidence,
                 "recommended_action": action,
+                "recommendation": action,
+                "suggested_action": action,
+                "trigger": reason,
+                "impact": f"Exposure affected by this signal: {exposure:.2f}.",
+                "confidence": "evidence backed · deterministic rule",
                 "requires_human_review": True,
+                "human_review_required": True,
                 "executed": False,
             }
             decisions.append(decision)
@@ -72,14 +78,18 @@ class DecisionEngineService:
                 "Continue routine monitoring and reassess on the next dataset snapshot.")
 
         decisions.sort(key=lambda x: (x["priority"], x["id"]))
+        card_keys = (
+            "id", "priority", "severity", "title", "reason", "rationale", "evidence",
+            "recommended_action", "recommendation", "suggested_action", "trigger", "impact",
+            "confidence", "requires_human_review", "human_review_required", "executed"
+        )
+        cards = [{k: d[k] for k in card_keys} for d in decisions]
+
         return {
             "available": bool(risk.get("available", False)),
             "status": "critical" if decisions[0]["severity"] == "critical" else "high" if decisions[0]["severity"] == "high" else "monitoring",
             "decisions": decisions,
-            "cards": [
-                {k: d[k] for k in ("id", "priority", "severity", "title", "rationale", "evidence", "recommended_action", "requires_human_review", "executed")}
-                for d in decisions
-            ],
+            "cards": cards,
             "methodology": {
                 "deterministic": True,
                 "thresholds_are_explicit": True,
