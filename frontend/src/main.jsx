@@ -1,17 +1,5 @@
 import React from 'react'
-import { createRoot } from 'react-dom/client'
+import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
-import './styles.css'
-import './density.css'
-import './button-system.css'
-import './visual-system.css'
-import './builder.css'
-import './light-ui.css'
-import './palette.css'
-import './readability.css'
-import './advanced-risk.css'
-import './ros-navigation.css'
-import './ros-enhanced.css'
-import './ros-polish.css'
-
-createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)
+import './styles.css';import './density.css';import './button-system.css';import './visual-system.css';import './builder.css';import './light-ui.css';import './palette.css';import './readability.css';import './advanced-risk.css';import './ros-navigation.css';import './ros-enhanced.css';import './ros-polish.css';import './decision-engine-v3.css'
+createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>)

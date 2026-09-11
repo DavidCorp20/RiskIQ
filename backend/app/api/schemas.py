@@ -1,18 +1,14 @@
 from typing import Any
-
 from pydantic import BaseModel, Field
-
 
 class RuleCondition(BaseModel):
     field: str
     operator: str
     value: Any
 
-
 class RuleAction(BaseModel):
     type: str
     parameters: dict[str, Any] = Field(default_factory=dict)
-
 
 class DecisionRule(BaseModel):
     id: str
@@ -22,12 +18,13 @@ class DecisionRule(BaseModel):
     logic: str = "AND"
     mode: str = "suggested"
     enabled: bool = True
-
+    execution_mode: str = "visual"
+    code: str = ""
+    version: int = 1
 
 class DecisionRequest(BaseModel):
     facts: dict[str, Any]
     rules: list[DecisionRule] = Field(default_factory=list)
-
 
 class DecisionResponse(BaseModel):
     triggered_rules: list[str]

@@ -1,100 +1,22 @@
-import React, { useMemo, useState } from 'react'
+import React,{useMemo,useState} from 'react'
 
-const FIELDS = [
-  { value: 'par7', label: 'PAR7' },
-  { value: 'par30', label: 'PAR30' },
-  { value: 'par60', label: 'PAR60' },
-  { value: 'par90', label: 'PAR90' },
-  { value: 'outstanding_balance', label: 'Exposición' },
-  { value: 'priority_score', label: 'Priority score' },
-  { value: 'segment', label: 'Segmento' },
-  { value: 'product', label: 'Producto' },
-  { value: 'trend', label: 'Tendencia' },
-]
+const FIELDS=[['par7','PAR7'],['par30','PAR30'],['par60','PAR60'],['par90','PAR90'],['outstanding_balance','Exposición'],['priority_score','Priority score'],['segment','Segmento'],['product','Producto'],['trend','Tendencia']]
+const OPS=[['gt','mayor que'],['gte','mayor o igual que'],['lt','menor que'],['lte','menor o igual que'],['eq','igual a'],['neq','distinto de']]
+const blank=()=>({field:'par30',operator:'gt',value:'0.10'})
+const starter=`# Risk DSL — ejemplo seguro\npar30 = to_number(par30)\nexposure = to_number(outstanding_balance)\nreturn {\n  "matched": par30 >= 0.10 and exposure > 50000,\n  "risk_level": "HIGH_RISK" if par30 >= 0.10 else "WATCH",\n  "normalized_segment": upper(coalesce(segment, "UNKNOWN"))\n}`
 
-const OPERATORS = [
-  ['gt', 'mayor que'], ['gte', 'mayor o igual que'], ['lt', 'menor que'],
-  ['lte', 'menor o igual que'], ['eq', 'igual a'], ['neq', 'distinto de'],
-]
-
-const blankCondition = () => ({ field: 'par30', operator: 'gt', value: '0.10' })
-
-export default function DecisionEngine({ current = {}, onApply }) {
-  const [name, setName] = useState('Early Delinquency')
-  const [logic, setLogic] = useState('AND')
-  const [conditions, setConditions] = useState([blankCondition()])
-  const [outcome, setOutcome] = useState('HIGH_RISK')
-  const [priority, setPriority] = useState('1')
-  const [action, setAction] = useState('Crear revisión humana')
-  const [saved, setSaved] = useState(false)
-
-  const preview = useMemo(() => ({
-    policy_id: 'POL-DRAFT', version: 1, name,
-    logic, conditions, outcome, priority: Number(priority) || 0, action,
-    approval: 'human_review', executed: false,
-  }), [name, logic, conditions, outcome, priority, action])
-
-  const updateCondition = (index, patch) => setConditions(items => items.map((item, i) => i === index ? { ...item, ...patch } : item))
-
-  return (
-    <section className="decision-engine" aria-label="Decision Engine">
-      <div className="decision-engine__header">
-        <div>
-          <span className="section-eyebrow">DECISION ENGINE</span>
-          <h2>Políticas configurables</h2>
-          <p>Construye decisiones reutilizables sin hardcodear reglas. El motor produce evidencia, prioridad y una acción propuesta para revisión humana.</p>
-        </div>
-        <div className="decision-engine__status">LOW-CODE · HUMAN REVIEW</div>
-      </div>
-
-      <div className="decision-engine__grid">
-        <div className="decision-engine__builder">
-          <label>Nombre de política<input value={name} onChange={e => setName(e.target.value)} /></label>
-
-          <div className="builder-block">
-            <div className="builder-block__title"><strong>WHEN</strong><span>{conditions.length} condición{conditions.length === 1 ? '' : 'es'}</span></div>
-            {conditions.map((condition, index) => (
-              <React.Fragment key={index}>
-                {index > 0 && <div className="logic-row"><select value={logic} onChange={e => setLogic(e.target.value)}><option>AND</option><option>OR</option></select></div>}
-                <div className="condition-row">
-                  <select value={condition.field} onChange={e => updateCondition(index, { field: e.target.value })}>{FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}</select>
-                  <select value={condition.operator} onChange={e => updateCondition(index, { operator: e.target.value })}>{OPERATORS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-                  <input value={condition.value} onChange={e => updateCondition(index, { value: e.target.value })} aria-label={`Valor condición ${index + 1}`} />
-                  {conditions.length > 1 && <button className="button button--ghost" onClick={() => setConditions(items => items.filter((_, i) => i !== index))}>Quitar</button>}
-                </div>
-              </React.Fragment>
-            ))}
-            <button className="button button--secondary" onClick={() => setConditions(items => [...items, blankCondition()])}>+ Agregar condición</button>
-          </div>
-
-          <div className="builder-block">
-            <div className="builder-block__title"><strong>THEN</strong><span>Resultado operativo</span></div>
-            <div className="then-grid">
-              <label>Nivel<select value={outcome} onChange={e => setOutcome(e.target.value)}><option value="LOW_RISK">LOW RISK</option><option value="WATCH">WATCH</option><option value="HIGH_RISK">HIGH RISK</option><option value="CRITICAL">CRITICAL</option><option value="REVIEW">REVIEW</option></select></label>
-              <label>Prioridad<input type="number" min="1" max="5" value={priority} onChange={e => setPriority(e.target.value)} /></label>
-              <label>Acción propuesta<input value={action} onChange={e => setAction(e.target.value)} /></label>
-            </div>
-          </div>
-
-          <div className="engine-actions">
-            <button className="button button--primary" onClick={() => { setSaved(true); onApply?.(preview) }}>Guardar política</button>
-            <button className="button button--secondary" onClick={() => setSaved(false)}>Probar política</button>
-            {saved && <span className="save-confirm">Borrador preparado · versión 1</span>}
-          </div>
-        </div>
-
-        <aside className="decision-engine__preview">
-          <span className="section-eyebrow">POLICY PREVIEW</span>
-          <h3>{name || 'Nueva política'}</h3>
-          <div className="policy-flow">
-            <div><b>WHEN</b>{conditions.map((c, i) => <span key={i}>{FIELDS.find(f => f.value === c.field)?.label} {OPERATORS.find(o => o[0] === c.operator)?.[1]} {c.value}</span>)}</div>
-            <div className="policy-arrow">↓</div>
-            <div><b>THEN</b><span>{outcome}</span><span>Prioridad {priority}</span><span>{action}</span></div>
-          </div>
-          <div className="evidence-box"><strong>Gobernanza</strong><p>La decisión conserva política, versión, condiciones, evidencia y estado de ejecución. Las acciones no se ejecutan automáticamente.</p></div>
-          <div className="evidence-box"><strong>Datos actuales</strong><p>PAR30: {typeof current.par30 === 'number' ? `${(current.par30 * 100).toFixed(1)}%` : '—'} · Exposición: {current.outstanding_balance ?? '—'}</p></div>
-        </aside>
-      </div>
-    </section>
-  )
+export default function DecisionEngine({current={},onApply}){
+ const [name,setName]=useState('Early Delinquency'); const [mode,setMode]=useState('visual'); const [logic,setLogic]=useState('AND'); const [conditions,setConditions]=useState([blank()]); const [outcome,setOutcome]=useState('HIGH_RISK'); const [priority,setPriority]=useState('1'); const [action,setAction]=useState('Crear revisión humana'); const [code,setCode]=useState(starter); const [status,setStatus]=useState('Listo para probar')
+ const preview=useMemo(()=>({id:'POL-DRAFT',version:1,name,execution_mode:mode,logic,conditions,code,actions:[{type:'recommend',parameters:{outcome,priority:Number(priority)||0,action}}],mode:'suggested',enabled:true}),[name,mode,logic,conditions,code,outcome,priority,action])
+ const update=(i,p)=>setConditions(xs=>xs.map((x,j)=>j===i?{...x,...p}:x))
+ return <section className="decision-engine de-v3" aria-label="Decision Engine">
+  <header className="de-v3__hero"><div><span className="section-eyebrow">DECISION ENGINE · V3</span><h2>Policy & Logic Studio</h2><p>De reglas visuales a lógica avanzada: parametriza decisiones, transforma datos y prueba el resultado antes de activarlo.</p></div><span className="de-v3__badge">SANDBOXED · AUDITABLE</span></header>
+  <div className="de-v3__tabs">{[['visual','Visual'],['formula','Fórmulas'],['code','Risk DSL']].map(([v,l])=><button key={v} className={mode===v?'active':''} onClick={()=>setMode(v)}>{l}<small>{v==='visual'?'Negocio':v==='formula'?'Analistas':'Avanzado'}</small></button>)}</div>
+  <div className="de-v3__layout"><main>
+   <label>Nombre de política<input value={name} onChange={e=>setName(e.target.value)}/></label>
+   {mode==='code'?<div className="de-code"><div className="de-code__head"><strong>RISK DSL</strong><span>Python-like · funciones aprobadas · sin imports / I/O / ejecución arbitraria</span></div><textarea spellCheck="false" value={code} onChange={e=>setCode(e.target.value)}/><div className="de-code__hint">Disponible para normalización, derivación de variables, segmentación y lógica de decisión. Ej.: <code>to_number</code>, <code>upper</code>, <code>coalesce</code>, <code>abs</code>.</div></div>:<><div className="builder-block"><div className="builder-block__title"><strong>WHEN</strong><span>{conditions.length} condición{conditions.length!==1?'es':''}</span></div>{conditions.map((c,i)=><React.Fragment key={i}>{i>0&&<div className="logic-row"><select value={logic} onChange={e=>setLogic(e.target.value)}><option>AND</option><option>OR</option></select></div>}<div className="condition-row"><select value={c.field} onChange={e=>update(i,{field:e.target.value})}>{FIELDS.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select><select value={c.operator} onChange={e=>update(i,{operator:e.target.value})}>{OPS.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select><input value={c.value} onChange={e=>update(i,{value:e.target.value})}/>{conditions.length>1&&<button className="button button--ghost" onClick={()=>setConditions(xs=>xs.filter((_,j)=>j!==i))}>Quitar</button>}</div></React.Fragment>)}<button className="button button--secondary" onClick={()=>setConditions(xs=>[...xs,blank()])}>+ Agregar condición</button></div></>}
+   <div className="builder-block"><div className="builder-block__title"><strong>THEN</strong><span>Resultado y acción</span></div><div className="then-grid"><label>Nivel<select value={outcome} onChange={e=>setOutcome(e.target.value)}><option>LOW_RISK</option><option>WATCH</option><option>HIGH_RISK</option><option>CRITICAL</option><option>REVIEW</option></select></label><label>Prioridad<input type="number" min="1" max="5" value={priority} onChange={e=>setPriority(e.target.value)}/></label><label>Acción<input value={action} onChange={e=>setAction(e.target.value)}/></label></div></div>
+   <div className="engine-actions"><button className="button button--primary" onClick={()=>{setStatus('Validación preparada');onApply?.(preview)}}>Guardar versión</button><button className="button button--secondary" onClick={()=>setStatus(mode==='code'?'DSL listo para validación sandbox':'Política lista para simulación')}>Probar / Validar</button><span className="save-confirm">{status}</span></div>
+  </main><aside className="decision-engine__preview"><span className="section-eyebrow">EXECUTION PLAN</span><h3>{name}</h3><div className="de-v3__pipeline"><span>DATA</span><i>→</i><span>NORMALIZE</span><i>→</i><span>FACTS</span><i>→</i><span>LOGIC</span><i>→</i><span>DECISION</span></div><div className="evidence-box"><strong>Modo</strong><p>{mode==='code'?'Risk DSL sandboxed':mode==='formula'?'Formula engine':'Visual policy'} · version 1</p></div><div className="evidence-box"><strong>Datos actuales</strong><p>PAR30: {typeof current.par30==='number'?`${(current.par30*100).toFixed(1)}%`:'—'} · Exposición: {current.outstanding_balance??'—'}</p></div><div className="evidence-box"><strong>Gobernanza</strong><p>Validación, simulación, versionado y trazabilidad antes de activar una política.</p></div></aside></div>
+ </section>
 }
