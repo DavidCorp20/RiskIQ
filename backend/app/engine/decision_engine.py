@@ -1,5 +1,6 @@
 from typing import Any
 from app.api.schemas import DecisionRule
+from app.engine.formula_engine import FormulaEngine
 import ast
 
 SUPPORTED_OPERATORS = {"eq", "neq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "contains", "not_contains", "exists", "not_exists"}
@@ -68,17 +69,25 @@ class SafeCodeRunner:
 
 class DecisionEngine:
     """Decision runtime: visual rules + sandboxed Risk DSL, with explicit execution trace."""
-    def __init__(self): self.code = SafeCodeRunner()
+    def __init__(self):
+        self.code = SafeCodeRunner()
+        self.formulas = FormulaEngine()
 
-    def evaluate(self, facts: dict[str, Any], rules: list[DecisionRule]) -> dict[str, Any]:
+    def evaluate(self, facts: dict[str, Any], rules: list[DecisionRule], formulas: dict[str, str] | None = None) -> dict[str, Any]:
+        working = dict(facts)
+        formula_trace = []
+        if formulas:
+            calculated = self.formulas.evaluate(working, formulas)
+            working = calculated["facts"]
+            formula_trace = calculated["trace"]
         triggered_rules, actions, trace = [], [], []
         for rule in rules:
             if not rule.enabled:
                 trace.append({"rule_id": rule.id, "rule_name": rule.name, "status": "disabled"}); continue
             if getattr(rule, "execution_mode", "visual") == "code":
-                try: result = self.code.run(facts, rule.code or "return None")
+                try: result = self.code.run(working, rule.code or "return None")
                 except ValueError as exc:
-                    trace.append({"rule_id": rule.id, "rule_name": rule.name, "status": "error", "error": str(exc)}); continue
+                    trace.append({"rule_id": rule.id, "rule_name": rule.name, "status": "error", "mode": "code", "error": str(exc)}); continue
                 matched = bool(result) if not isinstance(result, dict) else bool(result.get("matched", True))
                 trace.append({"rule_id": rule.id, "rule_name": rule.name, "status": "triggered" if matched else "not_triggered", "mode": "code", "output": result})
                 if matched:
@@ -87,7 +96,7 @@ class DecisionEngine:
                 continue
             results = []
             for condition in rule.conditions:
-                actual = facts.get(condition.field); matched = self._compare(actual, condition.operator, condition.value)
+                actual = working.get(condition.field); matched = self._compare(actual, condition.operator, condition.value)
                 results.append({"field": condition.field, "operator": condition.operator, "expected": condition.value, "actual": actual, "matched": matched})
             logic = getattr(rule, "logic", "AND") or "AND"
             if logic not in SUPPORTED_LOGIC: raise ValueError(f"Unsupported condition logic: {logic}")
@@ -95,7 +104,7 @@ class DecisionEngine:
             trace.append({"rule_id": rule.id, "rule_name": rule.name, "status": "triggered" if matched else "not_triggered", "conditions": results, "logic": logic, "mode": rule.mode})
             if matched:
                 triggered_rules.append(rule.id); actions.extend([{"rule_id": rule.id, "mode": rule.mode, **action.model_dump()} for action in rule.actions])
-        return {"triggered_rules": triggered_rules, "actions": actions, "evaluation_trace": trace}
+        return {"facts": working, "formula_trace": formula_trace, "triggered_rules": triggered_rules, "actions": actions, "evaluation_trace": trace}
 
     def normalize_rows(self, rows: list[dict[str, Any]], code: str) -> list[dict[str, Any]]:
         output = []
