@@ -1,0 +1,28 @@
+name: Fix builder declaration
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename legacy builder
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('frontend/src/App.jsx')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('function Builder({onRun}){return <div className="page-content"><SectionHead eyebrow="CONSTRUCTOR" title="Reglas de decisión"/>','function LegacyBuilder({onRun}){return <div className="page-content"><SectionHead eyebrow="CONSTRUCTOR" title="Reglas de decisión"/>',1)
+          p.write_text(s,encoding='utf-8')
+      - run: rm .github/workflows/fix-builder-name.yml
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/App.jsx .github/workflows/fix-builder-name.yml
+          git commit -m 'fix(ui): remove duplicate builder declaration' || exit 0
+          git push
