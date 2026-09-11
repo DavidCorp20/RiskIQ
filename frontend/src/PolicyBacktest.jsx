@@ -1,5 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import {listDatasets,listDecisionRules,simulateDecisionBacktest} from './api'
+import './policy-backtest.css'
 
 const readActive=()=>{try{return JSON.parse(localStorage.getItem('riskiq.activeDataset')||'null')?.dataset_id||''}catch{return ''}}
 const pct=(v,total)=>total?`${((Number(v||0)/total)*100).toFixed(1)}%`:'0.0%'
