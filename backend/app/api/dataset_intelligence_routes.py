@@ -48,7 +48,6 @@ def _advanced_analytics(risk: dict[str, Any], vintage_analysis: dict[str, Any], 
             "stressed_par30": round(stressed_balance / base_exposure, 4) if base_exposure else 0,
         })
 
-    migration = None
     if previous:
         prev_par30 = float(previous.get("par30") or 0)
         current_par30 = float((par.get("par30") or {}).get("ratio") or 0)
@@ -113,14 +112,22 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     npl_analysis = npl.analyze(records)
     decisions = decision_engine.build(risk, npl_analysis)
 
+    # Only a strictly earlier snapshot is a valid prior cut. Never use the
+    # current snapshot as its own baseline: that creates fake 0.00% deltas.
     snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
-    previous_candidates = [row for row in snapshots if str(row.get("snapshot_date") or "") < as_of]
-    previous = max(previous_candidates, key=lambda row: str(row.get("snapshot_date") or ""), default=None)
-    workspace_previous = previous or current
+    previous_candidates = [
+        row for row in snapshots
+        if str(row.get("snapshot_date") or "") < as_of
+    ]
+    previous = max(
+        previous_candidates,
+        key=lambda row: str(row.get("snapshot_date") or ""),
+        default=None,
+    )
 
     result = workspace.run({
         "current": current,
-        "previous": workspace_previous,
+        "previous": previous,
         "current_analysis": analysis,
         "history_entries": snapshots,
         "custom_rules": list(body.get("custom_rules") or []),
@@ -135,7 +142,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     advanced = _advanced_analytics(risk, vintage_analysis, current, previous)
     return {
         "status": result.get("status", "healthy"),
-        "contract_version": "dataset-intelligence-v4",
+        "contract_version": "dataset-intelligence-v5",
         "dataset": metadata,
         "dataset_id": dataset_id,
         "snapshot": {"id": snapshot_id, **current},
