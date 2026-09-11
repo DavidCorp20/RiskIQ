@@ -19,6 +19,7 @@ class DecisionRule(BaseModel):
     name: str
     conditions: list[RuleCondition] = Field(default_factory=list)
     actions: list[RuleAction] = Field(default_factory=list)
+    logic: str = "AND"
     mode: str = "suggested"
     enabled: bool = True
 
