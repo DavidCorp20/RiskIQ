@@ -7,5 +7,6 @@ import './button-system.css'
 import './visual-system.css'
 import './builder.css'
 import './light-ui.css'
+import './palette.css'
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)
