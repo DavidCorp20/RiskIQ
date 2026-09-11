@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from app.analytics.decision_engine import DecisionEngineService
 from app.analytics.npl import NPLAnalyticsService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.risk_analytics import RiskAnalyticsService
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/v1/datasets", tags=["dataset-intelligence"])
 persistence = PortfolioPersistenceService()
 intelligence = PortfolioIntelligenceService()
 risk_analytics = RiskAnalyticsService()
+decision_engine = DecisionEngineService()
 snapshot_engine = SnapshotEngine()
 vintage = VintageRollRateService()
 npl = NPLAnalyticsService()
@@ -56,6 +58,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     risk = risk_analytics.analyze(records)
     vintage_analysis = vintage.analyze(records)
     npl_analysis = npl.analyze(records)
+    decisions = decision_engine.build(risk, npl_analysis)
 
     snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
     previous_candidates = [row for row in snapshots if str(row.get("snapshot_date") or "") < as_of]
@@ -77,19 +80,22 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
 
     return {
         "status": result.get("status", "healthy"),
-        "contract_version": "dataset-intelligence-v4",
+        "contract_version": "dataset-intelligence-v5",
         "dataset": metadata,
         "dataset_id": dataset_id,
         "snapshot": {"id": snapshot_id, **current},
         "previous_snapshot": previous,
         "analysis": analysis,
         "risk_analytics": {"deterministic": risk, "npl": npl_analysis},
+        "decision_engine": decisions,
         "vintage": vintage_analysis,
         "workspace": result,
         "governance": {
             "real_dataset": True,
             "analytics_are_deterministic": True,
+            "decision_engine_is_deterministic": True,
             "customer_actions_executed": False,
+            "human_review_required": True,
             "trend_available": previous is not None,
             "roll_rate_requires_historical_snapshots": True,
             "causality_inferred": False,
