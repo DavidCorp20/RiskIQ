@@ -99,8 +99,9 @@ def run_pipeline(payload:dict)->dict:
             scorecard_result=scorecard_engine.evaluate(facts,payload["scorecard"]); facts=scorecard_result["facts"]; stages.append("scorecard")
         result=engine.evaluate(facts,[decision_rule],None)
         result.update({"scorecard":scorecard_result,"formula_trace":formula_trace,"policy_id":decision_rule.id,"policy_version":decision_rule.version})
-        stages += ["rules","decision"]
+        stages.append("rules")
         if decision_rule.execution_mode=="code": stages.append("risk_dsl")
+        stages.append("decision")
         return {"stages":stages,"facts":facts,"scorecard":scorecard_result,"result":result,"execution_mode":"test_only","customer_actions_executed":False}
     except (ValueError,TypeError) as exc: raise HTTPException(status_code=422,detail=[str(exc)])
 
