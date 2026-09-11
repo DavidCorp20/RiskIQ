@@ -18,16 +18,26 @@ def _require_dataset(dataset_id: str) -> dict:
 
 
 def _resolve_dataset_id(payload: dict) -> str:
-    """Resolve an explicit dataset first; only infer when exactly one dataset exists."""
+    """Resolve dataset lineage, with a safe legacy-client fallback.
+
+    New clients should always send dataset_id. Older deployed clients may not
+    yet do so, so when the request omits it we use the newest persisted dataset
+    by created_at. This keeps the current single-user/demo deployment usable
+    while the frontend rolls forward to explicit dataset binding.
+    """
     explicit = str(payload.get("dataset_id") or "").strip()
     if explicit:
         return explicit
 
-    candidates = persistence.datasets.find({}, limit=2)
-    if len(candidates) == 1:
-        return str(candidates[0].get("dataset_id") or "").strip()
+    candidates = persistence.datasets.find({}, limit=100)
+    if not candidates:
+        return ""
 
-    return ""
+    def created_at(row: dict) -> str:
+        return str(row.get("created_at") or "")
+
+    latest = max(candidates, key=created_at)
+    return str(latest.get("dataset_id") or "").strip()
 
 
 @router.post("/copilot")
