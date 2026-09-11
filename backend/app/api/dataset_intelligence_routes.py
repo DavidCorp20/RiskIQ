@@ -69,6 +69,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         "current": current,
         "previous": workspace_previous,
         "current_analysis": analysis,
+        "history_entries": snapshots,
         "custom_rules": list(body.get("custom_rules") or []),
     })
 
