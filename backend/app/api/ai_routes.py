@@ -117,12 +117,11 @@ def copilot(payload: dict) -> dict:
     drivers = payload.get("drivers") if isinstance(payload.get("drivers"), list) else []
     decisions = payload.get("decisions") if isinstance(payload.get("decisions"), list) else []
 
-    # Legacy/stale frontends can send a risk_facts envelope without actual facts.
-    # In that case the server is the source of truth and rebuilds the deterministic
-    # evidence from the persisted dataset instead of returning a false "no evidence" message.
+    # The frontend may send decisions/drivers while still omitting the actual
+    # calculated facts. Facts are the source of truth, so rebuild whenever they
+    # are absent instead of allowing auxiliary payload fields to suppress grounding.
     has_facts = isinstance(risk_facts.get("facts"), dict) and bool(risk_facts.get("facts"))
-    has_alerts = isinstance(risk_facts.get("alerts"), list) and bool(risk_facts.get("alerts"))
-    if not has_facts and not has_alerts and not drivers and not decisions:
+    if not has_facts:
         risk_facts = _build_grounded_context(dataset_id)
         drivers = risk_facts.pop("drivers", [])
         decisions = risk_facts.pop("decisions", [])
