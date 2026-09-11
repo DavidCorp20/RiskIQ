@@ -22,49 +22,31 @@ class DecisionCenterService:
         resolved = sum(1 for item in history if item.get("status") == "resolved")
         proposed = sum(1 for item in history if item.get("status") == "proposed")
 
-        top_cards = sorted(
-            cards,
-            key=lambda item: self._priority_rank(item.get("priority")),
-            reverse=True,
-        )
-        top_drivers = sorted(
-            drivers,
-            key=lambda item: self._number(item.get("impact_score")),
-            reverse=True,
-        )[:5]
+        top_cards = sorted(cards, key=lambda item: self._priority_rank(item.get("priority")), reverse=True)
+        top_drivers = sorted(drivers, key=lambda item: self._number(item.get("impact_score")), reverse=True)[:5]
 
         status = str(pipeline.get("status") or "healthy")
         trend_status = str(trend.get("status") or "stable")
         trend_drivers = list(trend.get("drivers") or [])
+        trend_available = bool(trend.get("previous_snapshot_date"))
 
         return {
             "status": status,
             "executive_summary": self._summary(status, critical, high, len(cards), trend),
-            "counts": {
-                "critical": critical,
-                "high": high,
-                "watch": watch,
-                "total_cards": len(cards),
-                "proposed_history": proposed,
-                "resolved_history": resolved,
-            },
+            "counts": {"critical": critical, "high": high, "watch": watch, "total_cards": len(cards), "proposed_history": proposed, "resolved_history": resolved},
             "priority_cards": top_cards[:10],
             "top_drivers": top_drivers,
             "trend": trend,
             "historical_change": {
-                "available": bool(trend.get("trend_available")),
+                "available": trend_available,
                 "status": trend_status,
-                "summary": self._trend_summary(trend),
+                "summary": self._trend_summary(trend) if trend_available else "No existe un snapshot previo comparable.",
                 "drivers": trend_drivers[:5],
                 "requires_human_review": True,
                 "causality_inferred": False,
             },
             "next_actions": self._next_actions(top_cards),
-            "governance": {
-                "decision_mode": "human_review",
-                "causality": "not_inferred",
-                "evidence_required": True,
-            },
+            "governance": {"decision_mode": "human_review", "causality": "not_inferred", "evidence_required": True},
         }
 
     @staticmethod
@@ -80,7 +62,6 @@ class DecisionCenterService:
 
     @staticmethod
     def _summary(status: str, critical: int, high: int, total: int, trend: dict[str, Any]) -> str:
-        base = ""
         if critical:
             base = f"La cartera requiere atención crítica: {critical} decisión(es) crítica(s) y {total} señal(es) en total."
         elif high:
@@ -89,13 +70,11 @@ class DecisionCenterService:
             base = "No se identificaron decisiones de alta prioridad con la evidencia disponible."
         else:
             base = f"El motor mantiene {total} señal(es) para revisión humana."
-        trend_summary = DecisionCenterService._trend_summary(trend)
+        trend_summary = DecisionCenterService._trend_summary(trend) if trend.get("previous_snapshot_date") else ""
         return f"{base} {trend_summary}" if trend_summary else base
 
     @staticmethod
     def _trend_summary(trend: dict[str, Any]) -> str:
-        if not trend or not trend.get("trend_available"):
-            return ""
         status = str(trend.get("status") or "stable")
         changes = trend.get("changes") or {}
         parts: list[str] = []
@@ -114,12 +93,4 @@ class DecisionCenterService:
 
     @staticmethod
     def _next_actions(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        actions: list[dict[str, Any]] = []
-        for card in cards[:5]:
-            actions.append({
-                "decision_id": card.get("id"),
-                "action": "review",
-                "label": "Revisar decisión",
-                "priority": card.get("priority", "watch"),
-            })
-        return actions
+        return [{"decision_id": card.get("id"), "action": "review", "label": "Revisar decisión", "priority": card.get("priority", "watch")} for card in cards[:5]]
