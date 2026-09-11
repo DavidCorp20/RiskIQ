@@ -12,18 +12,8 @@ export const getDatasetPortfolio=id=>request(`/api/v1/datasets/${encodeURICompon
 export const getDatasetRecords=id=>request(`/api/v1/datasets/${encodeURIComponent(id)}/records`)
 export const analyzePortfolio=rows=>request('/api/v1/portfolio/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
 export const buildSnapshot=p=>request('/api/v1/portfolio/snapshot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
-
-function normalizeDatasetResult(result){
-  const deterministic=result?.risk_analytics?.deterministic
-  if(!deterministic)return result
-  const par=deterministic.par||{}
-  const snapshot={...(result.snapshot||{}),active_loans:deterministic.loan_count,outstanding_balance:deterministic.exposure,par7:Number(par.par7?.ratio||0),par30:Number(par.par30?.ratio||0),par60:Number(par.par60?.ratio||0),par90:Number(par.par90?.ratio||0)}
-  const analysis={...(result.analysis||{})}
-  if(!analysis.drivers?.length&&deterministic.drivers?.length)analysis.drivers=deterministic.drivers
-  return {...result,snapshot,analysis}
-}
-
+function normalizeDatasetResult(result){const deterministic=result?.risk_analytics?.deterministic;if(!deterministic)return result;const par=deterministic.par||{};const snapshot={...(result.snapshot||{}),active_loans:deterministic.loan_count,outstanding_balance:deterministic.exposure,par7:Number(par.par7?.ratio||0),par30:Number(par.par30?.ratio||0),par60:Number(par.par60?.ratio||0),par90:Number(par.par90?.ratio||0)};const analysis={...(result.analysis||{})};if(!analysis.drivers?.length&&deterministic.drivers?.length)analysis.drivers=deterministic.drivers;return {...result,snapshot,analysis}}
 export const runDataset=async(id,payload={})=>normalizeDatasetResult(await request(`/api/v1/datasets/${encodeURIComponent(id)}/run`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}))
-export const runSimulator=payload=>{const dataset_id=activeDatasetId();return request('/api/v1/simulator/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,dataset_id})})
+export const runSimulator=payload=>{const dataset_id=activeDatasetId();return request('/api/v1/simulator/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,dataset_id})})}
 export const runNPL=rows=>request('/api/v1/risk/npl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
 export const askCopilot=payload=>{const dataset_id=activeDatasetId()||payload?.dataset_id||payload?.risk_facts?.dataset_id||'';return request('/api/v1/ai/copilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,dataset_id})})}
