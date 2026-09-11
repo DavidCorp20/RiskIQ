@@ -45,7 +45,7 @@ def _resolve_dataset_id(payload: dict) -> str:
 
 
 def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
-    """Rebuild deterministic evidence when a legacy frontend sends no risk_facts."""
+    """Rebuild deterministic evidence when the client omits or sends incomplete facts."""
     records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
     if not records:
         raise HTTPException(status_code=422, detail="Dataset has no portfolio records for Copilot grounding")
@@ -117,9 +117,12 @@ def copilot(payload: dict) -> dict:
     drivers = payload.get("drivers") if isinstance(payload.get("drivers"), list) else []
     decisions = payload.get("decisions") if isinstance(payload.get("decisions"), list) else []
 
-    # The deployed legacy frontend may send only the question. Reconstruct the
-    # deterministic context server-side so Copilot remains grounded and useful.
-    if not risk_facts.get("facts") and not risk_facts.get("alerts") and not drivers and not decisions:
+    # Legacy/stale frontends can send a risk_facts envelope without actual facts.
+    # In that case the server is the source of truth and rebuilds the deterministic
+    # evidence from the persisted dataset instead of returning a false "no evidence" message.
+    has_facts = isinstance(risk_facts.get("facts"), dict) and bool(risk_facts.get("facts"))
+    has_alerts = isinstance(risk_facts.get("alerts"), list) and bool(risk_facts.get("alerts"))
+    if not has_facts and not has_alerts and not drivers and not decisions:
         risk_facts = _build_grounded_context(dataset_id)
         drivers = risk_facts.pop("drivers", [])
         decisions = risk_facts.pop("decisions", [])
@@ -133,7 +136,7 @@ def copilot(payload: dict) -> dict:
     answer["dataset_id"] = dataset_id
     answer["grounding"] = {
         "dataset_bound": True,
-        "evidence_rebuilt_server_side": bool(not supplied or not supplied.get("facts")),
+        "evidence_rebuilt_server_side": bool(not has_facts),
         "customer_actions_executed": False,
         "causality_inferred": False,
     }
