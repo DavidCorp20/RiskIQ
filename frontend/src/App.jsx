@@ -5,7 +5,7 @@ const pct=v=>`${(Number(v||0)*100).toFixed(1)}%`
 const money=v=>`$${Number(v||0).toLocaleString(undefined,{maximumFractionDigits:0})}`
 const tone=v=>Number(v)>=.08?'critical':Number(v)>=.05?'high':'stable'
 const labels={Dashboard:'Panel de control',Portfolio:'Cartera','Risk Analytics':'Analítica de riesgo',Decisions:'Decisiones','Decision Builder':'Constructor de decisiones','Scenario Lab':'Laboratorio de escenarios',Data:'Datos',Datasets:'Conjuntos de datos','Risk Copilot':'Copiloto de riesgo'}
-const icons={Dashboard:'◈',Portfolio:'◫','Risk Analytics':'⌁',Decisions:'✓','Scenario Lab':'◇','Risk Copilot:'✦',Data:'↥',Datasets:'▦','Decision Builder':'⌘'}
+const icons={Dashboard:'◈',Portfolio:'◫','Risk Analytics':'⌁',Decisions:'✓','Scenario Lab':'◇','Risk Copilot':'✦',Data:'↥',Datasets:'▦','Decision Builder':'⌘'}
 function pageLabel(name){return labels[name]||name}
 function Icon({name}){return <span className="nav-icon">{icons[name]||'·'}</span>}
 function Badge({children,kind='neutral'}){return <span className={`badge ${kind}`}>{children}</span>}
