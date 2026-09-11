@@ -5,13 +5,13 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from app.analytics.decision_engine import DecisionEngineService
 from app.analytics.npl import NPLAnalyticsService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.risk_analytics import RiskAnalyticsService
 from app.analytics.snapshot_engine import SnapshotEngine
 from app.analytics.vintage_rollrate import VintageRollRateService
 from app.data.persistence import PortfolioPersistenceService
+from app.decision.engine import DecisionEngineService
 from app.decision.workspace import DecisionWorkspaceService
 
 router = APIRouter(prefix="/v1/datasets", tags=["dataset-intelligence"])
@@ -58,7 +58,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     risk = risk_analytics.analyze(records)
     vintage_analysis = vintage.analyze(records)
     npl_analysis = npl.analyze(records)
-    decisions = decision_engine.build(risk, npl_analysis)
+    decisions = decision_engine.run(risk, npl_analysis, analysis)
 
     snapshots = persistence.snapshots.find({"dataset_id": dataset_id}, limit=500)
     previous_candidates = [row for row in snapshots if str(row.get("snapshot_date") or "") < as_of]
