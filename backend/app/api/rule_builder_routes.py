@@ -63,8 +63,7 @@ def evaluate_scorecard(payload:dict)->dict:
 
 @router.post("/pipeline")
 def run_pipeline(payload:dict)->dict:
-    facts=dict(payload.get("facts",{})); normalization=payload.get("normalization_code")
-    stages=[]
+    facts=dict(payload.get("facts",{})); normalization=payload.get("normalization_code"); stages=[]
     if normalization:
         errors=engine.code.validate(normalization)
         if errors: raise HTTPException(status_code=422,detail=errors)
@@ -73,8 +72,7 @@ def run_pipeline(payload:dict)->dict:
         stages.append("normalize")
     stages.append("facts")
     if payload.get("formulas"): stages.append("formulas")
-    scorecard=payload.get("scorecard")
-    scorecard_result=None
+    scorecard=payload.get("scorecard"); scorecard_result=None
     if scorecard:
         try: scorecard_result=scorecard_engine.evaluate(facts,scorecard); facts=scorecard_result["facts"]; stages.append("scorecard")
         except ValueError as exc: raise HTTPException(status_code=422,detail=[str(exc)])
@@ -85,6 +83,38 @@ def run_pipeline(payload:dict)->dict:
     result=engine.evaluate(facts,[DecisionRule.model_validate(compiled["compiled_rule"])],payload.get("formulas") or None)
     stages += ["logic","decision"]
     return {"stages":stages,"facts":facts,"scorecard":scorecard_result,"result":result,"execution_mode":"test_only","customer_actions_executed":False}
+
+@router.post("/portfolio-simulate")
+def simulate_portfolio(payload:dict)->dict:
+    rows=payload.get("rows",[]); rule=payload.get("rule"); scorecard=payload.get("scorecard"); normalization=payload.get("normalization_code"); formulas=payload.get("formulas") or None
+    if not isinstance(rows,list) or not rows: raise HTTPException(status_code=422,detail=["rows must contain at least one record"])
+    if not isinstance(rule,dict): raise HTTPException(status_code=422,detail=["rule is required"])
+    compiled=compile_rule(rule)
+    if not compiled["valid"]: raise HTTPException(status_code=422,detail=compiled["errors"])
+    decision_rule=DecisionRule.model_validate(compiled["compiled_rule"])
+    if normalization:
+        errors=engine.code.validate(normalization)
+        if errors: raise HTTPException(status_code=422,detail=errors)
+    results=[]; counts={}; bands={}; triggered={}; total_exposure=0.0
+    for index,row in enumerate(rows):
+        try:
+            facts=dict(row)
+            if normalization: facts=engine.normalize_rows([facts],normalization)[0]
+            score_result=None
+            if scorecard:
+                score_result=scorecard_engine.evaluate(facts,scorecard); facts=score_result["facts"]
+            result=engine.evaluate(facts,[decision_rule],formulas)
+            decision=result.get("decision") or "NO_DECISION"; counts[decision]=counts.get(decision,0)+1
+            band=(score_result or {}).get("band") or {}; label=band.get("label") if isinstance(band,dict) else None
+            if label: bands[label]=bands.get(label,0)+1
+            for rule_id in result.get("triggered_rules",[]): triggered[rule_id]=triggered.get(rule_id,0)+1
+            try: total_exposure+=float(facts.get("outstanding_balance",0) or 0)
+            except (TypeError,ValueError): pass
+            results.append({"index":index,"customer_id":facts.get("customer_id"),"decision":decision,"score":(score_result or {}).get("score"),"band":label,"triggered_rules":result.get("triggered_rules",[]),"reason_codes":result.get("reason_codes",[])})
+        except (ValueError,TypeError) as exc:
+            raise HTTPException(status_code=422,detail=[f"row {index}: {exc}"])
+    total=len(results)
+    return {"summary":{"records":total,"decisions":counts,"bands":bands,"triggered_rules":triggered,"total_exposure":round(total_exposure,2),"decision_rate":round(sum(counts.values())/total,4) if total else 0},"results":results,"policy":{"id":decision_rule.id,"name":decision_rule.name,"version":decision_rule.version},"execution_mode":"portfolio_test_only","customer_actions_executed":False}
 
 @router.post("/normalize")
 def normalize_rows(payload:dict)->dict:
