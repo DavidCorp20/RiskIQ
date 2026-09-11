@@ -1,7 +1,7 @@
 /* RiskIQ — final readability override. This file intentionally comes last. */
 :root{--riq-canvas:#f6f8fb;--riq-white:#fff;--riq-ink:#15263b;--riq-copy:#3f5268;--riq-muted:#6f8094;--riq-line:#d7e0e8;--riq-blue:#1769aa;--riq-navy:#0f2944;--riq-green:#16815b;--riq-amber:#9a6508;--riq-red:#bd332f}
 html,body,#root{background:var(--riq-canvas)!important;color:var(--riq-ink)!important}
-body{font-size:15px!important;line-height:1.5!important}
+body{font-size:16px!important;line-height:1.5!important}
 /* The sidebar is the only intentionally dark surface. */
 .main,.main *{color:var(--riq-ink)}
 .main{background:var(--riq-canvas)!important}
@@ -16,15 +16,44 @@ body{font-size:15px!important;line-height:1.5!important}
 .main h1,.main h2,.main h3,.main h4,.main strong,.main b{color:var(--riq-ink)!important}
 .main p,.main small,.main label,.main .muted,.main .chart-meta,.main .chart-footer,.main .decision-number span,.main .decision-counts span,.main .evidence-word{color:var(--riq-copy)!important}
 .main .eyebrow,.main .section-eyebrow,.main .breadcrumb{color:var(--riq-muted)!important}
+/* Typography: no tiny text in the application workspace. */
+.main{font-size:16px!important}
+.main button,.main input,.main select,.main textarea{font-size:15px!important;line-height:1.35!important}
+.main button{min-height:40px!important;font-weight:600!important}
+.main .section-head h2,.main .portfolio-header h2,.main .empty-state h2{font-size:22px!important;line-height:1.25!important}
+.main .eyebrow,.main .section-eyebrow,.main .breadcrumb{font-size:13px!important;line-height:1.35!important;letter-spacing:.08em!important;font-weight:700!important}
+.main p,.main label,.main .muted{font-size:15px!important;line-height:1.55!important}
+.main small{font-size:14px!important;line-height:1.45!important}
+.main .metric>span{font-size:15px!important;font-weight:650!important}
+.main .metric>strong{font-size:27px!important;line-height:1.15!important}
+.main .metric>small{font-size:14px!important}
+.main .badge{font-size:13px!important;line-height:1.2!important;font-weight:700!important;padding:6px 9px!important}
+.main .chart-meta,.main .chart-footer{font-size:14px!important}
+.main .point-label{font-size:14px!important}
+.main .indicator-head,.main .indicator-row,.main .signal-line,.main .decision-item,.main .driver-table>div{font-size:14px!important}
+.main .indicator-row strong,.main .signal-line strong{font-size:16px!important}
 /* Controls: one clear visual hierarchy. */
 .main button.primary,.main button.run-button{background:var(--riq-blue)!important;background-image:none!important;color:#fff!important;border:1px solid var(--riq-blue)!important;box-shadow:none!important}
 .main button.secondary,.main button.wide-button{background:#fff!important;background-image:none!important;color:#214b70!important;border:1px solid #b7c6d4!important;box-shadow:none!important}
 .main button.text-button{background:transparent!important;color:var(--riq-blue)!important;border:0!important;box-shadow:none!important}
 .main button:disabled{opacity:.55!important}
 /* Inputs and upload areas stay white and readable. */
-.main input,.main select,.main textarea{background:#fff!important;color:var(--riq-ink)!important;border:1px solid #bdcad7!important;box-shadow:none!important}
-.main input::placeholder,.main textarea::placeholder{color:#8796a8!important}
+.main input,.main select,.main textarea{background:#fff!important;color:var(--riq-ink)!important;border:1px solid #bdcad7!important;box-shadow:none!important;min-height:42px!important}
+.main input::placeholder,.main textarea::placeholder{color:#8796a8!important;font-size:15px!important}
 .main input:focus,.main select:focus,.main textarea:focus{outline:none!important;border-color:#6b9fc7!important;box-shadow:0 0 0 3px #eaf3fa!important}
+/* Sidebar typography and compact dropdown navigation. */
+.sidebar{font-size:15px!important}
+.sidebar .brand b{font-size:18px!important}.sidebar .brand small{font-size:13px!important}
+.sidebar .portfolio-context span,.sidebar .nav-group-title{font-size:12px!important;line-height:1.35!important;font-weight:800!important;letter-spacing:.09em!important}
+.sidebar .portfolio-context strong{font-size:15px!important;line-height:1.35!important}.sidebar .portfolio-context small,.sidebar .sidebar-footer small{font-size:13px!important;line-height:1.45!important}
+.sidebar nav{display:flex!important;flex-direction:column!important;gap:8px!important}
+.sidebar .nav-group{border:1px solid rgba(255,255,255,.10)!important;border-radius:10px!important;background:rgba(255,255,255,.025)!important;overflow:visible!important;position:relative!important}
+.sidebar .nav-group-title{padding:11px 13px!important;color:#aebdca!important;cursor:default!important}
+.sidebar .nav-group button{display:none!important;width:100%!important;min-height:42px!important;padding:9px 13px!important;border:0!important;border-top:1px solid rgba(255,255,255,.07)!important;background:transparent!important;color:#dfe8ef!important;font-size:15px!important;font-weight:600!important;text-align:left!important;white-space:normal!important}
+.sidebar .nav-group:hover button,.sidebar .nav-group:focus-within button{display:flex!important;align-items:center!important;justify-content:space-between!important}
+.sidebar .nav-group button:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
+.sidebar .nav-group button.active{background:rgba(76,151,205,.20)!important;color:#fff!important}
+.sidebar .nav-group button b{font-size:13px!important;min-width:22px!important;text-align:center!important}
 /* Tables / rows */
 .main .indicator-head{background:#f2f6f9!important;color:#62758a!important}
 .main .indicator-row,.main .signal-line,.main .decision-item,.main .driver-table>div{background:#fff!important;border-color:#e7edf2!important}
@@ -40,4 +69,5 @@ body{font-size:15px!important;line-height:1.5!important}
 /* Kill decorative gradients/patterns that read as dark panels. */
 .main [class*="gradient"],.main [class*="hero"]{background-image:none!important}
 /* Responsive readability */
-@media(max-width:900px){.main .metric-grid{grid-template-columns:repeat(2,1fr)!important}.main .analysis-grid,.main .analysis-grid.lower{grid-template-columns:1fr!important}.main .page-content{padding:22px 18px 42px!important}}
+@media(max-width:900px){.main .metric-grid{grid-template-columns:repeat(2,1fr)!important}.main .analysis-grid,.main .analysis-grid.lower{grid-template-columns:1fr!important}.main .page-content{padding:22px 18px 42px!important}.sidebar .nav-group button{font-size:15px!important}}
+@media(max-width:640px){body{font-size:16px!important}.main .metric-grid{grid-template-columns:1fr!important}.main .section-head h2,.main .portfolio-header h2,.main .empty-state h2{font-size:20px!important}.main .topbar{gap:12px!important}.main .topbar-actions button{font-size:14px!important}}
