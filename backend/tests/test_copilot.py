@@ -14,4 +14,4 @@ def test_copilot_uses_supplied_evidence_without_inventing_facts():
     assert result["grounded"] is True
     assert result["status"] == "critical"
     assert result["evidence"] == ["PAR30: 0.087"]
-    assert "asociativa" in result["answer"]
+    assert "señal descriptiva" in result["answer"]
