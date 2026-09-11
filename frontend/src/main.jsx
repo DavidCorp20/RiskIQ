@@ -1,6 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './AppAdvanced'
+import App from './RiskCommandCenter'
 import './styles.css'
 import './density.css'
 import './button-system.css'
