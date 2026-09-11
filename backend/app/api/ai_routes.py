@@ -1,16 +1,29 @@
 from __future__ import annotations
 
+from datetime import date
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from app.ai.copilot import RiskCopilotService
+from app.analytics.decision_engine import DecisionEngineService
+from app.analytics.npl import NPLAnalyticsService
+from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
+from app.analytics.risk_analytics import RiskAnalyticsService
+from app.analytics.snapshot_engine import SnapshotEngine
 from app.data.persistence import PortfolioPersistenceService
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
 service = RiskCopilotService()
 persistence = PortfolioPersistenceService()
+intelligence = PortfolioIntelligenceService()
+risk_analytics = RiskAnalyticsService()
+decision_engine = DecisionEngineService()
+npl = NPLAnalyticsService()
+snapshot_engine = SnapshotEngine()
 
 
-def _require_dataset(dataset_id: str) -> dict:
+def _require_dataset(dataset_id: str) -> dict[str, Any]:
     rows = persistence.datasets.find({"dataset_id": dataset_id}, limit=1)
     if not rows:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -18,13 +31,7 @@ def _require_dataset(dataset_id: str) -> dict:
 
 
 def _resolve_dataset_id(payload: dict) -> str:
-    """Resolve dataset lineage, with a safe legacy-client fallback.
-
-    New clients should always send dataset_id. Older deployed clients may not
-    yet do so, so when the request omits it we use the newest persisted dataset
-    by created_at. This keeps the current single-user/demo deployment usable
-    while the frontend rolls forward to explicit dataset binding.
-    """
+    """Resolve dataset lineage, with a safe legacy-client fallback."""
     explicit = str(payload.get("dataset_id") or "").strip()
     if explicit:
         return explicit
@@ -33,38 +40,100 @@ def _resolve_dataset_id(payload: dict) -> str:
     if not candidates:
         return ""
 
-    def created_at(row: dict) -> str:
-        return str(row.get("created_at") or "")
-
-    latest = max(candidates, key=created_at)
+    latest = max(candidates, key=lambda row: str(row.get("created_at") or ""))
     return str(latest.get("dataset_id") or "").strip()
+
+
+def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
+    """Rebuild deterministic evidence when a legacy frontend sends no risk_facts."""
+    records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    if not records:
+        raise HTTPException(status_code=422, detail="Dataset has no portfolio records for Copilot grounding")
+
+    analysis = intelligence.analyze(records)
+    risk = risk_analytics.analyze(records)
+    npl_analysis = npl.analyze(records)
+    decisions = decision_engine.build(risk, npl_analysis)
+
+    loans = persistence.loans.find({"dataset_id": dataset_id}, limit=100000)
+    installments = persistence.installments.find({"dataset_id": dataset_id}, limit=100000)
+    snapshot_date = date.today().isoformat()
+    snapshot = snapshot_engine.build(
+        loans=loans,
+        installments=installments,
+        snapshot_date=snapshot_date,
+        business_id=dataset_id,
+    ) if loans else {}
+
+    facts: dict[str, Any] = {}
+    deterministic = risk if isinstance(risk, dict) else {}
+    par = deterministic.get("par") or {}
+    for key in ("par7", "par30", "par60", "par90"):
+        value = par.get(key) or {}
+        if isinstance(value, dict) and "ratio" in value:
+            facts[key] = {"id": key, "label": key.upper(), "value": value.get("ratio"), "unit": ""}
+
+    exposure = deterministic.get("exposure", snapshot.get("outstanding_balance"))
+    if exposure is not None:
+        facts["exposure"] = {"id": "exposure", "label": "Exposure", "value": exposure, "unit": ""}
+
+    loan_count = deterministic.get("loan_count", snapshot.get("active_loans"))
+    if loan_count is not None:
+        facts["loan_count"] = {"id": "loan_count", "label": "Loans", "value": loan_count, "unit": ""}
+
+    drivers = deterministic.get("drivers") or analysis.get("drivers") or []
+    priority_cards = decisions.get("priority_cards") if isinstance(decisions, dict) else []
+    if not isinstance(priority_cards, list):
+        priority_cards = []
+
+    alerts = priority_cards or deterministic.get("alerts") or []
+    status = (decisions.get("status") if isinstance(decisions, dict) else None) or "observed"
+
+    return {
+        "dataset_id": dataset_id,
+        "facts": facts,
+        "alerts": alerts,
+        "summary": {"status": status},
+        "drivers": drivers,
+        "decisions": priority_cards,
+    }
 
 
 @router.post("/copilot")
 def copilot(payload: dict) -> dict:
-    """Answer using deterministic evidence explicitly tied to one persisted dataset."""
+    """Answer using deterministic evidence tied to one persisted dataset."""
     dataset_id = _resolve_dataset_id(payload)
     if not dataset_id:
         raise HTTPException(status_code=400, detail="dataset_id is required for dataset-bound Copilot")
 
     _require_dataset(dataset_id)
-    risk_facts = payload.get("risk_facts", {})
-    if not isinstance(risk_facts, dict):
-        raise HTTPException(status_code=400, detail="risk_facts must be an object")
+    supplied = payload.get("risk_facts")
+    risk_facts = supplied if isinstance(supplied, dict) else {}
 
     supplied_lineage = str(risk_facts.get("dataset_id") or "").strip()
     if supplied_lineage and supplied_lineage != dataset_id:
         raise HTTPException(status_code=409, detail="risk_facts dataset_id does not match requested dataset")
 
+    drivers = payload.get("drivers") if isinstance(payload.get("drivers"), list) else []
+    decisions = payload.get("decisions") if isinstance(payload.get("decisions"), list) else []
+
+    # The deployed legacy frontend may send only the question. Reconstruct the
+    # deterministic context server-side so Copilot remains grounded and useful.
+    if not risk_facts.get("facts") and not risk_facts.get("alerts") and not drivers and not decisions:
+        risk_facts = _build_grounded_context(dataset_id)
+        drivers = risk_facts.pop("drivers", [])
+        decisions = risk_facts.pop("decisions", [])
+
     answer = service.answer(
         question=str(payload.get("question", "")),
         risk_facts=risk_facts,
-        drivers=payload.get("drivers", []),
-        decisions=payload.get("decisions", []),
+        drivers=drivers,
+        decisions=decisions,
     )
     answer["dataset_id"] = dataset_id
     answer["grounding"] = {
         "dataset_bound": True,
+        "evidence_rebuilt_server_side": bool(not supplied or not supplied.get("facts")),
         "customer_actions_executed": False,
         "causality_inferred": False,
     }
