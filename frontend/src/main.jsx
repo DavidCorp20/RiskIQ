@@ -4,5 +4,6 @@ import App from './App'
 import './styles.css'
 import './density.css'
 import './button-system.css'
+import './visual-system.css'
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)
