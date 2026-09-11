@@ -55,17 +55,32 @@ class RiskCopilotService:
             if fact:
                 evidence_lines.append(f"{fact.get('label', key)}: {fact.get('value')}{fact.get('unit', '')}")
 
+        priority = "Morosidad y concentración"
+        evidence = ""
+        impact = "La señal requiere priorización y revisión sobre la cartera expuesta."
+        action = "Revisar la distribución por DPD, concentración y evolución histórica antes de modificar políticas."
+
         if top_driver:
+            priority = top_driver.get("title") or top_driver.get("key") or priority
+            evidence = top_driver.get("evidence", "Driver observado en la cartera.")
+            share = top_driver.get("exposure_share")
+            impact = (
+                f"El driver concentra {share * 100:.1f}% de la exposición observada y presenta la señal de PAR30 indicada."
+                if isinstance(share, (int, float))
+                else "El driver representa una señal relevante de concentración o morosidad según la evidencia calculada."
+            )
+            action = "Desglosar este driver por DPD, región, empleo y vintage; validar causas y evaluar una acción de política antes de aplicarla."
             explanation = (
-                f"Primero revisaría {top_driver.get('title') or top_driver.get('key')}. "
-                f"La evidencia disponible indica: {top_driver.get('evidence', 'driver observado en la cartera')}. "
+                f"Primero revisaría {priority}. La evidencia disponible indica: {evidence} "
+                f"Impacto: {impact} Acción sugerida: {action} "
                 "Es una señal descriptiva; requiere investigación antes de concluir causalidad."
             )
         elif alerts:
-            explanation = (
-                "Primero revisaría las alertas calculadas y su impacto sobre la cartera. "
-                "Las alertas son reglas/evidencia determinística y deben contrastarse con la política vigente."
-            )
+            priority = "Alertas calculadas"
+            evidence = "Las alertas disponibles provienen de reglas determinísticas de RiskIQ."
+            impact = "Indican situaciones que requieren revisión bajo la política vigente."
+            action = "Validar cada alerta, cuantificar su exposición y decidir manualmente la acción correspondiente."
+            explanation = f"Primero revisaría {priority}. {evidence} Impacto: {impact} Acción sugerida: {action}"
         elif facts:
             par30 = facts.get("par30")
             par90 = facts.get("par90")
@@ -81,13 +96,16 @@ class RiskCopilotService:
             if loan_count:
                 parts.append(f"con {loan_count.get('value')} préstamos activos")
             evidence = "; ".join(parts)
-            explanation = (
-                "Primero revisaría la morosidad y su evolución, empezando por PAR30 y PAR90. "
-                + (f"En la evidencia actual, {evidence}. " if evidence else "La evidencia calculada está disponible, aunque faltan indicadores de morosidad para priorizar. ")
-                + "No hay que interpretar la ausencia de una alerta calculada como ausencia de riesgo; conviene contrastar estos indicadores con segmentos, concentración y tendencia histórica."
-            )
+            priority = "Morosidad de cartera"
+            impact = "La morosidad observada debe contrastarse con concentración y tendencia para determinar dónde está la mayor exposición al riesgo."
+            action = "Segmentar PAR30/PAR90 por producto, región, empleo y vintage; luego validar una acción de cobranza o política con revisión humana."
+            explanation = f"Primero revisaría {priority}. Evidencia: {evidence}. Impacto: {impact} Acción sugerida: {action} No hay que interpretar la ausencia de una alerta como ausencia de riesgo."
         else:
             explanation = "No hay evidencia calculada suficiente para priorizar una revisión. Ejecuta el análisis del dataset y vuelve a consultar el Copilot."
+            priority = "Evidencia insuficiente"
+            evidence = explanation
+            impact = "No evaluable con la información disponible."
+            action = "Ejecutar el análisis del dataset antes de tomar una decisión."
 
         return {
             "question": question,
@@ -96,7 +114,15 @@ class RiskCopilotService:
             "evidence": evidence_lines,
             "drivers": context["drivers"][:3],
             "decisions": context["decisions"][:3],
+            "decision": {
+                "priority": priority,
+                "evidence": evidence,
+                "impact": impact,
+                "suggested_action": action,
+                "human_review_required": True,
+            },
             "grounded": True,
-            "provider": "not_configured",
-            "note": "Respuesta determinística de fallback. Con un proveedor LLM configurado, este contexto puede alimentar el Copilot sin cambiar el motor analítico.",
+            "provider": "evidence_mode",
+            "mode": "Evidence Mode",
+            "note": "Respuesta determinística basada en evidencia calculada. Un proveedor LLM puede añadirse después sin cambiar el motor analítico.",
         }
