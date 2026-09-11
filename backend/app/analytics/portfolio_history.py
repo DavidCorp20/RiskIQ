@@ -4,23 +4,22 @@ from typing import Any
 
 
 class PortfolioHistoryService:
-    """Compare point-in-time snapshots without inferring causality."""
+    """Compare point-in-time snapshots without inventing a trend."""
 
     METRICS = ("outstanding_balance", "active_loans", "par7", "par30", "par60", "par90")
 
-    def compare(self, current: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
+    def compare(self, current: dict[str, Any], previous: dict[str, Any] | None) -> dict[str, Any]:
+        if not self._is_comparable(current, previous):
+            return self._baseline(current)
+
+        assert previous is not None
         changes: dict[str, dict[str, float | None]] = {}
         for metric in self.METRICS:
             current_value = self._number(current.get(metric))
             previous_value = self._number(previous.get(metric))
             delta = self._round(current_value - previous_value)
             pct_change = None if previous_value == 0 else self._round(delta / abs(previous_value))
-            changes[metric] = {
-                "current": current_value,
-                "previous": previous_value,
-                "delta": delta,
-                "pct_change": pct_change,
-            }
+            changes[metric] = {"current": current_value, "previous": previous_value, "delta": delta, "pct_change": pct_change}
 
         par30_delta = changes["par30"]["delta"] or 0.0
         par90_delta = changes["par90"]["delta"] or 0.0
@@ -53,17 +52,40 @@ class PortfolioHistoryService:
         return {
             "current_snapshot_date": current.get("snapshot_date"),
             "previous_snapshot_date": previous.get("snapshot_date"),
+            "trend_available": True,
             "status": status,
             "changes": changes,
             "alerts": alerts,
             "drivers": drivers,
             "summary": self._summary(status, par30_delta, par90_delta),
             "interpretation": self._interpretation(status, par30_delta, par90_delta, balance_delta),
-            "governance": {
-                "causality_inferred": False,
-                "requires_human_review": True,
-                "customer_actions_executed": False,
-            },
+            "governance": {"causality_inferred": False, "requires_human_review": True, "customer_actions_executed": False},
+            "causality": "not_inferred",
+        }
+
+    @staticmethod
+    def _is_comparable(current: dict[str, Any], previous: dict[str, Any] | None) -> bool:
+        if not previous:
+            return False
+        current_date = current.get("snapshot_date")
+        previous_date = previous.get("snapshot_date")
+        if current_date and previous_date and str(current_date) == str(previous_date):
+            return False
+        return True
+
+    @staticmethod
+    def _baseline(current: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "current_snapshot_date": current.get("snapshot_date"),
+            "previous_snapshot_date": None,
+            "trend_available": False,
+            "status": "baseline",
+            "changes": {},
+            "alerts": [],
+            "drivers": [],
+            "summary": "Primer corte registrado: no hay histórico comparable para evaluar tendencia.",
+            "interpretation": "La lectura refleja el estado actual de la cartera. Los cambios de mora requieren un corte anterior comparable.",
+            "governance": {"causality_inferred": False, "requires_human_review": True, "customer_actions_executed": False},
             "causality": "not_inferred",
         }
 
