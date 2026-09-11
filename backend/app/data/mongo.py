@@ -1,11 +1,31 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 
 from pymongo import ASCENDING, MongoClient
 
 from app.config import settings
+
+
+def _bson_safe(value: Any) -> Any:
+    """Convert Python values that BSON cannot encode directly into safe values.
+
+    The ingestion/normalization pipeline intentionally uses Decimal for numeric
+    values. PyMongo does not encode Python Decimal objects by default, so the
+    persistence boundary converts them to floats before writing to MongoDB.
+    Nested dicts/lists are handled as well.
+    """
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {key: _bson_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_bson_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_bson_safe(item) for item in value)
+    return value
 
 
 class MongoRepository:
@@ -26,7 +46,7 @@ class MongoRepository:
         self._collection.create_index([("dataset_id", ASCENDING)])
 
     def insert(self, document: dict[str, Any]) -> str:
-        payload = dict(document)
+        payload = _bson_safe(dict(document))
         payload.setdefault("created_at", datetime.now(timezone.utc).isoformat())
         result = self._collection.insert_one(payload)
         return str(result.inserted_id)
