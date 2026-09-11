@@ -25,6 +25,7 @@ class PortfolioHistoryService:
         par30_delta = changes["par30"]["delta"] or 0.0
         par90_delta = changes["par90"]["delta"] or 0.0
         balance_delta = changes["outstanding_balance"]["delta"] or 0.0
+        loan_delta = changes["active_loans"]["delta"] or 0.0
 
         alerts: list[dict[str, Any]] = []
         if par30_delta >= 0.01:
@@ -39,19 +40,44 @@ class PortfolioHistoryService:
         else:
             status = "stable"
 
+        drivers = []
+        if par90_delta > 0:
+            drivers.append({"metric": "PAR90", "delta": par90_delta, "direction": "up", "severity": "critical" if par90_delta >= 0.005 else "high"})
+        if par30_delta > 0:
+            drivers.append({"metric": "PAR30", "delta": par30_delta, "direction": "up", "severity": "high" if par30_delta >= 0.01 else "medium"})
+        if balance_delta != 0:
+            drivers.append({"metric": "outstanding_balance", "delta": balance_delta, "direction": "up" if balance_delta > 0 else "down", "severity": "context"})
+        if loan_delta != 0:
+            drivers.append({"metric": "active_loans", "delta": loan_delta, "direction": "up" if loan_delta > 0 else "down", "severity": "context"})
+
         return {
             "current_snapshot_date": current.get("snapshot_date"),
             "previous_snapshot_date": previous.get("snapshot_date"),
             "status": status,
             "changes": changes,
             "alerts": alerts,
+            "drivers": drivers,
+            "summary": self._summary(status, par30_delta, par90_delta),
             "interpretation": self._interpretation(status, par30_delta, par90_delta, balance_delta),
+            "governance": {
+                "causality_inferred": False,
+                "requires_human_review": True,
+                "customer_actions_executed": False,
+            },
             "causality": "not_inferred",
         }
 
     @staticmethod
     def _round(value: float) -> float:
         return round(value, 10)
+
+    @staticmethod
+    def _summary(status: str, par30_delta: float, par90_delta: float) -> str:
+        if status == "deteriorating":
+            return f"Deterioro observado: PAR30 {par30_delta:+.2%} y PAR90 {par90_delta:+.2%} vs. snapshot previo."
+        if status == "improving":
+            return f"Mejora observada: PAR30 {par30_delta:+.2%} y PAR90 {par90_delta:+.2%} vs. snapshot previo."
+        return "Cartera estable en los indicadores de mora comparados."
 
     @staticmethod
     def _interpretation(status: str, par30_delta: float, par90_delta: float, balance_delta: float) -> str:
