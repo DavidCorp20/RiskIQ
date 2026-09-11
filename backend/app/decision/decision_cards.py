@@ -21,6 +21,7 @@ class DecisionCard:
     causality: str = "associative"
     status: str = "proposed"
     mode: str = "suggested"
+    impact: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -37,6 +38,7 @@ class DecisionCard:
             "causality": self.causality,
             "status": self.status,
             "mode": self.mode,
+            "impact": self.impact or {},
         }
 
 
@@ -51,6 +53,14 @@ class DecisionCardService:
             code = str(recommendation.get("code", f"DECISION_{index}"))
             evidence = recommendation.get("evidence", {})
             confidence = self._confidence(evidence)
+            action = (
+                recommendation.get("recommended_action")
+                or recommendation.get("suggested_action")
+                or recommendation.get("action")
+                or recommendation.get("recommendation")
+                or recommendation.get("title")
+                or "Revisar situación"
+            )
             cards.append(DecisionCard(
                 id=f"decision-{index}-{code.lower()}",
                 title=str(recommendation.get("title", "Recomendación de riesgo")),
@@ -59,12 +69,13 @@ class DecisionCardService:
                 priority=priority,
                 trigger=self._trigger(code, evidence),
                 evidence=evidence,
-                recommendation=str(recommendation.get("title", "Revisar situación")),
+                recommendation=str(action),
                 rationale=str(recommendation.get("rationale", "")),
                 confidence=confidence,
                 causality="associative" if code == "INVESTIGATE_TOP_DRIVER" else "not_inferred",
                 status="proposed",
                 mode=str(recommendation.get("mode", "suggested")),
+                impact=recommendation.get("impact") if isinstance(recommendation.get("impact"), dict) else {},
             ).to_dict())
         return cards
 
