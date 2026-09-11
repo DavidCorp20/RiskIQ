@@ -12,7 +12,7 @@ from app.engine.decision_engine import DecisionEngine
 
 
 class DecisionPipelineService:
-    """Orchestrate measured portfolio change into reviewable decision cards."""
+    """Orchestrate measured portfolio state and comparable history into decisions."""
 
     def __init__(self) -> None:
         self.history = PortfolioHistoryService()
@@ -22,7 +22,7 @@ class DecisionPipelineService:
         self.cards = DecisionCardService()
         self.engine = DecisionEngine()
 
-    def build(self, current: dict[str, Any], previous: dict[str, Any], current_analysis: dict[str, Any] | None = None, custom_rules: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    def build(self, current: dict[str, Any], previous: dict[str, Any] | None = None, current_analysis: dict[str, Any] | None = None, custom_rules: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         history = self.history.compare(current, previous)
         metrics = {
             "active_loans": current.get("active_loans", 0),
@@ -36,6 +36,7 @@ class DecisionPipelineService:
         drivers = self.drivers.build(analysis)
         decisions = self.decisions.build(risk_facts, drivers)
 
+        # Trend recommendations are only valid when a real prior cut exists.
         for alert in history["alerts"]:
             code = alert["code"]
             if code == "PAR30_DETERIORATION":
