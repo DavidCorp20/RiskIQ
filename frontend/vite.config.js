@@ -9,7 +9,8 @@ function riskIqRealDataGuard(){
       if(!id.endsWith('/src/App.jsx')) return null
       const withoutDemo=code.replace(/const demoCurrent=.*?\n/,'')
       const withoutAnalysisFallback=withoutDemo.replace('analysis=result?.analysis||demoAnalysis','analysis=result?.analysis||null')
-      return withoutAnalysisFallback===code?null:{code:withoutAnalysisFallback,map:null}
+      const withoutInvalidLabels=withoutAnalysisFallback.replace(/^const labelsUpper=.*\n/m,'')
+      return withoutInvalidLabels===code?null:{code:withoutInvalidLabels,map:null}
     },
   }
 }
