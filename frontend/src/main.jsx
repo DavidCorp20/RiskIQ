@@ -5,5 +5,6 @@ import './styles.css'
 import './density.css'
 import './button-system.css'
 import './visual-system.css'
+import './builder.css'
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>)
