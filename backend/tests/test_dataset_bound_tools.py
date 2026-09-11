@@ -53,7 +53,7 @@ def test_copilot_requires_real_dataset(monkeypatch):
     result = ai_routes.copilot({
         "dataset_id": "ds-1",
         "question": "¿Qué está pasando?",
-        "risk_facts": {"dataset_id": "ds-1", "facts": [], "alerts": [], "summary": {}},
+        "risk_facts": {"dataset_id": "ds-1", "facts": {"par30": {"label": "PAR30", "value": 0.10}}, "alerts": [], "summary": {}},
     })
     assert result["dataset_id"] == "ds-1"
     assert result["grounding"]["dataset_bound"] is True
