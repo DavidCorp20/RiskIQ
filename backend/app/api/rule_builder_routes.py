@@ -26,11 +26,9 @@ def _prepare_facts(raw:dict, normalization:str|None, formulas:dict|None)->tuple[
 def _decision_result(facts:dict, decision_rule:DecisionRule, scorecard:dict|None)->tuple[dict,dict|None]:
     score_result=None
     if scorecard:
-        score_result=scorecard_engine.evaluate(facts,scorecard)
-        facts=score_result["facts"]
+        score_result=scorecard_engine.evaluate(facts,scorecard); facts=score_result["facts"]
     result=engine.evaluate(facts,[decision_rule],None)
-    result["policy_id"]=decision_rule.id; result["policy_version"]=decision_rule.version
-    result["scorecard"]=score_result
+    result["policy_id"]=decision_rule.id; result["policy_version"]=decision_rule.version; result["scorecard"]=score_result
     return result,score_result
 
 @router.get("/rules")
@@ -63,7 +61,7 @@ def evaluate_rule(payload:dict)->dict:
     compiled=compile_rule(payload.get("rule",{}))
     if not compiled["valid"]: raise HTTPException(status_code=422,detail=compiled["errors"])
     rule=DecisionRule.model_validate(compiled["compiled_rule"])
-    try: facts,_,_= _prepare_facts(payload.get("facts",{}),None,compiled["compiled_rule"].get("formulas") or None); result,_=_decision_result(facts,rule,None)
+    try: facts,_,_=_prepare_facts(payload.get("facts",{}),None,compiled["compiled_rule"].get("formulas") or None); result,_=_decision_result(facts,rule,None)
     except (ValueError,TypeError) as exc: raise HTTPException(status_code=422,detail=[str(exc)])
     return {"compiled_rule":compiled["compiled_rule"],"result":result,"execution_mode":"test_only","customer_actions_executed":False}
 
@@ -105,12 +103,23 @@ def run_pipeline(payload:dict)->dict:
         return {"stages":stages,"facts":facts,"scorecard":scorecard_result,"result":result,"execution_mode":"test_only","customer_actions_executed":False}
     except (ValueError,TypeError) as exc: raise HTTPException(status_code=422,detail=[str(exc)])
 
+def _baseline_decision(row:dict)->str|None:
+    for key in ("baseline_decision","current_decision","decision","outcome","existing_decision"):
+        value=row.get(key)
+        if value not in (None,""): return str(value)
+    return None
+
+def _distribution(values:list[str])->dict[str,int]:
+    out={}
+    for value in values:
+        out[value]=out.get(value,0)+1
+    return out
+
 @router.post("/portfolio-simulate")
 def simulate_portfolio(payload:dict)->dict:
     rows=payload.get("rows") or []
     dataset_id=payload.get("dataset_id")
-    if not rows and dataset_id:
-        rows=persistence.portfolio_records.find({"dataset_id":dataset_id},limit=100000)
+    if not rows and dataset_id: rows=persistence.portfolio_records.find({"dataset_id":dataset_id},limit=100000)
     rule=payload.get("rule"); scorecard=payload.get("scorecard"); normalization=payload.get("normalization_code"); formulas=payload.get("formulas") or None
     if not isinstance(rows,list) or not rows: raise HTTPException(status_code=422,detail=["rows must contain at least one record or provide a valid dataset_id"])
     if not isinstance(rule,dict): raise HTTPException(status_code=422,detail=["rule is required"])
@@ -120,15 +129,18 @@ def simulate_portfolio(payload:dict)->dict:
     if normalization:
         errors=engine.code.validate(normalization)
         if errors: raise HTTPException(status_code=422,detail=errors)
-    results=[]; counts={}; bands={}; triggered={}; total_exposure=0.0; exposure_by_decision={}; total_score=0.0; scored=0
+    results=[]; counts={}; bands={}; triggered={}; baseline_values=[]; transition_counts={}; total_exposure=0.0; exposure_by_decision={}; total_score=0.0; scored=0
     for index,row in enumerate(rows):
         try:
-            facts,_,formula_trace=_prepare_facts(dict(row),normalization,formulas)
+            raw=dict(row); baseline_decision=_baseline_decision(raw)
+            if baseline_decision is not None: baseline_values.append(baseline_decision)
+            facts,_,formula_trace=_prepare_facts(raw,normalization,formulas)
             score_result=None
-            if scorecard:
-                score_result=scorecard_engine.evaluate(facts,scorecard); facts=score_result["facts"]
+            if scorecard: score_result=scorecard_engine.evaluate(facts,scorecard); facts=score_result["facts"]
             result=engine.evaluate(facts,[decision_rule],None)
             decision=result.get("decision") or result.get("outcome") or "NO_DECISION"; counts[decision]=counts.get(decision,0)+1
+            if baseline_decision is not None:
+                transition=f"{baseline_decision} → {decision}"; transition_counts[transition]=transition_counts.get(transition,0)+1
             band=(score_result or {}).get("band") or {}; label=band.get("label") if isinstance(band,dict) else None
             if label: bands[label]=bands.get(label,0)+1
             for rule_id in result.get("triggered_rules",[]): triggered[rule_id]=triggered.get(rule_id,0)+1
@@ -137,10 +149,11 @@ def simulate_portfolio(payload:dict)->dict:
             except (TypeError,ValueError): pass
             score=(score_result or {}).get("score")
             if score is not None: total_score+=float(score); scored+=1
-            results.append({"index":index,"customer_id":facts.get("customer_id"),"decision":decision,"score":score,"band":label,"triggered_rules":result.get("triggered_rules",[]),"reason_codes":result.get("reason_codes",[]),"formula_trace":formula_trace})
+            results.append({"index":index,"customer_id":facts.get("customer_id"),"baseline_decision":baseline_decision,"decision":decision,"score":score,"band":label,"triggered_rules":result.get("triggered_rules",[]),"reason_codes":result.get("reason_codes",[]),"formula_trace":formula_trace})
         except (ValueError,TypeError) as exc: raise HTTPException(status_code=422,detail=[f"row {index}: {exc}"])
-    total=len(results); pct=lambda d:round(d/total,4) if total else 0
-    return {"summary":{"records":total,"decisions":counts,"decision_percentages":{k:pct(v) for k,v in counts.items()},"bands":bands,"band_percentages":{k:pct(v) for k,v in bands.items()},"triggered_rules":triggered,"total_exposure":round(total_exposure,2),"exposure_by_decision":{k:round(v,2) for k,v in exposure_by_decision.items()},"average_score":round(total_score/scored,2) if scored else None,"scored_records":scored,"no_decision":counts.get("NO_DECISION",0),"decision_rate":round((total-counts.get("NO_DECISION",0))/total,4) if total else 0},"results":results,"policy":{"id":decision_rule.id,"name":decision_rule.name,"version":decision_rule.version},"dataset_id":dataset_id,"execution_mode":"portfolio_test_only","customer_actions_executed":False}
+    total=len(results); p=lambda d:round(d/total,4) if total else 0
+    baseline_summary={"records":len(baseline_values),"decisions":_distribution(baseline_values),"decision_percentages":{k:p(v) for k,v in _distribution(baseline_values).items()},"available":bool(baseline_values)}
+    return {"summary":{"records":total,"decisions":counts,"decision_percentages":{k:p(v) for k,v in counts.items()},"baseline":baseline_summary,"policy_transitions":transition_counts,"bands":bands,"band_percentages":{k:p(v) for k,v in bands.items()},"triggered_rules":triggered,"total_exposure":round(total_exposure,2),"exposure_by_decision":{k:round(v,2) for k,v in exposure_by_decision.items()},"average_score":round(total_score/scored,2) if scored else None,"scored_records":scored,"no_decision":counts.get("NO_DECISION",0),"decision_rate":round((total-counts.get("NO_DECISION",0))/total,4) if total else 0},"results":results,"policy":{"id":decision_rule.id,"name":decision_rule.name,"version":decision_rule.version},"dataset_id":dataset_id,"execution_mode":"portfolio_test_only","customer_actions_executed":False}
 
 @router.post("/normalize")
 def normalize_rows(payload:dict)->dict:
