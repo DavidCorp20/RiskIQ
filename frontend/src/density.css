@@ -1,0 +1,91 @@
+:root{--ui-scale:1}
+body{font-size:14px}
+.sidebar{width:264px;padding:18px 14px}
+.main{margin-left:264px;width:calc(100% - 264px)}
+.brand{padding:3px 9px 18px}
+.brand b{font-size:19px}
+.brand small{font-size:10px}
+.workspace{margin:12px 5px 14px;padding:11px}
+.workspace span,.nav-group-title,.section-eyebrow,.crumb{font-size:9px}
+.workspace strong{font-size:13px}
+.workspace em{font-size:10px}
+.nav-group{margin-bottom:14px}
+.sidebar nav button{padding:10px 10px;font-size:13px;gap:11px}
+.nav-icon{font-size:14px}
+.system-status{font-size:9px}
+.sidebar-bottom small{font-size:9px}
+.topbar{height:72px;padding:0 28px}
+.topbar h1{font-size:21px}
+.evidence-state{font-size:9px}
+.badge{font-size:9px;padding:5px 8px}
+.run-button{padding:10px 14px;font-size:10px}
+.page-content{padding:24px 28px 48px;max-width:1700px}
+.command-hero{padding:22px 24px;border-radius:12px;margin-bottom:12px}
+.command-hero h2{font-size:30px;margin:5px 0}
+.command-hero p{font-size:13px;line-height:1.5}
+.hero-status{min-width:235px;padding:10px}
+.hero-status small,.hero-status em{font-size:9px}
+.hero-status strong{font-size:14px}
+.posture-ring{width:50px;height:50px;font-size:19px}
+.metric-grid{gap:10px;margin-bottom:10px}
+.metric-card{padding:14px 16px;min-height:108px}
+.metric-top>span,.metric-card small{font-size:9px}
+.metric-card strong{font-size:32px;margin:9px 0 5px}
+.card{padding:16px;border-radius:10px}
+.section-head{margin-bottom:13px}
+.section-head h2{font-size:16px}
+.signal-strip{padding:8px 11px;margin-bottom:10px;font-size:9px}
+.dashboard-grid,.dashboard-grid.lower{gap:10px;margin-bottom:10px}
+.brief{padding-left:12px;margin:6px 0 15px}
+.brief strong{font-size:18px}
+.brief p{font-size:12px;line-height:1.45;margin:5px 0}
+.mini-stats{padding-top:11px}
+.mini-stats span,.decision-summary span{font-size:9px}
+.mini-stats b{font-size:18px;margin-top:5px}
+.driver{padding:10px 0;gap:10px}
+.driver b{font-size:12px}
+.driver p{font-size:11px;margin:3px 0;line-height:1.4}
+.driver small{font-size:9px}
+.muted-block,.empty-line,.no-trend{font-size:12px;padding:12px 0}
+.decision-summary{margin:4px 0 14px}
+.decision-summary b{font-size:25px;margin-top:5px}
+.wide-button{padding:9px;font-size:10px}
+.text-button{font-size:10px}
+.operating-flow{margin:4px 0 13px}
+.operating-flow div{padding:10px 9px}
+.operating-flow span{font-size:8px}
+.operating-flow b{font-size:11px;margin-top:5px}
+.foot-note{font-size:10px}
+.two-col,.analytics-layout{gap:10px}
+.trend-chart{min-height:190px}
+.chart-bars{height:115px;margin-top:12px}
+.chart-labels span,.chart-axis{font-size:9px}
+.chart-labels b{font-size:15px}
+.segment{padding:10px 0}
+.segment b{font-size:11px}
+.segment small{font-size:9px;margin-top:3px}
+.segment>strong{font-size:12px}
+.signal-row{grid-template-columns:105px 60px 1fr;gap:10px;padding:11px 0}
+.signal-row span{font-size:11px}
+.signal-row small{font-size:8px}
+.signal-row>b{font-size:18px}
+.decision-kpis{gap:10px;margin-bottom:10px}
+.decision-table-head{font-size:8px;padding-bottom:8px}
+.decision-row{padding:12px 0;gap:14px}
+.decision-row b{font-size:11px}
+.decision-row small{font-size:9px;margin-top:4px}
+.decision-row p{font-size:10px}
+.decision-row>span{font-size:9px}
+.empty-state{gap:16px;padding:24px;margin-bottom:10px}
+.empty-icon,.upload-icon{width:44px;height:44px;font-size:19px}
+.empty-state h2{font-size:20px}
+.empty-state p{font-size:12px;margin:5px 0 12px}
+.builder-grid{gap:10px;margin:17px 0}
+.builder-grid label,.mapping-grid label{font-size:9px}
+.builder-grid input,.builder-grid select,.mapping-grid select{padding:9px;font-size:11px}
+.rule-preview{padding:11px;font-size:10px;margin-bottom:12px}
+.shock-value{margin:22px 0 14px}
+.shock-value strong{font-size:42px}
+.shock-value span{font-size:10px}
+@media(max-width:1100px){.sidebar{width:220px}.main{margin-left:220px;width:calc(100% - 220px)}.page-content{padding:20px}.metric-grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid,.dashboard-grid.lower,.two-col,.analytics-layout{grid-template-columns:1fr}.topbar{padding:0 20px}}
+@media(max-width:720px){.sidebar{position:relative;width:100%;height:auto;min-height:0;border-right:0;border-bottom:1px solid #1c2734}.app-shell{display:block}.main{margin-left:0;width:100%}.nav-group{margin-bottom:10px}.sidebar nav{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}.sidebar-bottom{display:none}.topbar{position:relative}.page-content{padding:16px}.command-hero{display:block}.hero-status{border-left:0;border-top:1px solid #293645;margin-top:15px;padding:12px 0}.metric-grid{grid-template-columns:1fr 1fr}.operating-flow{grid-template-columns:1fr 1fr}}
