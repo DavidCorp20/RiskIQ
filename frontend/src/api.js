@@ -17,3 +17,8 @@ export const runDataset=async(id,payload={})=>normalizeDatasetResult(await reque
 export const runSimulator=payload=>{const dataset_id=activeDatasetId();return request('/api/v1/simulator/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,dataset_id})})}
 export const runNPL=rows=>request('/api/v1/risk/npl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rows)})
 export const askCopilot=payload=>{const dataset_id=activeDatasetId()||payload?.dataset_id||payload?.risk_facts?.dataset_id||'';return request('/api/v1/ai/copilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,dataset_id})})}
+export const listDecisionRules=(datasetId='')=>request(`/api/v1/decision-builder/rules${datasetId?`?dataset_id=${encodeURIComponent(datasetId)}`:''}`)
+export const validateDecisionRule=rule=>request('/api/v1/decision-builder/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)})
+export const compileDecisionRule=rule=>request('/api/v1/decision-builder/compile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)})
+export const saveDecisionRule=(rule,datasetId='')=>request('/api/v1/decision-builder/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule,dataset_id:datasetId})})
+export const evaluateDecisionRule=(rule,facts)=>request('/api/v1/decision-builder/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rule,facts})})
