@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.analytics.npl import NPLAnalyticsService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
+from app.analytics.risk_analytics import RiskAnalyticsService
 from app.analytics.snapshot_engine import SnapshotEngine
 from app.analytics.vintage_rollrate import VintageRollRateService
 from app.data.persistence import PortfolioPersistenceService
@@ -15,6 +16,7 @@ from app.decision.workspace import DecisionWorkspaceService
 router = APIRouter(prefix="/v1/datasets", tags=["dataset-intelligence"])
 persistence = PortfolioPersistenceService()
 intelligence = PortfolioIntelligenceService()
+risk_analytics = RiskAnalyticsService()
 snapshot_engine = SnapshotEngine()
 vintage = VintageRollRateService()
 npl = NPLAnalyticsService()
@@ -51,6 +53,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         business_id=dataset_id,
     )
     analysis = intelligence.analyze(records)
+    risk = risk_analytics.analyze(records)
     vintage_analysis = vintage.analyze(records)
     npl_analysis = npl.analyze(records)
 
@@ -74,13 +77,13 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
 
     return {
         "status": result.get("status", "healthy"),
-        "contract_version": "dataset-intelligence-v3",
+        "contract_version": "dataset-intelligence-v4",
         "dataset": metadata,
         "dataset_id": dataset_id,
         "snapshot": {"id": snapshot_id, **current},
         "previous_snapshot": previous,
         "analysis": analysis,
-        "risk_analytics": {"npl": npl_analysis},
+        "risk_analytics": {"deterministic": risk, "npl": npl_analysis},
         "vintage": vintage_analysis,
         "workspace": result,
         "governance": {
