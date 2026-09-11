@@ -1,0 +1,2 @@
+Integration note for RiskCommandCenter:
+Import DecisionEngine from './DecisionEngine' and './decision-engine.css'. Render <DecisionEngine current={currentMetrics} /> on the Decision Engine surface. The component is intentionally self-contained and emits a policy draft through onApply; wire onApply to the existing policy persistence endpoint when available.
