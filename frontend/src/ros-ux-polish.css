@@ -1,0 +1,115 @@
+:root{
+  --ux-ink:#122033;
+  --ux-muted:#5b6b80;
+  --ux-soft:#eef3f8;
+  --ux-line:#d5dee8;
+  --ux-blue:#1d5fa7;
+}
+
+/* =========================================================
+   RiskIQ UX polish
+   - Navigation lives in the left rail only.
+   - Top module strip is intentionally removed.
+   - Workspace groups collapse visually until hover/focus or active.
+   - Typography/contrast is normalized across light and dark modules.
+   ========================================================= */
+.ros-module-tabs{display:none!important}
+
+.ros-sidebar{width:286px;padding:25px 16px 18px;overflow-y:auto;scrollbar-width:thin}
+.ros-main{margin-left:286px}
+.ros-sidebar nav{gap:8px}
+.side-group{border:1px solid transparent;border-radius:12px;padding:4px;background:transparent}
+.side-group-label{
+  display:flex!important;align-items:center;justify-content:space-between;
+  min-height:34px;padding:0 10px;color:#94a6bd!important;font-size:11px!important;
+  letter-spacing:.12em;font-weight:850!important;text-transform:uppercase;cursor:default
+}
+.side-group-label::after{content:'⌄';font-size:13px;color:#6f829b;transition:transform .18s ease}
+.side-group:not(:has(.active)) .side-group-label::after{transform:rotate(-90deg)}
+.side-group .side-group-label + button{margin-top:2px}
+.side-group:not(:has(.active)):not(:hover):not(:focus-within) > button{display:none!important}
+.side-group:hover,.side-group:focus-within,.side-group:has(.active){background:#0e1a2d;border-color:#1d2c42}
+.side-group:hover .side-group-label,.side-group:focus-within .side-group-label,.side-group:has(.active) .side-group-label{color:#b9c8da!important}
+
+.ros-sidebar nav button{min-height:58px;padding:10px 12px;gap:12px;font-size:15px}
+.ros-sidebar nav b{font-size:15px;line-height:1.25}
+.ros-sidebar nav small{font-size:12px;line-height:1.25;color:#8c9db2}
+.ros-nav-icon{width:28px;font-size:19px;flex:0 0 28px}
+.ros-sidebar nav button.active{background:#20334f;box-shadow:inset 3px 0 0 #60a5fa}
+.ros-nav-label{font-size:11px!important;margin:3px 9px 9px!important}
+.ros-brand strong{font-size:21px}
+.ros-brand span{font-size:10px}
+.ros-portfolio>span{font-size:11px}
+.ros-portfolio select{font-size:15px}
+.ros-side-foot{font-size:13px}
+
+/* Main workspace readability */
+.ros-shell{font-size:16px}
+.ros-top{height:98px;padding:0 42px}
+.ros-kicker{font-size:12px}
+.ros-top h1{font-size:28px}
+.ros-content{padding:34px 42px 70px}
+.ros-hero h2{font-size:34px}
+.hero-copy>p{font-size:17px}
+.ros-section h2{font-size:22px}
+.ros-section .section-head span,.hero-eyebrow{font-size:12px}
+.ros-metric{padding:19px 20px;min-height:122px}
+.ros-metric>span{font-size:13px}
+.ros-metric strong{font-size:29px}
+.ros-metric small{font-size:13px}
+.data-rows span,.data-rows strong{font-size:15px}
+.focus-row p,.priority-row p,.trend-empty p,.trend-panel p,.migration-hero p{font-size:15px}
+
+/* Do not allow dark surfaces to inherit dark heading colors from the light system. */
+.engine-page,.engine-intro,.decision-hero,.scenario-result,
+.ri-stage-card,.ri-panel,.ri-portfolio-lab,.ri-backtest-shell,
+.ri-backtest-shell .ri-panel,.ri-backtest-shell .ri-technical,
+.ri-decision-workspace .ri-panel{
+  color:#e7edf5!important;
+}
+.engine-intro h2,.decision-hero h2,.ri-stage-card h1,.ri-stage-card h2,.ri-stage-card h3,
+.ri-panel h1,.ri-panel h2,.ri-panel h3,.ri-portfolio-lab h1,.ri-portfolio-lab h2,
+.ri-portfolio-lab h3,.ri-backtest-shell h1,.ri-backtest-shell h2,.ri-backtest-shell h3{
+  color:#f5f8fc!important;
+}
+.engine-intro p,.decision-hero p,.ri-stage-card p,.ri-panel p,.ri-portfolio-lab p,.ri-backtest-shell p{
+  color:#b8c5d5!important;
+}
+
+/* Light panels stay readable even when a legacy dark rule leaks into them. */
+.ros-section,.ros-section h2,.ros-section h3,.ros-section strong{color:var(--ux-ink)}
+.ros-section p,.ros-section small,.ros-section .muted{color:var(--ux-muted)}
+
+/* Formula/function information affordance.
+   Existing formula panels receive an information marker and an accessible native tooltip. */
+.formula-panel,.engine-intro,.ri-formula-row,.ri-formula-item,.ri-code-block,.ri-scorecard-item{
+  position:relative
+}
+.formula-panel span::after,.ri-formula-row label::after,.ri-formula-item label::after,
+.ri-scorecard-item label::after{
+  content:'i';display:inline-grid;place-items:center;width:17px;height:17px;margin-left:7px;
+  border:1px solid currentColor;border-radius:50%;font-size:10px;font-weight:850;line-height:1;
+  opacity:.85;vertical-align:middle;cursor:help
+}
+.formula-panel span::after{color:#9fb0c4}
+
+/* Standard info chips can be used by formula/function editors without changing the visual system. */
+.ri-info-tip{display:inline-flex;position:relative;align-items:center;justify-content:center;width:18px;height:18px;
+  border:1px solid #8fa2b8;border-radius:50%;font-size:10px;font-weight:850;color:#31506f;background:#f5f8fb;cursor:help;vertical-align:middle;margin-left:6px}
+.ri-info-tip:hover::after,.ri-info-tip:focus-visible::after{content:attr(data-help);position:absolute;z-index:1000;left:24px;top:50%;transform:translateY(-50%);width:300px;padding:11px 13px;border:1px solid #cbd6e2;border-radius:9px;background:#fff;color:#23344a;box-shadow:0 12px 30px rgba(15,23,42,.16);font-size:12px;font-weight:500;line-height:1.5;white-space:normal;text-align:left}
+
+@media (max-width:1100px){
+  .ros-sidebar{width:250px}
+  .ros-main{margin-left:250px}
+  .ros-content{padding:28px}
+  .ros-top{padding:0 28px}
+}
+@media (max-width:800px){
+  .ros-sidebar{width:286px;transform:translateX(-100%);transition:transform .2s ease}
+  .ros-sidebar.open{transform:translateX(0)}
+  .ros-main{margin-left:0}
+  .ros-menu{display:block!important}
+  .ros-content{padding:22px 16px 50px}
+  .ros-top{padding:0 16px}
+  .ros-top-actions .engine-status{display:none}
+}
