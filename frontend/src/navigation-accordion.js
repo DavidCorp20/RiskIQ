@@ -1,33 +1,32 @@
 /* RiskIQ navigation: two-level accordion inside the Control de mando menu. */
-const SELECTOR = '.ros-command-menu .side-group'
+const GROUP_SELECTOR = '.ros-command-menu .side-group'
 
-function syncGroup(group, open) {
+function setGroupState(group, open) {
   group.classList.toggle('is-open', open)
   const label = group.querySelector('.side-group-label')
-  if (label) {
-    label.setAttribute('role', 'button')
-    label.setAttribute('tabindex', '0')
-    label.setAttribute('aria-expanded', String(open))
-    label.setAttribute('aria-controls', `risk-group-${[...group.parentElement.children].indexOf(group)}`)
-  }
+  const items = group.querySelectorAll(':scope > button')
+  if (!label) return
+  label.classList.add('ros-category-trigger')
+  label.setAttribute('role', 'button')
+  label.setAttribute('tabindex', '0')
+  label.setAttribute('aria-expanded', String(open))
+  const id = `risk-group-${[...group.parentElement.children].indexOf(group)}`
+  label.setAttribute('aria-controls', id)
+  items.forEach(button => button.setAttribute('data-risk-nav-item', '1'))
+  if (items.length) items[0].parentElement.id = id
 }
 
 function enhance(root = document) {
-  root.querySelectorAll(SELECTOR).forEach((group, index) => {
+  root.querySelectorAll(GROUP_SELECTOR).forEach(group => {
     if (group.dataset.accordionReady) return
-    group.dataset.accordionReady = '1'
     const label = group.querySelector('.side-group-label')
-    const items = group.querySelectorAll('button')
     if (!label) return
-    const id = `risk-group-${index}`
-    items.forEach(button => button.setAttribute('data-risk-nav-item', '1'))
-    items.forEach(button => button.parentElement?.setAttribute('id', id))
-    syncGroup(group, false)
+    group.dataset.accordionReady = '1'
+    setGroupState(group, false)
     const toggle = event => {
       event.preventDefault()
       event.stopPropagation()
-      const open = !group.classList.contains('is-open')
-      syncGroup(group, open)
+      setGroupState(group, !group.classList.contains('is-open'))
     }
     label.addEventListener('click', toggle)
     label.addEventListener('keydown', event => {
