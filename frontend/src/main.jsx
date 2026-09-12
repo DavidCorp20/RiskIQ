@@ -2,10 +2,10 @@ import React from 'react'
 import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
 
-// RiskIQ has one deterministic React visual entrypoint.
-// Do not mount DOM-mutating enhancers or competing global visual layers here.
+// One deterministic React entrypoint. The ROS shell owns navigation and layout.
 import './risk-os.css'
 import './decision-engine-v3.css'
+import './ros-visibility.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
