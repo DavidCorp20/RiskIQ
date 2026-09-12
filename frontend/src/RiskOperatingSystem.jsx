@@ -15,7 +15,7 @@ const groups=[
 ]
 
 export default function RiskOperatingSystem(){
- const [datasets,setDatasets]=useState([]),[dataset,setDataset]=useState(null),[result,setResult]=useState(null),[history,setHistory]=useState(null),[page,setPage]=useState('overview'),[loading,setLoading]=useState(false),[error,setError]=useState(''),[stress,setStress]=useState(20),[sim,setSim]=useState(null),[mobile,setMobile]=useState(false)
+ const [datasets,setDatasets]=useState([]),[dataset,setDataset]=useState(null),[result,setResult]=useState(null),[history,setHistory]=useState(null),[page,setPage]=useState('overview'),[loading,setLoading]=useState(false),[error,setError]=useState(''),[stress,setStress]=useState(20),[sim,setSim]=useState(null),[mobile,setMobile]=useState(false),[commandOpen,setCommandOpen]=useState(true)
  useEffect(()=>{(async()=>{try{const d=await listDatasets();const items=d?.datasets||d||[];setDatasets(items);const saved=JSON.parse(localStorage.getItem('riskiq.activeDataset')||'null');const active=items.find(x=>x.dataset_id===saved?.dataset_id)||items[0];if(active){setDataset(active);await execute(active)}}catch(e){setError(e.message)}})()},[])
  async function execute(d=dataset){if(!d?.dataset_id)return;setLoading(true);setError('');try{const r=await runDataset(d.dataset_id);setResult(r);setHistory(await getDatasetHistory(d.dataset_id));setDataset({...d,snapshot:r.snapshot});localStorage.setItem('riskiq.activeDataset',JSON.stringify(d))}catch(e){setError(e.message)}finally{setLoading(false)}}
  async function select(d){setDataset(d);setResult(null);setHistory(null);if(d)await execute(d)}
@@ -28,12 +28,14 @@ export default function RiskOperatingSystem(){
    <div className="ros-brand"><div className="ros-mark">R</div><div><strong>RiskIQ</strong><span>RISK OPERATING SYSTEM</span></div></div>
    <div className="ros-portfolio"><span>CARTERA ACTIVA</span><select value={dataset?.dataset_id||''} onChange={e=>select(datasets.find(x=>x.dataset_id===e.target.value))}><option value="">Seleccionar cartera</option>{datasets.map(d=><option key={d.dataset_id} value={d.dataset_id}>{d.source_name||d.name||d.dataset_id}</option>)}</select></div>
    <div className="ros-nav-label">WORKSPACE</div>
-   <nav>{groups.map(g=><div className="side-group" key={g.label}><span className="side-group-label">{g.label}</span>{g.items.map(id=>{const x=nav.find(n=>n[0]===id);return <button key={id} className={page===id?'active':''} onClick={()=>{setPage(id);setMobile(false)}}><span className="ros-nav-icon">{icon(id)}</span><span><b>{x[1]}</b><small>{x[2]}</small></span>{id==='engine'&&<em>LOW-CODE</em>}</button>})}</div>)}</nav>
+   <div className="ros-command-select">
+    <button className="ros-command-trigger" onClick={()=>setCommandOpen(v=>!v)} aria-expanded={commandOpen}><span><b>Control de mando</b><small>Navegación del workspace</small></span><strong>{commandOpen?'⌃':'⌄'}</strong></button>
+    {commandOpen&&<nav className="ros-command-menu" aria-label="Control de mando">{groups.map(g=><div className="side-group" key={g.label}><span className="side-group-label">{g.label}</span>{g.items.map(id=>{const x=nav.find(n=>n[0]===id);return <button key={id} className={page===id?'active':''} onClick={()=>{setPage(id);setMobile(false)}}><span className="ros-nav-icon">{icon(id)}</span><span><b>{x[1]}</b><small>{x[2]}</small></span>{id==='engine'&&<em>LOW-CODE</em>}</button>})}</div>)}</nav>}
+   </div>
    <div className="ros-side-foot"><span className="online-dot"/> Evidence engine online<div>Human review required</div></div>
   </aside>
   <main className="ros-main">
    <header className="ros-top"><button className="ros-menu" onClick={()=>setMobile(!mobile)}>☰</button><div><span className="ros-kicker">RISK OPERATING SYSTEM / {page.toUpperCase()}</span><h1>{title}</h1></div><div className="ros-top-actions"><span className={`engine-status ${loading?'busy':''}`}><i/>{loading?'Analizando evidencia':'Motor listo'}</span><button className="run-button" onClick={()=>execute()} disabled={!dataset||loading}>{loading?'Procesando…':'Ejecutar análisis'}</button></div></header>
-   <ModuleTabs page={page} setPage={go}/>
    {error&&<div className="ros-error">{error}</div>}
    {!dataset?<Empty/>:<div className="ros-content">
     {page==='overview'&&<Overview snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} onGo={go}/>} 
@@ -51,7 +53,6 @@ export default function RiskOperatingSystem(){
  </div>
 }
 
-function ModuleTabs({page,setPage}){return <div className="ros-module-tabs" role="tablist" aria-label="Módulos RiskIQ">{groups.map(g=><div className="module-tab-group" key={g.label}><span className="module-tab-label">{g.label}</span><div className="module-tab-list">{g.items.map(id=>{const x=nav.find(n=>n[0]===id);return <button role="tab" aria-selected={page===id} className={page===id?'active':''} key={id} onClick={()=>setPage(id)}>{icon(id)}<span>{x[1]}</span></button>})}</div></div>)}</div>}
 function icon(id){return ({overview:'◈',portfolio:'◫',analytics:'◒',concentration:'⌁',cohorts:'◌',migration:'⇄',stress:'◐',decisions:'✓',engine:'⌘',quality:'▦'})[id]||'•'}
 function Empty(){return <div className="ros-empty"><div className="empty-mark">R</div><h2>Selecciona una cartera</h2><p>RiskIQ necesita una cartera cargada para construir evidencia, segmentación y decisiones.</p></div>}
 function Section({eyebrow,title,action,children,wide=false}){return <section className={`ros-section ${wide?'wide':''}`}><div className="section-head"><div><span>{eyebrow}</span><h2>{title}</h2></div>{action}</div>{children}</section>}
