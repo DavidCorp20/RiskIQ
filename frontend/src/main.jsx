@@ -10,6 +10,7 @@ import './risk-os.css'
 import './decision-engine-v3.css'
 import './formula-help.css'
 import './riskiq-final.css'
+import './riskiq-command-center-v3.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
