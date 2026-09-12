@@ -1,2 +1,19 @@
 /* Deterministic visibility contract for the ROS shell. */
 .ros-module-tabs{display:none!important}
+
+/* Command center behaves as a compact accordion/dropdown. */
+.ros-command-menu{display:none!important}
+.ros-command-select:focus-within .ros-command-menu{display:block!important}
+.ros-command-select{position:relative}
+.ros-command-trigger{width:100%;min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#111d30;color:#fff;border:1px solid #29384d;border-radius:10px;cursor:pointer;text-align:left}
+.ros-command-trigger:hover{background:#17263b;border-color:#3a4d66}
+.ros-command-trigger span{min-width:0}
+.ros-command-trigger b{display:block;font-size:13px;line-height:1.2}
+.ros-command-trigger small{display:block;margin-top:3px;color:#8797ad;font-size:10px}
+.ros-command-trigger>strong{font-size:18px;color:#9fb0c4;line-height:1}
+.ros-command-menu{margin-top:6px;padding:6px;background:#0e192a;border:1px solid #29384d;border-radius:10px;max-height:calc(100vh - 250px);overflow:auto;box-shadow:0 14px 30px rgba(0,0,0,.25)}
+.ros-command-menu .side-group{padding:4px 0}
+.ros-command-menu .side-group-label{display:block;padding:7px 10px 5px;color:#718197;font-size:9px;font-weight:800;letter-spacing:.12em}
+.ros-command-menu .side-group button{min-height:43px;padding:8px 9px}
+.ros-command-menu .side-group button b{font-size:12px}
+.ros-command-menu .side-group button small{font-size:10px}
