@@ -1,5 +1,4 @@
 import React,{useEffect} from 'react'
-import {createPortal} from 'react-dom'
 import './formula-help.css'
 
 const HELP=[
@@ -24,10 +23,9 @@ const HELP=[
 function textOf(el){return (el.textContent||'').replace(/\s+/g,' ').trim()}
 function isUseful(el){
  if(!el||el.nodeType!==1)return false
- if(el.closest('.ri-info-wrap'))return false
  const t=textOf(el)
  if(!t||t.length>90)return false
- return ['SPAN','LABEL','H3','H4','STRONG','BUTTON','DIV'].includes(el.tagName)
+ return ['SPAN','LABEL','H3','H4','STRONG','BUTTON'].includes(el.tagName)
 }
 function findHelp(text){return HELP.find(x=>x.match.test(text))}
 
@@ -35,17 +33,14 @@ export default function FormulaHelpOverlay(){
  useEffect(()=>{
   const root=document.body
   const scan=()=>{
-   const nodes=root.querySelectorAll('label,span,h3,h4,strong,button,div')
+   const nodes=root.querySelectorAll('label,span,h3,h4,strong,button')
    nodes.forEach(el=>{
     if(!isUseful(el))return
     const help=findHelp(textOf(el))
-    if(!help)return
-    if(el.querySelector(':scope > .ri-inline-info'))return
+    if(!help||el.querySelector(':scope > .ri-inline-info'))return
     const info=document.createElement('button')
     info.type='button';info.className='ri-inline-info';info.setAttribute('aria-label',`Información sobre ${help.title}`)
-    info.setAttribute('data-help',help.body)
-    info.setAttribute('data-title',help.title)
-    info.innerHTML='i'
+    info.setAttribute('data-help',help.body);info.setAttribute('data-title',help.title);info.textContent='i'
     el.appendChild(info)
    })
   }
