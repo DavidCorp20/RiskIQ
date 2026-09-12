@@ -1,0 +1,23 @@
+/* RiskIQ workspace navigation — final isolated layer. */
+.ros-shell .ros-sidebar .ros-nav-label{margin-top:22px!important;margin-bottom:8px!important;}
+.ros-shell .ros-sidebar .ros-command-select{margin:0 0 10px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;}
+.ros-shell .ros-sidebar .ros-command-trigger{width:100%!important;min-height:38px!important;padding:0 2px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;background:transparent!important;border:0!important;box-shadow:none!important;color:#f4f7fb!important;cursor:default!important;pointer-events:none!important;text-align:left!important;}
+.ros-shell .ros-sidebar .ros-command-trigger b{font-size:13px!important;font-weight:750!important;letter-spacing:-.01em!important;}
+.ros-shell .ros-sidebar .ros-command-trigger strong{display:none!important;}
+.ros-shell .ros-sidebar .ros-command-menu{position:static!important;display:flex!important;flex-direction:column!important;gap:5px!important;margin:0!important;padding:0!important;max-height:none!important;overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group{display:block!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group-label.ros-category-trigger{width:100%!important;min-height:42px!important;margin:0!important;padding:0 11px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;box-sizing:border-box!important;background:#111b2b!important;border:1px solid #24354b!important;border-radius:8px!important;color:#aebed0!important;font-size:10px!important;font-weight:800!important;letter-spacing:.12em!important;text-transform:uppercase!important;cursor:pointer!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group-label.ros-category-trigger::after{content:'⌄'!important;display:block!important;color:#72859d!important;font-size:13px!important;transition:transform .15s ease!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger{background:#17263a!important;border-color:#38516f!important;color:#f4f7fb!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger::after{transform:rotate(180deg)!important;color:#bdd0e5!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger){display:none!important;width:calc(100% - 10px)!important;min-height:38px!important;margin:3px 5px!important;padding:7px 9px!important;align-items:center!important;gap:9px!important;box-sizing:border-box!important;background:#0d1828!important;border:1px solid transparent!important;border-radius:7px!important;color:#c7d3e0!important;text-align:left!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group.is-open>button:not(.ros-category-trigger){display:flex!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger):hover{background:#17283e!important;border-color:#2d4561!important;color:#fff!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger).active{background:#1b3557!important;border-color:#3b6090!important;color:#fff!important;box-shadow:inset 3px 0 0 #70a9ff!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) .ros-nav-icon{width:20px!important;flex:0 0 20px!important;display:grid!important;place-items:center!important;color:#8fa6be!important;font-size:14px!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger).active .ros-nav-icon{color:#9bc8ff!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) span:nth-child(2){display:block!important;min-width:0!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) b{display:block!important;font-size:12px!important;font-weight:650!important;line-height:1.25!important;color:inherit!important;white-space:nowrap!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) small{display:none!important;}
+.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) em{margin-left:auto!important;}
+@media(max-width:760px){.ros-shell .ros-sidebar .ros-command-menu .side-group>button:not(.ros-category-trigger) b{white-space:normal!important;}}
