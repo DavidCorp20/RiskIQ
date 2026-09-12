@@ -1,4 +1,4 @@
-/* Layered ROS navigation: command center -> category -> destination. */
+/* RiskIQ navigation controller: command center -> category -> destination. */
 const initCategory = (group) => {
   const label = group.querySelector('.side-group-label')
   if (!label || label.dataset.accordionReady === '1') return
@@ -28,17 +28,36 @@ const initCategory = (group) => {
   })
 }
 
-const sync = () => {
-  document.querySelectorAll('.ros-command-menu .side-group').forEach(initCategory)
+const initCommand = () => {
+  const shell = document.querySelector('.ros-command-select')
+  const trigger = shell?.querySelector('.ros-command-trigger')
+  if (!shell || !trigger || trigger.dataset.navReady === '1') return
 
-  // The React shell historically initialized commandOpen=true. Normalize it to
-  // the intended UX: Control de mando starts collapsed and opens on click.
-  const trigger = document.querySelector('.ros-command-trigger')
-  if (trigger && trigger.dataset.initialized !== '1' && trigger.getAttribute('aria-expanded') === 'true') {
-    trigger.dataset.initialized = '1'
-    trigger.click()
+  trigger.dataset.navReady = '1'
+  shell.classList.remove('nav-open')
+  trigger.setAttribute('aria-expanded', 'false')
+  const indicator = trigger.querySelector(':scope > strong')
+
+  const toggle = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    event.stopImmediatePropagation()
+    const open = !shell.classList.contains('nav-open')
+    shell.classList.toggle('nav-open', open)
+    trigger.setAttribute('aria-expanded', String(open))
+    if (indicator) indicator.textContent = open ? '⌃' : '⌄'
   }
+
+  trigger.addEventListener('click', toggle, true)
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') toggle(event)
+  }, true)
 }
 
-document.addEventListener('click', sync, {capture: true})
+const sync = () => {
+  initCommand()
+  document.querySelectorAll('.ros-command-menu .side-group').forEach(initCategory)
+}
+
 new MutationObserver(sync).observe(document.documentElement, {childList: true, subtree: true})
+sync()
