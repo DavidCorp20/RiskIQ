@@ -15,6 +15,7 @@ from app.api.intelligence_routes import router as intelligence_router
 from app.api.learning_routes import router as learning_router
 from app.api.npl_routes import router as npl_router
 from app.api.pipeline_routes import router as pipeline_router
+from app.api.policy_metrics_routes import router as policy_metrics_router
 from app.api.projection_routes import router as projection_router
 from app.api.quality_routes import router as quality_router
 from app.api.risk_routes import router as risk_router
@@ -48,6 +49,7 @@ app.include_router(decision_center_router,prefix="/api")
 app.include_router(simulation_router,prefix="/api")
 app.include_router(rule_builder_router,prefix="/api")
 app.include_router(governance_router,prefix="/api")
+app.include_router(policy_metrics_router,prefix="/api")
 app.include_router(audit_router,prefix="/api")
 app.include_router(learning_router,prefix="/api")
 app.include_router(ai_router,prefix="/api")
