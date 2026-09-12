@@ -9,6 +9,7 @@ from app.api.dataset_routes import router as dataset_router
 from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_center_routes import router as decision_center_router
 from app.api.decision_routes import router as decision_router
+from app.api.governance_routes import router as governance_router
 from app.api.history_routes import router as history_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.learning_routes import router as learning_router
@@ -46,6 +47,7 @@ app.include_router(decision_card_router,prefix="/api")
 app.include_router(decision_center_router,prefix="/api")
 app.include_router(simulation_router,prefix="/api")
 app.include_router(rule_builder_router,prefix="/api")
+app.include_router(governance_router,prefix="/api")
 app.include_router(audit_router,prefix="/api")
 app.include_router(learning_router,prefix="/api")
 app.include_router(ai_router,prefix="/api")
