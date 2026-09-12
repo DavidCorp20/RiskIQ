@@ -6,6 +6,7 @@ import App from './RiskOperatingSystem'
 import './risk-os.css'
 import './decision-engine-v3.css'
 import './ros-visibility.css'
+import './riskiq-visual-v4.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
