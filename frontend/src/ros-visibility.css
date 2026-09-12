@@ -1,10 +1,25 @@
 /* Deterministic visibility contract for the ROS shell. */
 .ros-module-tabs{display:none!important}
 
-/* Command center behaves as a compact accordion/dropdown. */
+/* Level 1: only the compact Control de mando trigger is visible. */
+.ros-command-select{position:relative}
 .ros-command-menu{display:none!important}
 .ros-command-select:focus-within .ros-command-menu{display:block!important}
-.ros-command-select{position:relative}
+
+/* Level 2: categories are their own accordion controls. */
+.ros-command-menu .side-group{padding:0!important;margin:4px 0;border:1px solid transparent;border-radius:9px;overflow:hidden}
+.ros-command-menu .side-group-label.ros-category-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:38px;padding:9px 10px!important;color:#91a1b5!important;background:#111d30;border:1px solid #29384d;border-radius:8px;cursor:pointer;font-size:9px;font-weight:800;letter-spacing:.12em}
+.ros-command-menu .side-group-label.ros-category-trigger::after{content:'⌄';font-size:13px;line-height:1;color:#8fa0b5;transition:transform .16s ease}
+.ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger{color:#dbe7f5!important;background:#17263b;border-color:#3a4d66}
+.ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger::after{transform:rotate(180deg)}
+
+/* Level 3: destinations only exist visually when their category is expanded. */
+.ros-command-menu .side-group > button{display:none!important}
+.ros-command-menu .side-group.is-open > button{display:flex!important}
+.ros-command-menu .side-group.is-open .side-group-label{border-radius:8px 8px 0 0}
+.ros-command-menu .side-group.is-open > button:first-of-type{margin-top:3px}
+
+/* Compact outer control. */
 .ros-command-trigger{width:100%;min-height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#111d30;color:#fff;border:1px solid #29384d;border-radius:10px;cursor:pointer;text-align:left}
 .ros-command-trigger:hover{background:#17263b;border-color:#3a4d66}
 .ros-command-trigger span{min-width:0}
@@ -12,8 +27,6 @@
 .ros-command-trigger small{display:block;margin-top:3px;color:#8797ad;font-size:10px}
 .ros-command-trigger>strong{font-size:18px;color:#9fb0c4;line-height:1}
 .ros-command-menu{margin-top:6px;padding:6px;background:#0e192a;border:1px solid #29384d;border-radius:10px;max-height:calc(100vh - 250px);overflow:auto;box-shadow:0 14px 30px rgba(0,0,0,.25)}
-.ros-command-menu .side-group{padding:4px 0}
-.ros-command-menu .side-group-label{display:block;padding:7px 10px 5px;color:#718197;font-size:9px;font-weight:800;letter-spacing:.12em}
 .ros-command-menu .side-group button{min-height:43px;padding:8px 9px}
 .ros-command-menu .side-group button b{font-size:12px}
 .ros-command-menu .side-group button small{font-size:10px}
