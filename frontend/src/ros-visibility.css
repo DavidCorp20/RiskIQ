@@ -1,40 +1,40 @@
-/* RiskIQ navigation: standalone command label + independent category accordion. */
+/* RiskIQ navigation: true three-level workspace hierarchy. */
 .ros-module-tabs{display:none!important}
 
-/* Level 1 is a standalone workspace heading, not a container for the navigation. */
-.ros-command-select{position:relative;margin-top:8px}
-.ros-command-trigger{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#111d30!important;color:#fff!important;border:1px solid #2b3a4f!important;border-radius:10px!important;cursor:pointer;text-align:left;transition:.16s ease}
-.ros-command-trigger:hover{background:#17263b!important;border-color:#48617f!important}
-.ros-command-trigger span{min-width:0}
-.ros-command-trigger b{display:block;font-size:13px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+/* LEVEL 1 — standalone workspace control. It does not contain navigation. */
+.ros-command-select{position:relative;margin:8px 0 14px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.ros-command-trigger{width:100%;min-height:44px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 2px!important;background:transparent!important;color:#f8fafc!important;border:0!important;border-radius:0!important;box-shadow:none!important;cursor:default!important;text-align:left!important}
+.ros-command-trigger:hover{background:transparent!important;border:0!important}
+.ros-command-trigger b{display:block!important;font-size:12px!important;font-weight:750!important;line-height:1.2!important;letter-spacing:.01em!important;text-transform:none!important}
 .ros-command-trigger small{display:none!important}
-.ros-command-trigger>strong{width:24px;height:24px;display:grid;place-items:center;border:1px solid #34465d;border-radius:6px;color:#aebdce;font-size:13px;font-weight:500;line-height:1}
+.ros-command-trigger>strong{display:none!important}
 
-/* Navigation is always visible as a separate layer. It is NOT visually a dropdown. */
+/* LEVEL 2 — independent category list. No dropdown/container around it. */
 .ros-command-menu,
-.ros-command-select.nav-open .ros-command-menu{display:block!important;position:static!important;margin:10px 0 0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;max-height:none!important;overflow:visible!important;box-shadow:none!important}
+.ros-command-select.nav-open .ros-command-menu{display:flex!important;position:static!important;flex-direction:column!important;gap:6px!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;max-height:none!important;overflow:visible!important;box-shadow:none!important}
 
-/* Categories are independent accordion rows. */
-.ros-command-menu .side-group{padding:0!important;margin:4px 0!important;border:1px solid #26374c!important;border-radius:9px!important;overflow:hidden!important;background:#0d1828!important}
-.ros-command-menu .side-group-label.ros-category-trigger{display:flex!important;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:10px 11px!important;color:#aebdce!important;background:#0d1828!important;border:0!important;border-radius:0!important;cursor:pointer;font-size:10px;font-weight:800;letter-spacing:.1em;line-height:1;text-transform:uppercase;transition:.15s ease}
+.ros-command-menu .side-group{display:block!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;overflow:visible!important}
+.ros-command-menu .side-group-label.ros-category-trigger{width:100%!important;min-height:40px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin:0!important;padding:0 10px!important;background:#111d30!important;color:#aebdce!important;border:1px solid #26374c!important;border-radius:9px!important;box-sizing:border-box!important;cursor:pointer!important;text-align:left!important;font-size:10px!important;font-weight:800!important;letter-spacing:.11em!important;line-height:1!important;text-transform:uppercase!important;transition:background .15s ease,border-color .15s ease,color .15s ease!important}
 .ros-command-menu .side-group-label.ros-category-trigger::after{content:'⌄';font-size:14px;line-height:1;color:#70839a;transition:transform .15s ease}
-.ros-command-menu .side-group-label.ros-category-trigger:hover{color:#f1f5f9!important;background:#142238!important}
-.ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger{color:#e7eef7!important;background:#16263c!important}
+.ros-command-menu .side-group-label.ros-category-trigger:hover{background:#17263b!important;border-color:#3a506d!important;color:#f1f5f9!important}
+.ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger{background:#182941!important;border-color:#365274!important;color:#f1f5f9!important}
 .ros-command-menu .side-group.is-open .side-group-label.ros-category-trigger::after{transform:rotate(180deg);color:#b9c8d8}
 
-/* Level 3: module buttons appear only when their category is opened. */
-.ros-command-menu .side-group>button{display:none!important;width:calc(100% - 8px);min-height:42px;margin:3px 4px!important;padding:8px 10px!important;align-items:center;gap:10px;background:#101d2f!important;border:1px solid transparent!important;border-radius:7px!important;color:#c7d2df!important;text-align:left;transition:.15s ease}
-.ros-command-menu .side-group.is-open>button{display:flex!important}
-.ros-command-menu .side-group>button:hover{background:#17283f!important;border-color:#2b415b!important;color:#fff!important}
-.ros-command-menu .side-group>button.active{background:#1b3558!important;border-color:#355b88!important;color:#fff!important;box-shadow:inset 3px 0 0 #5b9cff}
-.ros-command-menu .side-group>button .ros-nav-icon{width:22px;flex:0 0 22px;display:grid;place-items:center;color:#8fa4bb;font-size:15px}
-.ros-command-menu .side-group>button.active .ros-nav-icon{color:#8fc0ff}
-.ros-command-menu .side-group>button span:nth-child(2){min-width:0;display:block}
-.ros-command-menu .side-group>button b{display:block;font-size:12px;font-weight:650;line-height:1.2;letter-spacing:-.005em;color:inherit;white-space:nowrap}
-.ros-command-menu .side-group>button small{display:none!important}
-.ros-command-menu .side-group>button em{margin-left:auto;padding:3px 6px;border:1px solid #3b5b7d;border-radius:5px;color:#9fc8f5;font-size:8px;font-style:normal;font-weight:800;letter-spacing:.06em}
+/* LEVEL 3 — destination buttons are revealed only by their own category. */
+.ros-command-menu .side-group>button:not(.ros-category-trigger){display:none!important;width:calc(100% - 12px)!important;min-height:38px!important;margin:3px 6px!important;padding:7px 9px!important;align-items:center!important;gap:9px!important;background:#0f1c2d!important;border:1px solid transparent!important;border-radius:7px!important;color:#c7d2df!important;box-sizing:border-box!important;text-align:left!important;transition:background .15s ease,border-color .15s ease,color .15s ease!important}
+.ros-command-menu .side-group.is-open>button:not(.ros-category-trigger){display:flex!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger):hover{background:#17283f!important;border-color:#2b415b!important;color:#fff!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger).active{background:#1b3558!important;border-color:#3a5e8e!important;color:#fff!important;box-shadow:inset 3px 0 0 #5b9cff!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger) .ros-nav-icon{width:20px!important;flex:0 0 20px!important;display:grid!important;place-items:center!important;color:#8fa4bb!important;font-size:14px!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger).active .ros-nav-icon{color:#8fc0ff!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger) span:nth-child(2){min-width:0;display:block}
+.ros-command-menu .side-group>button:not(.ros-category-trigger) b{display:block!important;font-size:12px!important;font-weight:650!important;line-height:1.2!important;color:inherit!important;white-space:nowrap!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger) small{display:none!important}
+.ros-command-menu .side-group>button:not(.ros-category-trigger) em{margin-left:auto;padding:3px 6px;border:1px solid #3b5b7d;border-radius:5px;color:#9fc8f5;font-size:8px;font-style:normal;font-weight:800;letter-spacing:.06em}
 
-/* The command label no longer controls visibility of the categories. */
+/* Prevent legacy menu rules from turning the whole navigation into a single card. */
+.ros-sidebar .ros-command-menu{box-shadow:none!important}
+
 @media (max-width:760px){
-  .ros-command-menu .side-group>button b{white-space:normal}
+  .ros-command-menu .side-group>button:not(.ros-category-trigger) b{white-space:normal!important}
 }
