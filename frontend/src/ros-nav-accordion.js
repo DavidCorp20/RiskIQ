@@ -30,6 +30,14 @@ const initCategory = (group) => {
 
 const sync = () => {
   document.querySelectorAll('.ros-command-menu .side-group').forEach(initCategory)
+
+  // The React shell historically initialized commandOpen=true. Normalize it to
+  // the intended UX: Control de mando starts collapsed and opens on click.
+  const trigger = document.querySelector('.ros-command-trigger')
+  if (trigger && trigger.dataset.initialized !== '1' && trigger.getAttribute('aria-expanded') === 'true') {
+    trigger.dataset.initialized = '1'
+    trigger.click()
+  }
 }
 
 document.addEventListener('click', sync, {capture: true})
