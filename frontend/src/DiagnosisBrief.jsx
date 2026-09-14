@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react'
 import {buildDiagnosis,runDataset} from './api'
 import './diagnosis-brief.css'
+import './diagnosis-actions.css'
 
 const pct=v=>`${(Number(v||0)*100).toFixed(1)}%`
 
