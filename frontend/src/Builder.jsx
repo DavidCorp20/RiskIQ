@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react'
-import AnalysisLibrary from './AnalysisLibrary'
 import DataFoundation from './DataFoundation'
+import DiagnosisBrief from './DiagnosisBrief'
+import AnalysisLibrary from './AnalysisLibrary'
 import PolicyPortfolioLab from './PolicyPortfolioLab'
 import PolicyBacktest from './PolicyBacktest'
 import GovernancePanel from './GovernancePanel'
@@ -13,6 +14,7 @@ export default function Builder({datasetId=''}){
   },[datasetId])
   return <div className="riskiq-decision-workspace">
     <DataFoundation datasetId={activeDataset}/>
+    <DiagnosisBrief datasetId={activeDataset}/>
     <AnalysisLibrary datasetId={activeDataset}/>
     <PolicyPortfolioLab />
     <PolicyBacktest />
