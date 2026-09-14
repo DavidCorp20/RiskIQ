@@ -45,6 +45,25 @@ def database_health() -> dict:
     }
 
 
+@router.get("/{dataset_id}/mapping")
+def get_dataset_mapping(dataset_id: str) -> dict:
+    """Return the latest confirmed source-to-canonical mapping for a dataset."""
+    mapping = persistence.get_dataset_mapping(dataset_id)
+    return {"dataset_id": dataset_id, "mapping": mapping}
+
+
+@router.post("/{dataset_id}/mapping")
+def save_dataset_mapping(dataset_id: str, mappings: list[dict]) -> dict:
+    """Persist a confirmed mapping so future refreshes reuse the dataset semantics."""
+    try:
+        parsed = [FieldMapping(**item) for item in mappings]
+        readiness = normalizer.mapping_summary(parsed)
+        record_id = persistence.save_dataset_mapping(dataset_id, [item.__dict__ for item in parsed])
+        return {"saved": True, "dataset_id": dataset_id, "mapping_id": record_id, "readiness": readiness}
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/project")
 def project_dataset(rows: list[dict]) -> dict:
     """Project normalized records into the canonical RiskIQ portfolio model."""
@@ -103,6 +122,11 @@ async def ingest_dataset(
             portfolio,
             dataset_id=resolved_dataset_id,
         )
+        persistence.save_dataset_mapping(
+            dataset_id=resolved_dataset_id,
+            mappings=[item.__dict__ for item in field_mappings],
+            source_name=filename,
+        )
         persistence.save_dataset_metadata(
             dataset_id=resolved_dataset_id,
             source_name=filename,
@@ -123,6 +147,11 @@ async def ingest_dataset(
             "projection": {
                 **portfolio["summary"],
                 "persisted": projection_persisted,
+            },
+            "mapping": {
+                "confirmed": True,
+                "mapped_fields": len(field_mappings),
+                "readiness": normalizer.mapping_summary(field_mappings),
             },
             "discovery": {
                 "coverage_score": discovery_result.get("coverage_score", 0),
