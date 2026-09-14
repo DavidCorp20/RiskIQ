@@ -9,6 +9,7 @@ from app.api.dataset_routes import router as dataset_router
 from app.api.decision_card_routes import router as decision_card_router
 from app.api.decision_center_routes import router as decision_center_router
 from app.api.decision_routes import router as decision_router
+from app.api.diagnosis_routes import router as diagnosis_router
 from app.api.governance_routes import router as governance_router
 from app.api.history_routes import router as history_router
 from app.api.intelligence_routes import router as intelligence_router
@@ -36,6 +37,7 @@ app.include_router(dataset_router,prefix="/api")
 app.include_router(dataset_intelligence_router,prefix="/api")
 app.include_router(projection_router,prefix="/api")
 app.include_router(quality_router,prefix="/api")
+app.include_router(diagnosis_router,prefix="/api")
 app.include_router(risk_router,prefix="/api")
 app.include_router(npl_router,prefix="/api")
 app.include_router(intelligence_router,prefix="/api")
