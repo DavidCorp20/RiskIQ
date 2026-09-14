@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from app.data.canonical import CANONICAL_FIELDS
+
 
 @dataclass(frozen=True)
 class MappingSuggestion:
@@ -16,19 +18,21 @@ class MappingSuggestion:
 
 ALIASES: dict[str, tuple[str, ...]] = {
     "customer_id": ("customer_id", "cliente", "client_id", "customer_number", "id_cliente", "cod_cliente", "identificacion", "identificación", "cedula", "cédula", "dni"),
-    "loan_id": ("loan_id", "credito", "crédito", "credit_id", "contrato", "contrato_id", "prestamo", "préstamo", "id_credito", "id_crédito"),
+    "loan_id": ("loan_id", "credito", "crédito", "credit_id", "contrato", "contrato_id", "prestamo", "préstamo", "id_credito", "id_crédito", "cuenta_credito"),
     "product_id": ("product_id", "producto_id", "id_producto", "product", "producto"),
-    "origination_date": ("origination_date", "fecha_desembolso", "fecha desembolso", "desembolso", "start_date", "fecha_otorgamiento", "fecha de otorgamiento"),
+    "origination_date": ("origination_date", "fecha_desembolso", "fecha desembolso", "desembolso", "start_date", "fecha_otorgamiento", "fecha de otorgamiento", "fecha_apertura"),
     "due_date": ("due_date", "fecha_vencimiento", "fecha vencimiento", "vencimiento", "next_due_date"),
+    "snapshot_date": ("snapshot_date", "fecha_corte", "fecha corte", "as_of_date", "corte", "fecha_snapshot"),
     "scheduled_amount": ("scheduled_amount", "cuota", "cuota_programada", "cuota programada", "installment_amount", "monto_cuota"),
     "paid_amount": ("paid_amount", "pagado", "monto_pagado", "amount_paid", "pago", "pagos"),
-    "outstanding_principal": ("outstanding_principal", "saldo", "saldo_capital", "outstanding", "outstanding_balance", "balance", "capital_pendiente"),
+    "outstanding_principal": ("outstanding_principal", "saldo", "saldo_capital", "outstanding", "outstanding_balance", "balance", "capital_pendiente", "saldo_pendiente"),
     "status": ("status", "estado", "estatus", "situacion", "situación"),
     "segment": ("segment", "segmento", "categoria", "categoría", "grupo"),
-    "dpd": ("dpd", "dias_mora", "días_mora", "dias mora", "días mora", "days_past_due", "mora"),
+    "dpd": ("dpd", "dias_mora", "días_mora", "dias mora", "días mora", "days_past_due", "mora", "dias_atraso", "días_atraso"),
+    "pd": ("pd", "probability_of_default", "probabilidad_default", "probabilidad_de_default"),
+    "lgd": ("lgd", "loss_given_default", "perdida_dado_default", "pérdida_dado_default"),
+    "ead": ("ead", "exposure_at_default", "exposicion_default", "exposición_default"),
 }
-
-REQUIRED_FIELDS = {"customer_id", "loan_id"}
 
 
 def _normalize_name(value: str) -> str:
@@ -54,14 +58,14 @@ def _infer_type(values: list[Any]) -> str:
 
 
 class DataDiscoveryService:
-    """Profiles an uploaded dataset and proposes conservative canonical mappings."""
+    """Profile a dataset and propose conservative mappings into the canonical model."""
 
     def discover(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         if not rows:
             return {"row_count": 0, "column_count": 0, "columns": [], "mapping_suggestions": [], "warnings": ["Dataset vacío"]}
 
-        columns = list(rows[0].keys())
-        profiles = []
+        columns = list(dict.fromkeys(key for row in rows for key in row))
+        profiles: list[dict[str, Any]] = []
         suggestions: list[MappingSuggestion] = []
 
         for column in columns:
@@ -90,11 +94,11 @@ class DataDiscoveryService:
                         best = (target, score, alias)
             if best:
                 target, score, alias = best
-                suggestions.append(MappingSuggestion(column, target, score, alias, target in REQUIRED_FIELDS))
+                suggestions.append(MappingSuggestion(column, target, score, alias, bool(CANONICAL_FIELDS.get(target, {}).get("required"))))
 
         mapped_targets = {item.target for item in suggestions if item.confidence >= 0.8}
         warnings: list[str] = []
-        missing_required = sorted(REQUIRED_FIELDS - mapped_targets)
+        missing_required = sorted(field for field, metadata in CANONICAL_FIELDS.items() if metadata.get("required") and field not in mapped_targets)
         if missing_required:
             warnings.append(f"No se detectaron campos requeridos: {', '.join(missing_required)}")
         low_quality = [p["name"] for p in profiles if p["completeness"] < 0.9]
@@ -102,11 +106,14 @@ class DataDiscoveryService:
             warnings.append(f"Columnas con cobertura menor al 90%: {', '.join(map(str, low_quality[:10]))}")
 
         return {
+            "version": "discovery-v2",
             "row_count": len(rows),
             "column_count": len(columns),
             "columns": profiles,
             "mapping_suggestions": [item.__dict__ for item in suggestions],
             "mapped_target_count": len(mapped_targets),
-            "coverage_score": round(len(mapped_targets) / len(ALIASES), 4),
+            "coverage_score": round(len(mapped_targets) / max(1, len(CANONICAL_FIELDS)), 4),
+            "required_fields": sorted(field for field, metadata in CANONICAL_FIELDS.items() if metadata.get("required")),
+            "missing_required": missing_required,
             "warnings": warnings,
         }
