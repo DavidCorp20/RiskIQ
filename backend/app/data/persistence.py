@@ -7,7 +7,7 @@ from app.data.mongo import MongoRepository
 
 
 class PortfolioPersistenceService:
-    """Persistence adapter for landing data and the canonical portfolio model."""
+    """Persistence adapter for landing data, mappings and canonical portfolio projections."""
 
     def __init__(self) -> None:
         self.customers = MongoRepository("customers")
@@ -17,6 +17,7 @@ class PortfolioPersistenceService:
         self.snapshots = MongoRepository("portfolio_snapshots")
         self.portfolio_records = MongoRepository("portfolio_records")
         self.datasets = MongoRepository("datasets")
+        self.dataset_mappings = MongoRepository("dataset_mappings")
 
     def save_batch(self, collection: str, rows: list[dict[str, Any]]) -> int:
         repository = getattr(self, collection, None)
@@ -46,6 +47,31 @@ class PortfolioPersistenceService:
         for document in documents:
             self.portfolio_records.insert(document)
         return len(documents)
+
+    def save_dataset_mapping(
+        self,
+        dataset_id: str,
+        mappings: list[dict[str, Any]],
+        source_name: str | None = None,
+    ) -> str:
+        """Persist the confirmed source-to-canonical mapping used by a dataset."""
+        now = datetime.now(timezone.utc).isoformat()
+        return self.dataset_mappings.insert(
+            {
+                "dataset_id": dataset_id,
+                "source_name": source_name,
+                "mappings": mappings,
+                "mapped_fields": len(mappings),
+                "updated_at": now,
+            }
+        )
+
+    def get_dataset_mapping(self, dataset_id: str) -> dict[str, Any] | None:
+        """Return the latest persisted mapping for a dataset."""
+        rows = self.dataset_mappings.find({"dataset_id": dataset_id})
+        if not rows:
+            return None
+        return max(rows, key=lambda item: str(item.get("updated_at") or ""))
 
     def save_dataset_metadata(
         self,
@@ -123,6 +149,7 @@ class PortfolioPersistenceService:
             "snapshots": self.snapshots,
             "portfolio_records": self.portfolio_records,
             "datasets": self.datasets,
+            "dataset_mappings": self.dataset_mappings,
         }
         result: dict[str, bool] = {}
         for name, repository in repositories.items():
