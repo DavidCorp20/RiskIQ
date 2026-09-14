@@ -47,3 +47,23 @@ def test_quality_passes_clean_rows() -> None:
     assert result["status"] == "passed"
     assert result["quality_score"] > 80
     assert result["issue_count"] == 0
+
+
+def test_quality_readiness_uses_canonical_mapping() -> None:
+    rows = [
+        {"cliente": "C1", "credito": "L1", "saldo_capital": 100, "dias_mora": 35, "segmento": "A"}
+    ]
+    mappings = [
+        {"source": "cliente", "target": "customer_id", "required": True},
+        {"source": "credito", "target": "loan_id", "required": True},
+        {"source": "saldo_capital", "target": "outstanding_principal", "required": True},
+        {"source": "dias_mora", "target": "dpd"},
+        {"source": "segmento", "target": "segment"},
+    ]
+
+    result = DataQualityService().assess(rows, mappings=mappings)
+
+    impacts = {item["model"]: item for item in result["analysis_impacts"]}
+    assert impacts["Portfolio Health"]["ready"] is True
+    assert impacts["Delinquency Analysis"]["ready"] is True
+    assert impacts["Concentration Analysis"]["ready"] is True
