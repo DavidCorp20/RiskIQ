@@ -8,7 +8,7 @@ const friendly={loan_id:'Crédito / cuenta',customer_id:'Cliente',outstanding_pr
 export default function DataFoundation({datasetId=''}){
  const [records,setRecords]=useState([]),[discovery,setDiscovery]=useState(null),[quality,setQuality]=useState(null),[schema,setSchema]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState('quality')
  useEffect(()=>{if(datasetId)load(datasetId)},[datasetId])
- async function load(id){setLoading(true);setError('');try{const rows=await getDatasetRecords(id);const data=Array.isArray(rows)?rows:(rows?.records||rows?.data||[]);setRecords(data);const [d,q,s]=await Promise.all([discoverDatasetData(data),assessDatasetQuality(data),getCanonicalSchema()]);setDiscovery(d);setQuality(q);setSchema(s)}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function load(id){setLoading(true);setError('');try{const rows=await getDatasetRecords(id);const data=Array.isArray(rows)?rows:(rows?.records||rows?.data||[]);setRecords(data);const d=await discoverDatasetData(data);setDiscovery(d);const [q,s]=await Promise.all([assessDatasetQuality(data,d.mapping_suggestions||[]),getCanonicalSchema()]);setQuality(q);setSchema(s)}catch(e){setError(e.message)}finally{setLoading(false)}}
  const columns=useMemo(()=>discovery?.columns||[],[discovery])
  const mappings=discovery?.mapping_suggestions||[]
  const readyModels=(quality?.analysis_impacts||[]).filter(x=>x.ready).length
