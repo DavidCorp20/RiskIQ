@@ -3,47 +3,52 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.data.canonical import CANONICAL_FIELDS
+
 
 @dataclass(frozen=True)
 class FieldMapping:
     source: str
     target: str
+    confidence: float = 1.0
     required: bool = False
 
 
-CANONICAL_FIELDS = {
-    "customer_id",
-    "loan_id",
-    "product_id",
-    "origination_date",
-    "due_date",
-    "scheduled_amount",
-    "paid_amount",
-    "outstanding_principal",
-    "status",
-    "segment",
-    "dpd",
-}
-
-
 class DataNormalizer:
-    """Normalize external column names into RiskIQ canonical fields."""
+    """Normalize external source columns into the RiskIQ canonical vocabulary."""
 
     def normalize(self, rows: list[dict[str, Any]], mappings: list[FieldMapping]) -> list[dict[str, Any]]:
         mapping = {item.source: item.target for item in mappings}
-        unknown_targets = set(mapping.values()) - CANONICAL_FIELDS
+        unknown_targets = set(mapping.values()) - set(CANONICAL_FIELDS)
         if unknown_targets:
             raise ValueError(f"Unknown canonical fields: {sorted(unknown_targets)}")
 
-        normalized = []
+        normalized: list[dict[str, Any]] = []
         for row in rows:
-            normalized.append({target: row[source] for source, target in mapping.items() if source in row})
+            output: dict[str, Any] = {}
+            for source, target in mapping.items():
+                if source in row:
+                    output[target] = row[source]
+            normalized.append(output)
         return normalized
 
-    def validate_required(self, rows: list[dict[str, Any]], required_fields: set[str]) -> list[str]:
+    def validate_required(self, rows: list[dict[str, Any]], required_fields: set[str] | None = None) -> list[str]:
+        required = required_fields or {field for field, meta in CANONICAL_FIELDS.items() if meta.get("required")}
         errors: list[str] = []
         for index, row in enumerate(rows):
-            missing = sorted(field for field in required_fields if row.get(field) in (None, ""))
+            missing = sorted(field for field in required if row.get(field) in (None, ""))
             if missing:
                 errors.append(f"row {index}: missing {', '.join(missing)}")
         return errors
+
+    def mapping_summary(self, mappings: list[FieldMapping]) -> dict[str, Any]:
+        targets = {item.target for item in mappings}
+        required = {field for field, meta in CANONICAL_FIELDS.items() if meta.get("required")}
+        missing_required = sorted(required - targets)
+        return {
+            "mapped_fields": len(mappings),
+            "canonical_fields": len(CANONICAL_FIELDS),
+            "coverage": round(len(targets) / max(1, len(CANONICAL_FIELDS)), 4),
+            "missing_required": missing_required,
+            "ready_for_normalization": not missing_required,
+        }
