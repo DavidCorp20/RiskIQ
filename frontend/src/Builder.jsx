@@ -61,7 +61,7 @@ export default function Builder({datasetId=''}){
     <div className="builder-stage-body">
       {stage==='data'&&<DataFoundation datasetId={activeDataset} onContinue={()=>setStage('diagnosis')}/>} 
       {stage==='diagnosis'&&<DiagnosisBrief datasetId={activeDataset} onContinue={()=>setStage('indicators')}/>} 
-      {stage==='indicators'&&<IndicatorStudio datasetId={activeDataset}/>} 
+      {stage==='indicators'&&<IndicatorStudio datasetId={activeDataset} onContinue={()=>setStage('analysis')}/>} 
       {stage==='analysis'&&<AnalysisLibrary datasetId={activeDataset}/>} 
       {stage==='decisions'&&<DecisionStudio datasetId={activeDataset}/>} 
       {stage==='policies'&&<PolicyPortfolioLab/>} 
