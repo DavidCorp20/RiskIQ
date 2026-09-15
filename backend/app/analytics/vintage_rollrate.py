@@ -42,7 +42,7 @@ class VintageRollRateService:
         roll_rate_available = bool(roll_rates)
 
         if len(history_dates) < 2:
-            warnings.append("Roll rate requiere al menos dos snapshots comparables de la misma cartera.")
+            warnings.append("Roll rate requiere snapshots históricos comparables de la misma cartera.")
         elif not roll_rates:
             warnings.append("Hay fechas históricas, pero no existe DPD comparable por préstamo para calcular migraciones.")
 
@@ -86,9 +86,6 @@ class VintageRollRateService:
     def _roll_rates(self, rows: list[dict[str, Any]], history_dates: list[date]) -> list[dict[str, Any]]:
         if len(history_dates) < 2:
             return []
-        # A roll rate is only valid when the same loan has DPD observations on
-        # consecutive snapshots. Source rows may represent a flattened history;
-        # loan_id is therefore required to establish identity.
         observations: dict[str, dict[date, dict[str, Any]]] = defaultdict(dict)
         for row in rows:
             loan_id = str(row.get("loan_id") or row.get("id") or "").strip()
