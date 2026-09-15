@@ -1,57 +1,65 @@
 /* RiskIQ workspace navigation controller.
-   React owns destination state; this controller owns category expansion only. */
+   The sidebar is rendered by React, so navigation uses delegated events rather than
+   attaching handlers to nodes that React may replace during a render. */
 (() => {
-  const wired = new WeakSet()
+  const getGroups = () => [...document.querySelectorAll('.ros-command-menu .side-group')]
 
-  const wire = () => {
-    const sidebar = document.querySelector('.ros-sidebar')
-    if (!sidebar) return
+  const setOpen = (group, open) => {
+    const groups = getGroups()
+    if (!group) return
 
-    const groups = [...sidebar.querySelectorAll('.ros-command-menu .side-group')]
-    groups.forEach((group, index) => {
-      if (wired.has(group)) return
-      const trigger = group.querySelector(':scope > .ros-category-trigger')
-      if (!trigger) return
-      wired.add(group)
-
-      const closeSiblings = () => {
-        groups.forEach(other => {
-          if (other === group) return
-          const otherTrigger = other.querySelector(':scope > .ros-category-trigger')
+    if (open) {
+      groups.forEach(other => {
+        if (other !== group) {
           other.classList.remove('is-open')
-          otherTrigger?.setAttribute('aria-expanded', 'false')
-        })
-      }
-
-      const setOpen = open => {
-        if (open) closeSiblings()
-        group.classList.toggle('is-open', open)
-        trigger.setAttribute('aria-expanded', String(open))
-      }
-
-      // Keep the first category open on first render. The active destination
-      // is promoted automatically when the user clicks an item below.
-      setOpen(group.classList.contains('is-open') || index === 0)
-
-      trigger.addEventListener('click', event => {
-        event.preventDefault()
-        event.stopPropagation()
-        setOpen(!group.classList.contains('is-open'))
-      })
-
-      trigger.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          setOpen(!group.classList.contains('is-open'))
+          other.querySelector('.ros-category-trigger')?.setAttribute('aria-expanded', 'false')
         }
       })
+    }
 
-      group.querySelectorAll(':scope > button:not(.ros-category-trigger)').forEach(item => {
-        item.addEventListener('click', () => setOpen(true))
-      })
-    })
+    group.classList.toggle('is-open', open)
+    group.querySelector('.ros-category-trigger')?.setAttribute('aria-expanded', String(open))
   }
 
-  wire()
-  new MutationObserver(wire).observe(document.documentElement, {childList:true, subtree:true})
+  const ensureState = () => {
+    const groups = getGroups()
+    if (!groups.length) return
+
+    // Preserve the currently open group. On the first render open Control.
+    if (!groups.some(group => group.classList.contains('is-open'))) {
+      setOpen(groups[0], true)
+    }
+  }
+
+  document.addEventListener('click', event => {
+    const trigger = event.target.closest?.('.ros-command-menu .ros-category-trigger')
+    if (!trigger) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const group = trigger.closest('.side-group')
+    if (!group) return
+
+    setOpen(group, !group.classList.contains('is-open'))
+  }, true)
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    const trigger = event.target.closest?.('.ros-command-menu .ros-category-trigger')
+    if (!trigger) return
+
+    event.preventDefault()
+    const group = trigger.closest('.side-group')
+    if (group) setOpen(group, !group.classList.contains('is-open'))
+  })
+
+  // React can replace the sidebar after loading a dataset/page. Re-assert only
+  // the open/closed state; do not attach duplicate listeners.
+  new MutationObserver(ensureState).observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  })
+
+  ensureState()
 })()
