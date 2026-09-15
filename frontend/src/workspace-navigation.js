@@ -1,13 +1,18 @@
-/* Final workspace navigation controller. React owns destination state; this owns only category expansion. */
+/* RiskIQ workspace navigation controller.
+   React owns destination state; this controller owns category expansion only. */
 (() => {
-  const ready = new WeakSet()
+  const wired = new WeakSet()
+
   const wire = () => {
-    const groups = [...document.querySelectorAll('.ros-sidebar .ros-command-menu .side-group')]
+    const sidebar = document.querySelector('.ros-sidebar')
+    if (!sidebar) return
+
+    const groups = [...sidebar.querySelectorAll('.ros-command-menu .side-group')]
     groups.forEach((group, index) => {
-      if (ready.has(group)) return
+      if (wired.has(group)) return
       const trigger = group.querySelector(':scope > .ros-category-trigger')
       if (!trigger) return
-      ready.add(group)
+      wired.add(group)
 
       const closeSiblings = () => {
         groups.forEach(other => {
@@ -24,8 +29,9 @@
         trigger.setAttribute('aria-expanded', String(open))
       }
 
-      const initiallyOpen = group.classList.contains('is-open') || index === 0
-      setOpen(initiallyOpen)
+      // Keep the first category open on first render. The active destination
+      // is promoted automatically when the user clicks an item below.
+      setOpen(group.classList.contains('is-open') || index === 0)
 
       trigger.addEventListener('click', event => {
         event.preventDefault()
@@ -38,6 +44,10 @@
           event.preventDefault()
           setOpen(!group.classList.contains('is-open'))
         }
+      })
+
+      group.querySelectorAll(':scope > button:not(.ros-category-trigger)').forEach(item => {
+        item.addEventListener('click', () => setOpen(true))
       })
     })
   }
