@@ -5,7 +5,7 @@ import './data-foundation.css'
 const label={critical:'BLOQUEA',high:'ALTO',medium:'MEDIO',warning:'ADVERTENCIA'}
 const friendly={loan_id:'Crédito / cuenta',customer_id:'Cliente',outstanding_principal:'Saldo de capital',dpd:'Días de mora',origination_date:'Fecha de originación',snapshot_date:'Fecha de corte',segment:'Segmento'}
 
-export default function DataFoundation({datasetId=''}){
+export default function DataFoundation({datasetId='',onContinue}){
  const [records,setRecords]=useState([]),[discovery,setDiscovery]=useState(null),[quality,setQuality]=useState(null),[schema,setSchema]=useState(null),[loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState('quality')
  useEffect(()=>{if(datasetId)load(datasetId)},[datasetId])
  async function load(id){setLoading(true);setSaved(false);setError('');try{const rows=await getDatasetRecords(id);const data=Array.isArray(rows)?rows:(rows?.records||rows?.data||[]);setRecords(data);const existing=await getDatasetMapping(id);const d=await discoverDatasetData(data);if(existing?.mapping?.mappings?.length)d.mapping_suggestions=existing.mapping.mappings;setDiscovery(d);const [q,s]=await Promise.all([assessDatasetQuality(data,d.mapping_suggestions||[]),getCanonicalSchema()]);setQuality(q);setSchema(s)}catch(e){setError(e.message)}finally{setLoading(false)}}
@@ -14,6 +14,7 @@ export default function DataFoundation({datasetId=''}){
  const mappings=discovery?.mapping_suggestions||[]
  const readyModels=(quality?.analysis_impacts||[]).filter(x=>x.ready).length
  const modelTotal=(quality?.analysis_impacts||[]).length
+ const canContinue=Boolean(quality&&(quality.status==='passed'||quality.status==='warning'))
  if(!datasetId)return <div className="df-empty"><strong>Selecciona una cartera para preparar sus datos.</strong><span>RiskIQ validará la estructura antes de ejecutar análisis.</span></div>
  return <section className="df-panel">
   <div className="df-head"><div><span>DATA FOUNDATION</span><h2>Preparación y confianza de datos</h2><p>RiskIQ separa el dato original del modelo financiero canónico antes de calcular riesgo.</p></div><div className={`df-status ${loading?'loading':quality?.status||'blocked'}`}>{loading?'VALIDANDO':quality?.status==='passed'?'LISTO':quality?.status==='warning'?'REVISAR':'BLOQUEADO'}</div></div>
@@ -21,6 +22,7 @@ export default function DataFoundation({datasetId=''}){
   <div className="df-summary"><div><span>FILAS</span><strong>{records.length.toLocaleString()}</strong></div><div><span>CAMPOS DETECTADOS</span><strong>{discovery?.column_count||0}</strong></div><div><span>CALIDAD</span><strong>{quality?.quality_score??0}<small>/100</small></strong></div><div><span>ANÁLISIS LISTOS</span><strong>{readyModels}<small>/{modelTotal||0}</small></strong></div></div>
   <div className="df-tabs"><button className={tab==='quality'?'active':''} onClick={()=>setTab('quality')}>Calidad</button><button className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>Mapeo universal</button><button className={tab==='rows'?'active':''} onClick={()=>setTab('rows')}>Datos y errores</button><button className={tab==='models'?'active':''} onClick={()=>setTab('models')}>Readiness</button></div>
   {tab==='quality'&&<QualityView quality={quality}/>} {tab==='mapping'&&<MappingView mappings={mappings} schema={schema} saving={saving} saved={saved} onConfirm={confirmMapping}/>} {tab==='rows'&&<RowsView records={records} issues={quality?.row_issues||[]} columns={columns}/>} {tab==='models'&&<ReadinessView impacts={quality?.analysis_impacts||[]}/>} 
+  {canContinue&&<div className="df-next-step"><div><span>NEXT STEP</span><strong>La evidencia está lista para diagnóstico</strong><p>RiskIQ conservará este corte como base y pasará al motor de diagnóstico sin modificar los datos fuente.</p></div><button type="button" onClick={onContinue}>Continuar a diagnóstico →</button></div>}
  </section>
 }
 
