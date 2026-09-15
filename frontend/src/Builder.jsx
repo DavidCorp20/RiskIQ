@@ -14,10 +14,12 @@ const stages=[
   {id:'indicators',label:'Indicator Studio',short:'Indicadores',description:'Construye y evalúa indicadores de riesgo.'},
   {id:'analysis',label:'Analysis Library',short:'Modelos',description:'Consulta modelos y análisis reutilizables.'},
   {id:'decisions',label:'Decision Studio',short:'Decisiones',description:'Diseña decisiones sobre hechos calculados.'},
-  {id:'policies',label:'Policy Lab',short:'Políticas',description:'Prueba políticas antes de activarlas.'},
-  {id:'backtest',label:'Policy Backtest',short:'Backtest',description:'Reproduce decisiones sobre evidencia histórica.'},
-  {id:'governance',label:'Governance',short:'Gobierno',description:'Mantén trazabilidad, control y revisión humana.'}
+  {id:'policies',label:'Policy Lab',short:'Políticas',description:'Prueba la política sobre casos y cartera antes de activarla.'},
+  {id:'backtest',label:'Policy Backtest',short:'Backtest',description:'Reproduce decisiones sobre evidencia histórica y mide cobertura.'},
+  {id:'governance',label:'Governance',short:'Gobierno',description:'Mantén trazabilidad, control, versionado y revisión humana.'}
 ]
+
+const nextLabels={data:'Continuar a diagnóstico →',diagnosis:'Continuar a indicadores →',indicators:'Continuar a Analysis →',analysis:'Continuar a Decisions →',decisions:'Ir a Policy Lab →',policies:'Ir a Backtest →',backtest:'Ir a Governance →',governance:'Workflow completado'}
 
 export default function Builder({datasetId=''}){
   const [activeDataset,setActiveDataset]=useState(datasetId)
@@ -73,7 +75,7 @@ export default function Builder({datasetId=''}){
       <span>Human review required before policy activation.</span>
       <div>
         <button type="button" className="builder-nav-button secondary" onClick={()=>go(-1)} disabled={index===0}>Anterior</button>
-        <button type="button" className="builder-nav-button" onClick={()=>go(1)} disabled={index===stages.length-1}>{index===stages.length-1?'Completado':'Siguiente'}</button>
+        <button type="button" className="builder-nav-button" onClick={()=>go(1)} disabled={index===stages.length-1}>{nextLabels[current.id]}</button>
       </div>
     </div>
   </div>
