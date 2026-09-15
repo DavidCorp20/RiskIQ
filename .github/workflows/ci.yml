@@ -12,16 +12,6 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     env:
       MONGO_URL: mongodb://localhost:27017
       MONGO_DB: riskiq_ci
@@ -30,6 +20,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Start MongoDB
+        working-directory: .
+        run: |
+          docker run -d --name riskiq-mongo -p 27017:27017 mongo:7
+          for i in $(seq 1 30); do
+            if docker exec riskiq-mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' | grep -q 1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs riskiq-mongo
+          exit 1
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run tests
