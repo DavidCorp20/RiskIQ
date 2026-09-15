@@ -7,6 +7,7 @@ import AnalysisLibrary from './AnalysisLibrary'
 import PolicyPortfolioLab from './PolicyPortfolioLab'
 import PolicyBacktest from './PolicyBacktest'
 import GovernancePanel from './GovernancePanel'
+import ExecutiveRiskReport from './ExecutiveRiskReport'
 
 const stages=[
   {id:'data',label:'Data Foundation',short:'Datos',description:'Descubre, mapea y valida la evidencia de cartera.'},
@@ -16,10 +17,11 @@ const stages=[
   {id:'decisions',label:'Decision Studio',short:'Decisiones',description:'Diseña decisiones sobre hechos calculados.'},
   {id:'policies',label:'Policy Lab',short:'Políticas',description:'Prueba la política sobre casos y cartera antes de activarla.'},
   {id:'backtest',label:'Policy Backtest',short:'Backtest',description:'Reproduce decisiones sobre evidencia histórica y mide cobertura.'},
-  {id:'governance',label:'Governance',short:'Gobierno',description:'Mantén trazabilidad, control, versionado y revisión humana.'}
+  {id:'governance',label:'Governance',short:'Gobierno',description:'Mantén trazabilidad, control, versionado y revisión humana.'},
+  {id:'report',label:'Executive Risk Report',short:'Executive',description:'Convierte la evidencia registrada en una vista ejecutiva de riesgo.'}
 ]
 
-const nextLabels={data:'Continuar a diagnóstico →',diagnosis:'Continuar a indicadores →',indicators:'Continuar a Analysis →',analysis:'Continuar a Decisions →',decisions:'Ir a Policy Lab →',policies:'Ir a Backtest →',backtest:'Ir a Governance →',governance:'Workflow completado'}
+const nextLabels={data:'Continuar a diagnóstico →',diagnosis:'Continuar a indicadores →',indicators:'Continuar a Analysis →',analysis:'Continuar a Decisions →',decisions:'Ir a Policy Lab →',policies:'Ir a Backtest →',backtest:'Ir a Governance →',governance:'Generar Executive Report →',report:'Workflow completado'}
 
 export default function Builder({datasetId=''}){
   const [activeDataset,setActiveDataset]=useState(datasetId)
@@ -69,6 +71,7 @@ export default function Builder({datasetId=''}){
       {stage==='policies'&&<PolicyPortfolioLab onContinue={()=>setStage('backtest')}/>} 
       {stage==='backtest'&&<PolicyBacktest onContinue={()=>setStage('governance')}/>} 
       {stage==='governance'&&<GovernancePanel/>}
+      {stage==='report'&&<ExecutiveRiskReport datasetId={activeDataset}/>} 
     </div>
 
     <div className="builder-stage-footer">
