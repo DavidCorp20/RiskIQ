@@ -67,7 +67,7 @@ export default function Builder({datasetId=''}){
       {stage==='analysis'&&<AnalysisLibrary datasetId={activeDataset} onContinue={()=>setStage('decisions')}/>} 
       {stage==='decisions'&&<DecisionStudio datasetId={activeDataset}/>} 
       {stage==='policies'&&<PolicyPortfolioLab/>} 
-      {stage==='backtest'&&<PolicyBacktest/>} 
+      {stage==='backtest'&&<PolicyBacktest onContinue={()=>setStage('governance')}/>} 
       {stage==='governance'&&<GovernancePanel/>}
     </div>
 
