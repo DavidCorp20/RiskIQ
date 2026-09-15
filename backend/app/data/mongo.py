@@ -55,5 +55,11 @@ class MongoRepository:
         rows = list(self._collection.find(filters or {}, {"_id": 0}).limit(limit))
         return rows
 
+    def update(self, filters: dict[str, Any], update: dict[str, Any]) -> bool:
+        """Apply a Mongo update and report whether a document matched."""
+        safe_update = _bson_safe(dict(update))
+        result = self._collection.update_one(filters, safe_update)
+        return result.matched_count > 0
+
     def close(self) -> None:
         self._client.close()
