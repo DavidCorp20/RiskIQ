@@ -33,8 +33,14 @@ export default function Builder({datasetId=''}){
     const next=Math.min(stages.length-1,Math.max(0,index+direction))
     setStage(stages[next].id)
   }
+  const datasetLabel=activeDataset||'Sin cartera seleccionada'
 
   return <div className="riskiq-decision-workspace builder-shell">
+    <div className="builder-context">
+      <div><span>PORTFOLIO CONTEXT</span><strong>{datasetLabel}</strong></div>
+      <div className="builder-context-status"><i/>{activeDataset?'Evidencia vinculada':'Selecciona una cartera para comenzar'}</div>
+    </div>
+
     <div className="builder-stage-head">
       <div>
         <span className="builder-eyebrow">RISK DECISION WORKFLOW</span>
