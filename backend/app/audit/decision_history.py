@@ -128,6 +128,9 @@ class DecisionHistoryService:
 
     def record(self, decision: dict[str, Any], actor: str = "system") -> dict[str, Any]:
         entry = DecisionHistoryEntry.create(decision, actor)
+        existing = self.repository.find({"decision_id": entry.decision_id}, limit=1)
+        if existing:
+            return existing[0]
         document = entry.to_dict()
         self.repository.insert(document)
         return document
