@@ -16,8 +16,8 @@ def record_decision(payload: dict) -> dict:
 
 
 @router.get("/decisions")
-def list_decisions(status: str | None = None) -> dict:
-    entries = service.list(status)
+def list_decisions(status: str | None = None, dataset_id: str | None = None) -> dict:
+    entries = service.list(status=status, dataset_id=dataset_id)
     return {"count": len(entries), "entries": entries}
 
 
