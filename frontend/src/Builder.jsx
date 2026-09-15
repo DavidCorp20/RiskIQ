@@ -62,7 +62,7 @@ export default function Builder({datasetId=''}){
       {stage==='data'&&<DataFoundation datasetId={activeDataset} onContinue={()=>setStage('diagnosis')}/>} 
       {stage==='diagnosis'&&<DiagnosisBrief datasetId={activeDataset} onContinue={()=>setStage('indicators')}/>} 
       {stage==='indicators'&&<IndicatorStudio datasetId={activeDataset} onContinue={()=>setStage('analysis')}/>} 
-      {stage==='analysis'&&<AnalysisLibrary datasetId={activeDataset}/>} 
+      {stage==='analysis'&&<AnalysisLibrary datasetId={activeDataset} onContinue={()=>setStage('decisions')}/>} 
       {stage==='decisions'&&<DecisionStudio datasetId={activeDataset}/>} 
       {stage==='policies'&&<PolicyPortfolioLab/>} 
       {stage==='backtest'&&<PolicyBacktest/>} 
