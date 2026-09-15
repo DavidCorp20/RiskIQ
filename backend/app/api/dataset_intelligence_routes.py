@@ -12,6 +12,7 @@ from app.analytics.risk_intelligence import RiskIntelligenceService
 from app.analytics.snapshot_engine import SnapshotEngine
 from app.analytics.vintage_rollrate import VintageRollRateService
 from app.analytics.decision_engine import DecisionEngineService
+from app.audit.decision_history import DecisionHistoryService
 from app.data.persistence import PortfolioPersistenceService
 from app.decision.workspace import DecisionWorkspaceService
 
@@ -25,6 +26,7 @@ snapshot_engine = SnapshotEngine()
 vintage = VintageRollRateService()
 npl = NPLAnalyticsService()
 workspace = DecisionWorkspaceService()
+decision_history = DecisionHistoryService()
 
 
 def _require_dataset(dataset_id: str) -> dict[str, Any]:
@@ -59,6 +61,35 @@ def _advanced_analytics(risk: dict[str, Any], vintage_analysis: dict[str, Any], 
         "stress": stress,
         "methodology": {"deterministic": True, "stress_is_hypothetical": True, "migration_requires_history": True, "cohorts_use_origination_date_when_available": True, "causality_inferred": False},
     }
+
+
+def _persist_decisions(dataset_id: str, snapshot_id: Any, decisions: dict[str, Any]) -> list[dict[str, Any]]:
+    """Persist deterministic decisions once per dataset snapshot without executing customer actions."""
+    entries = []
+    for decision in decisions.get("decisions", []):
+        decision_id = str(decision.get("id") or "")
+        if not decision_id:
+            continue
+        entry = {
+            **decision,
+            "id": f"{dataset_id}:{snapshot_id}:{decision_id}",
+            "code": decision_id,
+            "dataset_id": dataset_id,
+            "snapshot_id": str(snapshot_id) if snapshot_id is not None else None,
+            "policy_id": "risk-intelligence-v1",
+            "policy_version": "dataset-intelligence-v6",
+            "status": "proposed",
+            "mode": "suggested",
+            "recommendation": decision.get("recommendation") or decision.get("recommended_action") or "",
+            "evidence": {
+                "signals": decision.get("evidence", []),
+                "impact": decision.get("impact"),
+                "confidence": decision.get("confidence"),
+                "requires_human_review": decision.get("requires_human_review", True),
+            },
+        }
+        entries.append(decision_history.record(entry, actor="risk-engine"))
+    return entries
 
 
 @router.post("/{dataset_id}/run")
@@ -99,6 +130,8 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
     existing = persistence.snapshots.find({"dataset_id": dataset_id, "snapshot_date": as_of}, limit=1)
     snapshot_id = existing[0].get("id") if existing else persistence.snapshots.insert({**current, "dataset_id": dataset_id})
 
+    ledger_entries = _persist_decisions(dataset_id, snapshot_id, decisions)
+
     advanced = _advanced_analytics(risk, vintage_analysis, current, previous)
     intelligence_result = risk_intelligence.analyze(records)
     return {
@@ -113,6 +146,7 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
         "advanced_analytics": advanced,
         "risk_intelligence": intelligence_result,
         "decision_engine": decisions,
+        "decision_evidence_ledger": {"count": len(ledger_entries), "entries": ledger_entries},
         "vintage": vintage_analysis,
         "workspace": result,
         "governance": {
@@ -126,5 +160,6 @@ def run_dataset_workspace(dataset_id: str, payload: dict[str, Any] | None = None
             "causality_inferred": False,
             "npl_is_regulatory_definition": False,
             "risk_intelligence_version": "risk-intelligence-v1",
+            "decision_ledger_persisted": True,
         },
     }
