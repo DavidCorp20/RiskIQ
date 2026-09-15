@@ -1,0 +1,18 @@
+/* RiskIQ production stabilization layer. Loaded last to neutralize browser defaults and legacy visual drift. */
+html,body,#root{margin:0!important;padding:0!important;width:100%;min-width:0;min-height:100%;}
+html{background:#eef2f6;}
+body{overflow-x:hidden;background:#eef2f6;color:#0b1220;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+button,input,select,textarea{font:inherit;}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #70a9ff;outline-offset:2px;}
+.ros-shell{width:100%;min-height:100vh;}
+.ros-sidebar{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;}
+.ros-main{width:auto;min-width:0;}
+.ros-top>div:nth-child(2){min-width:0;}
+.ros-top h1,.ros-kicker{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ros-content{width:100%;}
+.ros-hero,.ros-section,.analytics-command,.ros-metric{min-width:0;}
+.ros-section{overflow:hidden;}
+.table-wrap{max-width:100%;}
+@media(max-width:1100px){.ros-top{padding-left:24px;padding-right:24px;}.ros-content{padding-left:24px;padding-right:24px;}}
+@media(max-width:760px){body{overflow-x:hidden;}.ros-sidebar{box-shadow:18px 0 45px rgba(2,8,23,.28);}.ros-top{padding-left:14px;padding-right:14px;}.ros-top h1{font-size:20px;}.ros-kicker{font-size:9px;max-width:42vw;}.ros-top-actions{gap:8px;}.run-button{min-height:42px;padding:0 12px;font-size:13px;}.ros-menu{display:grid!important;place-items:center;width:40px;height:40px;border:1px solid #dbe2ea;background:#fff;color:#172235;border-radius:9px;cursor:pointer;flex:0 0 40px;}.ros-content{padding-left:14px;padding-right:14px;}.metric-strip,.metric-strip.embedded{grid-template-columns:repeat(2,minmax(0,1fr));}.ros-metric strong{font-size:22px!important;}.hero-actions{flex-wrap:wrap;}.hero-actions button{width:100%;}.focus-row,.migration-hero,.decision-hero,.engine-intro,.formula-panel{flex-direction:column;align-items:flex-start;}.focus-number{width:100%;text-align:left;border-left:0;border-top:1px solid #e1e7ee;padding:16px 0 0;}.bucket-grid{grid-template-columns:repeat(2,1fr);}.stress-control{grid-template-columns:1fr;gap:14px;}.ros-next button{width:100%;}}
+@media(max-width:430px){.metric-strip,.metric-strip.embedded,.bucket-grid{grid-template-columns:1fr;}.ros-top-actions .run-button{padding:0 10px;font-size:12px;}.ros-content{padding-left:10px;padding-right:10px;}}
