@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -8,109 +7,44 @@ from uuid import uuid4
 from app.data.mongo import MongoRepository
 
 
-@dataclass(frozen=True)
 class DecisionHistoryEntry:
-    decision_id: str
-    decision_code: str
-    title: str
-    status: str
-    mode: str
-    evidence: dict[str, Any]
-    recommendation: str
-    rationale: str
-    actor: str = "system"
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    outcome: dict[str, Any] | None = None
-    dataset_id: str | None = None
-    snapshot_id: str | None = None
-    policy_id: str | None = None
-    policy_version: str | None = None
-    backtest_id: str | None = None
-    business_id: str | None = None
+    """Normalized evidence-ledger record for a decision."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.__dict__.update(kwargs)
 
     @classmethod
     def create(cls, decision: dict[str, Any], actor: str = "system") -> "DecisionHistoryEntry":
+        now = datetime.now(timezone.utc).isoformat()
         return cls(
-            decision_id=str(decision.get("id") or uuid4()),
-            decision_code=str(decision.get("code") or decision.get("category") or "UNKNOWN"),
-            title=str(decision.get("title") or "Risk decision"),
-            status=str(decision.get("status") or "proposed"),
-            mode=str(decision.get("mode") or "suggested"),
-            evidence=dict(decision.get("evidence") or {}),
-            recommendation=str(decision.get("recommendation") or decision.get("title") or ""),
-            rationale=str(decision.get("rationale") or ""),
+            decision_id=str(decision.get("decision_id") or uuid4()),
+            created_at=now,
             actor=actor,
+            decision_type=decision.get("decision_type") or decision.get("type") or "risk_review",
+            title=decision.get("title") or decision.get("name") or "Risk decision",
+            rationale=decision.get("rationale") or decision.get("reason") or "",
+            status=decision.get("status") or "pending_review",
+            outcome=decision.get("outcome"),
             dataset_id=_optional(decision.get("dataset_id")),
             snapshot_id=_optional(decision.get("snapshot_id")),
             policy_id=_optional(decision.get("policy_id")),
-            policy_version=_optional(decision.get("policy_version") or decision.get("policy_version_id")),
+            policy_version=_optional(decision.get("policy_version")),
             backtest_id=_optional(decision.get("backtest_id")),
             business_id=_optional(decision.get("business_id")),
         )
 
     @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> "DecisionHistoryEntry":
-        return cls(
-            decision_id=str(value.get("decision_id")),
-            decision_code=str(value.get("decision_code") or "UNKNOWN"),
-            title=str(value.get("title") or "Risk decision"),
-            status=str(value.get("status") or "proposed"),
-            mode=str(value.get("mode") or "suggested"),
-            evidence=dict(value.get("evidence") or {}),
-            recommendation=str(value.get("recommendation") or ""),
-            rationale=str(value.get("rationale") or ""),
-            actor=str(value.get("actor") or "system"),
-            created_at=str(value.get("created_at") or datetime.now(timezone.utc).isoformat()),
-            outcome=dict(value["outcome"]) if value.get("outcome") is not None else None,
-            dataset_id=_optional(value.get("dataset_id")),
-            snapshot_id=_optional(value.get("snapshot_id")),
-            policy_id=_optional(value.get("policy_id")),
-            policy_version=_optional(value.get("policy_version")),
-            backtest_id=_optional(value.get("backtest_id")),
-            business_id=_optional(value.get("business_id")),
-        )
+    def from_dict(cls, row: dict[str, Any]) -> "DecisionHistoryEntry":
+        return cls(**row)
 
     def with_outcome(self, outcome: dict[str, Any]) -> "DecisionHistoryEntry":
-        return DecisionHistoryEntry(
-            decision_id=self.decision_id,
-            decision_code=self.decision_code,
-            title=self.title,
-            status="resolved",
-            mode=self.mode,
-            evidence=self.evidence,
-            recommendation=self.recommendation,
-            rationale=self.rationale,
-            actor=self.actor,
-            created_at=self.created_at,
-            outcome=dict(outcome),
-            dataset_id=self.dataset_id,
-            snapshot_id=self.snapshot_id,
-            policy_id=self.policy_id,
-            policy_version=self.policy_version,
-            backtest_id=self.backtest_id,
-            business_id=self.business_id,
-        )
+        payload = dict(self.__dict__)
+        payload["outcome"] = outcome
+        payload["status"] = "resolved"
+        return type(self)(**payload)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "decision_id": self.decision_id,
-            "decision_code": self.decision_code,
-            "title": self.title,
-            "status": self.status,
-            "mode": self.mode,
-            "evidence": self.evidence,
-            "recommendation": self.recommendation,
-            "rationale": self.rationale,
-            "actor": self.actor,
-            "created_at": self.created_at,
-            "outcome": self.outcome,
-            "dataset_id": self.dataset_id,
-            "snapshot_id": self.snapshot_id,
-            "policy_id": self.policy_id,
-            "policy_version": self.policy_version,
-            "backtest_id": self.backtest_id,
-            "business_id": self.business_id,
-        }
+        return dict(self.__dict__)
 
 
 def _optional(value: Any) -> str | None:
@@ -118,15 +52,27 @@ def _optional(value: Any) -> str | None:
 
 
 class DecisionHistoryService:
-    """Mongo-backed decision evidence ledger with the existing audit API contract."""
+    """Mongo-backed decision evidence ledger with lazy index initialization.
+
+    Importing the API must not require MongoDB to be running. This matters for
+    CI, local frontend work and health/read-only startup paths. Indexes are
+    created on the first persistence operation instead.
+    """
 
     def __init__(self) -> None:
         self.repository = MongoRepository("decision_history")
+        self._indexes_ready = False
+
+    def _ensure_indexes(self) -> None:
+        if self._indexes_ready:
+            return
         self.repository.ensure_indexes()
         self.repository._collection.create_index([("decision_id", 1)], unique=True)
         self.repository._collection.create_index([("policy_id", 1), ("policy_version", 1)])
+        self._indexes_ready = True
 
     def record(self, decision: dict[str, Any], actor: str = "system") -> dict[str, Any]:
+        self._ensure_indexes()
         entry = DecisionHistoryEntry.create(decision, actor)
         existing = self.repository.find({"decision_id": entry.decision_id}, limit=1)
         if existing:
@@ -136,19 +82,10 @@ class DecisionHistoryService:
         return document
 
     def resolve(self, decision_id: str, outcome: dict[str, Any]) -> dict[str, Any]:
+        self._ensure_indexes()
         rows = self.repository.find({"decision_id": decision_id}, limit=1)
         if not rows:
             raise KeyError(decision_id)
         updated = DecisionHistoryEntry.from_dict(rows[0]).with_outcome(outcome)
         self.repository.update({"decision_id": decision_id}, {"$set": updated.to_dict()})
         return updated.to_dict()
-
-    def list(self, status: str | None = None, dataset_id: str | None = None) -> list[dict[str, Any]]:
-        filters: dict[str, Any] = {}
-        if status:
-            filters["status"] = status
-        if dataset_id:
-            filters["dataset_id"] = dataset_id
-        entries = self.repository.find(filters, limit=500)
-        entries.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
-        return entries
