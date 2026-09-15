@@ -1,82 +1,108 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+import io
+import json
 
 from fastapi.testclient import TestClient
 
-from app.api.dataset_intelligence_routes import router as dataset_router
-from app.api.dataset_registry_routes import router as dataset_registry_router
 from app.main import app
+import app.api.data_routes as data_routes
+import app.api.dataset_intelligence_routes as dataset_routes
+import app.api.dataset_routes as dataset_registry_routes
 
-# Keep the integration fixture intentionally in-memory for deterministic API
-# contract tests. Decision evidence is exercised against the CI Mongo service.
 
 class FakeCollection:
-    def __init__(self):
-        self.rows = []
+    def __init__(self, rows=None):
+        self.rows = list(rows or [])
 
-    def create_index(self, *args, **kwargs):
-        return "idx"
+    def find(self, query=None, limit=None):
+        query = query or {}
+        result = [row for row in self.rows if all(row.get(key) == value for key, value in query.items())]
+        return result[:limit] if limit else result
 
-    def insert_one(self, document):
-        self.rows.append(dict(document))
-        class Result:
-            inserted_id = "fake-id"
-        return Result()
+    def insert(self, document):
+        row = dict(document)
+        row.setdefault("id", f"snapshot-{len(self.rows) + 1}")
+        self.rows.append(row)
+        return row["id"]
 
-    def find(self, filters=None, projection=None):
-        filters = filters or {}
-        rows = [r for r in self.rows if all(r.get(k) == v for k, v in filters.items())]
-        class Cursor(list):
-            def limit(self, n):
-                return Cursor(self[:n])
-        return Cursor(rows)
-
-    def update_one(self, filters, update):
-        for row in self.rows:
-            if all(row.get(k) == v for k, v in filters.items()):
-                row.update(update.get("$set", update))
-                class Result:
-                    matched_count = 1
-                return Result()
-        class Result:
-            matched_count = 0
-        return Result()
 
 class FakePersistence:
-    def __init__(self):
-        self.snapshots = FakeCollection()
-        self.datasets = FakeCollection()
-        self.records = FakeCollection()
-        self.snapshots.rows.extend([
-            {"id": "s1", "dataset_id": "api-e2e", "snapshot_date": "2026-09-07", "active_loans": 2, "outstanding_balance": 3000, "par7": 0, "par30": 0.02, "par60": 0, "par90": 0},
-            {"id": "s2", "dataset_id": "api-e2e", "snapshot_date": "2026-09-08", "active_loans": 3, "outstanding_balance": 4600, "par7": 0, "par30": 0.05, "par60": 0.05, "par90": 0},
+    def __init__(self, dataset_id="api-e2e"):
+        self.datasets = FakeCollection([{"dataset_id": dataset_id, "source_name": "demo.csv"}])
+        self.portfolio_records = FakeCollection([
+            {"dataset_id": dataset_id, "customer_id": "C001", "loan_id": "L001", "outstanding_principal": 1000, "scheduled_amount": 500, "paid_amount": 0, "due_date": "2026-08-01", "segment": "retail", "dpd": 45, "origination_date": "2026-05-01", "status": "active"},
+            {"dataset_id": dataset_id, "customer_id": "C002", "loan_id": "L002", "outstanding_principal": 2000, "scheduled_amount": 1000, "paid_amount": 900, "due_date": "2026-09-01", "segment": "retail", "dpd": 8, "origination_date": "2026-07-01", "status": "active"},
+            {"dataset_id": dataset_id, "customer_id": "C003", "loan_id": "L003", "outstanding_principal": 1500, "scheduled_amount": 750, "paid_amount": 0, "due_date": "2026-05-01", "segment": "micro", "dpd": 100, "origination_date": "2026-02-01", "status": "active"},
         ])
-        self.datasets.rows.append({"dataset_id": "api-e2e", "source_name": "API E2E"})
-
-    def get_dataset(self, dataset_id):
-        return next((r for r in self.datasets.rows if r.get("dataset_id") == dataset_id), None)
-
-    def list_datasets(self):
-        return list(self.datasets.rows)
-
-    def get_snapshot(self, dataset_id, snapshot_date=None):
-        matches = [r for r in self.snapshots.rows if r.get("dataset_id") == dataset_id]
-        if snapshot_date:
-            matches = [r for r in matches if r.get("snapshot_date") == snapshot_date]
-        return matches[-1] if matches else None
-
-    def list_snapshots(self, dataset_id, limit=100):
-        return [r for r in self.snapshots.rows if r.get("dataset_id") == dataset_id][-limit:]
-
-    def save_snapshot(self, document):
-        self.snapshots.rows.append(dict(document))
-        return document
-
-    def list_records(self, dataset_id, limit=100):
-        return [r for r in self.records.rows if r.get("dataset_id") == dataset_id][:limit]
+        self.customers = FakeCollection([{"dataset_id": dataset_id, "id": "C001"}, {"dataset_id": dataset_id, "id": "C002"}, {"dataset_id": dataset_id, "id": "C003"}])
+        self.loans = FakeCollection([
+            {"dataset_id": dataset_id, "id": "L001", "customer_id": "C001", "outstanding_principal": 1000, "status": "active", "dpd": 45},
+            {"dataset_id": dataset_id, "id": "L002", "customer_id": "C002", "outstanding_principal": 2000, "status": "active", "dpd": 8},
+            {"dataset_id": dataset_id, "id": "L003", "customer_id": "C003", "outstanding_principal": 1500, "status": "active", "dpd": 100},
+        ])
+        self.installments = FakeCollection([])
+        self.payments = FakeCollection([])
+        self.snapshots = FakeCollection([])
 
 
-def test_dataset_history_endpoint_returns_snapshots(monkeypatch) -> None:
+def test_health_endpoint() -> None:
+    response = TestClient(app).get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "riskiq-api"}
+
+
+def test_discover_endpoint_accepts_csv() -> None:
+    csv = "customer_code,loan_number,balance,days_late\nC001,L001,1000,45\n"
+    response = TestClient(app).post("/api/v1/data/discover", files={"file": ("portfolio.csv", io.BytesIO(csv.encode()), "text/csv")})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["row_count"] == 1
+    assert body["column_count"] == 4
+    assert body["coverage_score"] > 0
+
+
+def test_ingest_endpoint_blocks_quality_failure(monkeypatch) -> None:
+    class QualityBlocked:
+        def assess(self, rows):
+            return {"status": "blocked", "quality_score": 0, "checks": []}
+
+    monkeypatch.setattr(data_routes, "quality", QualityBlocked())
+    csv = "customer_id,loan_id,outstanding_principal\n,,1000\n"
+    mappings = json.dumps([
+        {"source": "customer_id", "target": "customer_id", "required": True},
+        {"source": "loan_id", "target": "loan_id", "required": True},
+        {"source": "outstanding_principal", "target": "outstanding_principal", "required": False},
+    ])
+    response = TestClient(app).post("/api/v1/data/ingest", files={"file": ("bad.csv", io.BytesIO(csv.encode()), "text/csv")}, data={"mappings": mappings})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["persistence_blocked"] is True
+    assert detail["quality"]["status"] == "blocked"
+
+
+def test_dataset_registry_lists_unique_newest_datasets(monkeypatch) -> None:
     fake = FakePersistence()
+    fake.datasets.rows.extend([
+        {"dataset_id": "api-e2e", "source_name": "new.csv", "created_at": "2026-09-10T10:00:00"},
+        {"dataset_id": "other", "source_name": "other.csv", "created_at": "2026-09-09T10:00:00"},
+        {"dataset_id": "api-e2e", "source_name": "old.csv", "created_at": "2026-09-08T10:00:00"},
+    ])
+    monkeypatch.setattr(dataset_registry_routes, "persistence", fake)
+    response = TestClient(app).get("/api/v1/datasets")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 2
+    assert [d["dataset_id"] for d in body["datasets"]] == ["api-e2e", "other"]
+    assert body["datasets"][0]["source_name"] == "new.csv"
+
+
+def test_dataset_history_endpoint_returns_chronological_snapshots(monkeypatch) -> None:
+    fake = FakePersistence()
+    fake.snapshots.rows.extend([
+        {"id": "s2", "dataset_id": "api-e2e", "snapshot_date": "2026-09-09", "par30": 0.08},
+        {"id": "s1", "dataset_id": "api-e2e", "snapshot_date": "2026-09-08", "par30": 0.05},
+    ])
     monkeypatch.setattr(dataset_registry_routes, "persistence", fake)
     response = TestClient(app).get("/api/v1/datasets/api-e2e/history")
     assert response.status_code == 200
@@ -88,7 +114,7 @@ def test_dataset_history_endpoint_returns_snapshots(monkeypatch) -> None:
 
 def test_dataset_run_endpoint_returns_unified_contract(monkeypatch) -> None:
     fake = FakePersistence()
-    monkeypatch.setattr(dataset_router, "persistence", fake)
+    monkeypatch.setattr(dataset_routes, "persistence", fake)
     response = TestClient(app).post("/api/v1/datasets/api-e2e/run", json={"snapshot_date": "2026-09-09"})
     assert response.status_code == 200
     body = response.json()
@@ -106,7 +132,7 @@ def test_dataset_run_endpoint_returns_unified_contract(monkeypatch) -> None:
 def test_dataset_run_uses_previous_snapshot_for_trend(monkeypatch) -> None:
     fake = FakePersistence()
     fake.snapshots.rows.append({"id": "snapshot-old", "dataset_id": "api-e2e", "snapshot_date": "2026-09-08", "active_loans": 3, "outstanding_balance": 4600, "par7": 0, "par30": 0.05, "par60": 0.05, "par90": 0})
-    monkeypatch.setattr(dataset_router, "persistence", fake)
+    monkeypatch.setattr(dataset_routes, "persistence", fake)
     response = TestClient(app).post("/api/v1/datasets/api-e2e/run", json={"snapshot_date": "2026-09-09"})
     assert response.status_code == 200
     body = response.json()
