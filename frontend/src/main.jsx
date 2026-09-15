@@ -4,10 +4,11 @@ import App from './RiskOperatingSystem'
 import './riskiq-visual-v4.css'
 import './workspace-navigation.js'
 import './ros-nav-final.css'
+import './ros-production-final.css'
 
-// Single production entrypoint. RiskOperatingSystem owns the base shell and
-// Builder wires the complete data-to-decision workspace. The final navigation
-// layer is imported last so legacy visual overrides cannot fight the accordion.
+// Single production entrypoint. RiskOperatingSystem owns the base shell.
+// The final stylesheet is intentionally last: it neutralizes browser defaults
+// and legacy drift without changing the application architecture.
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
