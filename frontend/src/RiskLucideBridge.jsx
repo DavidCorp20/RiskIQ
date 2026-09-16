@@ -1,4 +1,5 @@
 import {useEffect} from 'react'
+import {createRoot} from 'react-dom/client'
 import {Activity,AlertTriangle,BarChart3,BrainCircuit,ChartNoAxesCombined,ChevronDown,ChevronRight,Database,GitBranch,LayoutDashboard,Menu,Repeat2,ShieldCheck,SlidersHorizontal,Table2,TrendingUp,Workflow} from 'lucide-react'
 
 const icons={
