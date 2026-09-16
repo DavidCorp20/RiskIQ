@@ -1,65 +1,105 @@
-/* RiskIQ workspace navigation controller.
-   The sidebar is rendered by React, so navigation uses delegated events rather than
-   attaching handlers to nodes that React may replace during a render. */
+/* RiskIQ workspace accordion controller.
+   React owns the page selection; this controller only synchronizes the visual
+   open/closed state of the workspace groups so the sidebar never renders as a
+   permanently expanded list. */
 (() => {
-  const getGroups = () => [...document.querySelectorAll('.ros-command-menu .side-group')]
+  const MENU = '.ros-command-menu'
+  const GROUP = '.side-group'
+  const TRIGGER = '.ros-category-trigger'
+  let lastActiveGroup = null
+
+  const getMenu = () => document.querySelector(MENU)
+  const getGroups = () => [...document.querySelectorAll(`${MENU} ${GROUP}`)]
 
   const setOpen = (group, open) => {
-    const groups = getGroups()
     if (!group) return
-
-    if (open) {
-      groups.forEach(other => {
-        if (other !== group) {
-          other.classList.remove('is-open')
-          other.querySelector('.ros-category-trigger')?.setAttribute('aria-expanded', 'false')
-        }
-      })
-    }
-
     group.classList.toggle('is-open', open)
-    group.querySelector('.ros-category-trigger')?.setAttribute('aria-expanded', String(open))
+    const trigger = group.querySelector(TRIGGER)
+    trigger?.setAttribute('aria-expanded', String(open))
+    group.querySelectorAll(':scope > button:not(.side-group-label)').forEach(button => {
+      button.hidden = !open
+    })
   }
 
-  const ensureState = () => {
-    const groups = getGroups()
-    if (!groups.length) return
+  const activeGroupIndex = groups => {
+    const active = document.querySelector(`${MENU} button.active`)
+    if (!active) return 0
+    const group = active.closest(GROUP)
+    return Math.max(0, groups.indexOf(group))
+  }
 
-    // Preserve the currently open group. On the first render open Control.
-    if (!groups.some(group => group.classList.contains('is-open'))) {
-      setOpen(groups[0], true)
+  const sync = () => {
+    const menu = getMenu()
+    const groups = getGroups()
+    if (!menu || !groups.length) return
+
+    const activeIndex = activeGroupIndex(groups)
+    const previousActive = lastActiveGroup
+    lastActiveGroup = activeIndex
+
+    // If React changed the active page, follow it. Otherwise preserve an
+    // explicit accordion choice made by the user.
+    if (previousActive !== null && previousActive !== activeIndex) {
+      delete menu.dataset.openGroup
     }
+
+    const requested = menu.dataset.openGroup
+    const openIndex = requested === 'none'
+      ? -1
+      : requested !== undefined
+        ? Number(requested)
+        : activeIndex
+
+    groups.forEach((group, index) => setOpen(group, index === openIndex))
   }
 
   document.addEventListener('click', event => {
-    const trigger = event.target.closest?.('.ros-command-menu .ros-category-trigger')
-    if (!trigger) return
+    const trigger = event.target.closest?.(`${MENU} ${TRIGGER}`)
+    if (trigger) {
+      event.preventDefault()
+      event.stopPropagation()
+      const menu = getMenu()
+      const groups = getGroups()
+      const group = trigger.closest(GROUP)
+      const index = groups.indexOf(group)
+      if (!menu || index < 0) return
 
-    event.preventDefault()
-    event.stopPropagation()
+      menu.dataset.openGroup = group.classList.contains('is-open') ? 'none' : String(index)
+      sync()
+      return
+    }
 
-    const group = trigger.closest('.side-group')
-    if (!group) return
-
-    setOpen(group, !group.classList.contains('is-open'))
+    // Clicking a page link hands navigation back to React. The next render
+    // will open the group containing the new active page.
+    const item = event.target.closest?.(`${MENU} ${GROUP} > button:not(.side-group-label)`)
+    if (item) {
+      const menu = getMenu()
+      if (menu) delete menu.dataset.openGroup
+    }
   }, true)
 
   document.addEventListener('keydown', event => {
     if (event.key !== 'Enter' && event.key !== ' ') return
-    const trigger = event.target.closest?.('.ros-command-menu .ros-category-trigger')
+    const trigger = event.target.closest?.(`${MENU} ${TRIGGER}`)
     if (!trigger) return
 
     event.preventDefault()
-    const group = trigger.closest('.side-group')
-    if (group) setOpen(group, !group.classList.contains('is-open'))
+    const menu = getMenu()
+    const groups = getGroups()
+    const group = trigger.closest(GROUP)
+    const index = groups.indexOf(group)
+    if (!menu || index < 0) return
+
+    menu.dataset.openGroup = group.classList.contains('is-open') ? 'none' : String(index)
+    sync()
   })
 
-  // React can replace the sidebar after loading a dataset/page. Re-assert only
-  // the open/closed state; do not attach duplicate listeners.
-  new MutationObserver(ensureState).observe(document.documentElement, {
+  new MutationObserver(sync).observe(document.documentElement, {
     childList: true,
-    subtree: true
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
   })
 
-  ensureState()
+  sync()
 })()
