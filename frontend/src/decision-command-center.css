@@ -32,3 +32,49 @@
 @media(max-width:1150px){.ri-workspace{grid-template-columns:150px minmax(0,1fr)}.ri-evidence{grid-column:2}.ri-impact-grid{grid-template-columns:1fr}.ri-portfolio-toolbar{grid-template-columns:1fr 1fr}.ri-portfolio-toolbar>.ri-btn{justify-self:start}.ri-portfolio-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){.ri-command-hero,.ri-two-col{grid-template-columns:1fr}.ri-workspace{grid-template-columns:1fr}.ri-stage-nav{display:grid;grid-template-columns:repeat(3,1fr)}.ri-evidence{grid-column:auto}.ri-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ri-path{grid-template-columns:repeat(6,100px)}.ri-header{flex-direction:column}.ri-header-actions{justify-content:flex-start}.ri-policy-bar{grid-template-columns:1fr 1fr}.ri-fact-list{grid-template-columns:1fr 1fr}.ri-then{grid-template-columns:1fr 1fr}.ri-then label:last-child{grid-column:1/-1}}
 @media(max-width:600px){.ri-outcome-value{font-size:32px}.ri-outcome-top{flex-direction:column}.ri-context-grid{grid-template-columns:1fr 1fr}.ri-driver{grid-template-columns:minmax(120px,1fr) 70px 38px;gap:8px}.ri-panel,.ri-stage-card,.ri-portfolio-lab{padding:16px}.ri-stage-nav{grid-template-columns:1fr 1fr}.ri-portfolio-toolbar{grid-template-columns:1fr}.ri-portfolio-kpis{grid-template-columns:1fr}.ri-lab-empty{flex-direction:column;align-items:flex-start}.ri-fact-list,.ri-governance-grid{grid-template-columns:1fr 1fr}.ri-condition{grid-template-columns:1fr 1fr}.ri-condition input{grid-column:1/-1}.ri-score-head,.ri-score-row{grid-template-columns:1fr;gap:5px}.ri-policy-bar{grid-template-columns:1fr}.ri-distribution-row{grid-template-columns:105px 1fr 42px}}
+
+/* Decision Engine visual repair: the nine-stage control is a horizontal product surface. */
+.decision-engine.riskiq-decision{color:#0f172a}
+.decision-engine.riskiq-decision .ri-header{margin-bottom:16px;padding:22px 24px;background:#fff;border:1px solid #e2e8f0;border-top:4px solid #0f172a;border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.decision-engine.riskiq-decision .ri-header h2{font-size:24px;color:#0f172a}
+.decision-engine.riskiq-decision .ri-policy-bar{display:grid;grid-template-columns:minmax(280px,1.5fr) repeat(3,minmax(120px,.55fr));gap:0;background:#e2e8f0;border:1px solid #cbd5e1;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.decision-engine.riskiq-decision .ri-policy-bar>div{min-width:0;padding:12px 14px;background:#fff}
+.decision-engine.riskiq-decision .ri-policy-bar>div+div{border-left:1px solid #e2e8f0}
+.decision-engine.riskiq-decision .ri-policy-bar span{color:#64748b;font-size:9px}
+.decision-engine.riskiq-decision .ri-policy-bar b{display:block;color:#0f172a;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.decision-engine.riskiq-decision .ri-workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.decision-engine.riskiq-decision .ri-stage-nav{order:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;min-width:0;overflow:visible}
+.decision-engine.riskiq-decision .ri-stage-nav button{display:inline-flex;align-items:center;gap:8px;min-height:36px;width:auto;flex:0 0 auto;grid-template-columns:none;grid-template-rows:none;padding:6px 10px;background:transparent;border:1px solid transparent;border-radius:8px;text-align:left;white-space:nowrap;transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}
+.decision-engine.riskiq-decision .ri-stage-nav button:hover{background:#fff;border-color:#e2e8f0}
+.decision-engine.riskiq-decision .ri-stage-nav button b{display:inline-block;grid-row:auto;padding:0;color:#64748b;font-size:10px;line-height:1;font-variant-numeric:tabular-nums}
+.decision-engine.riskiq-decision .ri-stage-nav button span{display:inline-block;color:#475569;font-size:11px;font-weight:650;line-height:1.1}
+.decision-engine.riskiq-decision .ri-stage-nav button small{display:none}
+.decision-engine.riskiq-decision .ri-stage-nav button.active{background:#fff;border-color:#cbd5e1;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+.decision-engine.riskiq-decision .ri-stage-nav button.active b,.decision-engine.riskiq-decision .ri-stage-nav button.active span{color:#0f172a}
+.decision-engine.riskiq-decision .ri-canvas{order:1;min-width:0}
+.decision-engine.riskiq-decision .ri-evidence{order:2;background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.decision-engine.riskiq-decision .ri-stage-card{background:#fff;border:1px solid #cbd5e1;border-top:4px solid #2563eb;border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.decision-engine.riskiq-decision .ri-stage-card h3{color:#0f172a}
+.decision-engine.riskiq-decision .ri-command{padding:10px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+.decision-engine.riskiq-decision .ri-command>span{color:#64748b}
+.decision-engine.riskiq-decision .ri-evidence-card{border-top-color:#e2e8f0}
+.decision-engine.riskiq-decision .ri-evidence-card>b{color:#475569}
+.decision-engine.riskiq-decision .ri-chip{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.decision-engine.riskiq-decision .ri-btn-secondary{border-color:#cbd5e1;color:#334155;background:#fff}
+.decision-engine.riskiq-decision .ri-btn-secondary:hover{background:#f8fafc}
+
+@media(max-width:900px){
+ .decision-engine.riskiq-decision .ri-stage-nav{gap:6px}
+ .decision-engine.riskiq-decision .ri-stage-nav button{min-height:34px;padding:6px 9px}
+ .decision-engine.riskiq-decision .ri-stage-nav button span{font-size:10px}
+ .decision-engine.riskiq-decision .ri-policy-bar{grid-template-columns:1fr 1fr}
+ .decision-engine.riskiq-decision .ri-policy-bar>div:nth-child(3){border-left:0;border-top:1px solid #e2e8f0}
+ .decision-engine.riskiq-decision .ri-policy-bar>div:nth-child(4){border-top:1px solid #e2e8f0}
+}
+@media(max-width:600px){
+ .decision-engine.riskiq-decision .ri-header{padding:18px}
+ .decision-engine.riskiq-decision .ri-stage-nav{display:flex;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}
+ .decision-engine.riskiq-decision .ri-stage-nav button{flex:0 0 auto}
+ .decision-engine.riskiq-decision .ri-policy-bar{grid-template-columns:1fr}
+ .decision-engine.riskiq-decision .ri-policy-bar>div+div{border-left:0;border-top:1px solid #e2e8f0}
+}
