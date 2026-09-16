@@ -1,0 +1,56 @@
+:root{--ui-bg:#f5f7fb;--ui-panel:#fff;--ui-panel-soft:#f8fafc;--ui-text:#172033;--ui-muted:#667085;--ui-subtle:#98a2b3;--ui-line:#e4e7ec;--ui-blue:#2457d6;--ui-blue-soft:#eef4ff;--ui-danger:#c43232;--ui-warn:#b86a16;--ui-success:#087443;--ui-radius:14px;--ui-radius-sm:9px;--ui-shadow:0 1px 2px rgba(16,24,40,.03),0 8px 24px rgba(16,24,40,.035)}
+.ros-shell{background:var(--ui-bg)!important;color:var(--ui-text)!important}
+.ros-main{background:var(--ui-bg)!important}
+.ros-top{height:76px!important;padding:0 34px!important;box-shadow:0 1px 0 rgba(16,24,40,.03)!important}
+.ros-top h1{font-size:23px!important;font-weight:720!important;color:#101828!important}
+.ros-kicker{font-size:10px!important;color:#667085!important;letter-spacing:.12em!important}
+.ros-top-actions{gap:14px!important}
+.engine-status{height:36px!important;padding:0 10px!important;border:1px solid var(--ui-line)!important;border-radius:8px!important;background:#fafbfc!important;font-size:12px!important}
+.run-button{height:40px!important;min-height:40px!important;padding:0 15px!important;border-radius:8px!important;background:#172033!important;font-size:13px!important;font-weight:700!important;box-shadow:0 1px 1px rgba(16,24,40,.08)!important}
+.run-button:hover{background:#0f172a!important;transform:translateY(-1px)}
+.ros-content{max-width:1480px!important;padding:28px 34px 52px!important}
+.ros-hero{grid-template-columns:minmax(0,1fr) 210px!important;gap:30px!important;border-radius:var(--ui-radius)!important;padding:28px 30px!important;box-shadow:var(--ui-shadow)!important}
+.hero-eyebrow,.ros-section .section-head span,.engine-intro>div>span,.formula-panel span,.decision-hero>div>span{font-size:10px!important;letter-spacing:.11em!important;color:#667085!important}
+.ros-hero h2{font-size:29px!important;font-weight:730!important;color:#101828!important}
+.hero-copy>p{font-size:14px!important;line-height:1.6!important;color:#667085!important;max-width:780px!important}
+.hero-actions{gap:8px!important;margin-top:18px!important}
+.hero-actions button{height:40px!important;min-height:40px!important;padding:0 14px!important;border-radius:8px!important;font-size:13px!important;font-weight:700!important}
+.hero-actions .secondary{background:#fff!important;color:#344054!important;border:1px solid #d0d5dd!important}
+.hero-actions .secondary:hover{background:#f8fafc!important}
+.posture-badge{padding-left:24px!important}
+.posture-badge strong{font-size:21px!important}
+.metric-strip{gap:10px!important;margin:12px 0!important}
+.ros-metric{min-height:104px!important;padding:15px 16px!important;border-radius:12px!important;box-shadow:0 1px 2px rgba(16,24,40,.02)!important}
+.ros-metric>span{font-size:11px!important;color:#667085!important}
+.ros-metric strong{font-size:24px!important;margin:8px 0 6px!important;font-weight:720!important;color:#101828}
+.ros-metric small{font-size:11px!important;color:#98a2b3!important}
+.analysis-grid{gap:12px!important;margin:12px 0!important}
+.ros-section{border-radius:var(--ui-radius)!important;padding:22px!important;box-shadow:var(--ui-shadow)!important}
+.ros-section h2{font-size:18px!important;font-weight:700!important;color:#101828!important}
+.section-head{margin-bottom:18px!important}
+.text-button{height:32px!important;padding:0 8px!important;border-radius:7px!important;color:var(--ui-blue)!important;font-size:12px!important;font-weight:700!important}
+.text-button:hover{background:var(--ui-blue-soft)!important}
+.ros-next{border-radius:12px!important;padding:18px 20px!important;box-shadow:var(--ui-shadow)!important}
+.ros-next button{height:38px!important;min-height:38px!important;padding:0 13px!important;border-radius:8px!important;font-size:12px!important}
+/* Sidebar: compact enterprise shell */
+.ros-sidebar{width:252px!important;padding:20px 14px!important;background:#101828!important}
+.ros-main{margin-left:252px!important}
+.ros-brand{padding:0 8px 22px!important}
+.ros-mark{width:36px!important;height:36px!important;border-radius:9px!important;font-size:18px!important}
+.ros-brand strong{font-size:18px!important}
+.ros-portfolio{padding:11px!important;margin-bottom:18px!important;border-radius:10px!important}
+.ros-portfolio select{min-height:40px!important;padding:9px!important;font-size:12px!important;border-radius:7px!important}
+.ros-nav-label{margin:0 8px 6px!important;font-size:9px!important}
+.ros-command-menu{gap:3px!important}
+.ros-command-menu .side-group-label{min-height:36px!important;padding:0 8px!important;border-radius:7px!important;font-size:10px!important;letter-spacing:.1em!important}
+.ros-command-menu .side-group-label>span:last-child{width:20px!important;height:20px!important;border-radius:5px!important;font-size:12px!important}
+.ros-command-menu .side-group-items{gap:1px!important;margin:1px 0 5px!important;padding-left:5px!important}
+.ros-command-menu .side-group-items>button{min-height:43px!important;padding:6px 8px!important;gap:9px!important;border-radius:7px!important;font-size:12px!important}
+.ros-command-menu .side-group-items .ros-nav-icon{width:24px!important;min-width:24px!important;height:24px!important;font-size:14px!important}
+.ros-command-menu .side-group-items b{font-size:12px!important}
+.ros-command-menu .side-group-items small{font-size:9px!important;margin-top:2px!important}
+.ros-command-menu .side-group-items em{font-size:7px!important;padding:3px 5px!important}
+.ros-side-foot{font-size:10px!important;padding:13px 7px 2px!important}
+/* Responsive */
+@media(max-width:900px){.ros-sidebar{width:252px!important}.ros-main{margin-left:0!important}.ros-top{height:68px!important;padding:0 18px!important}.ros-top-actions .engine-status{display:none!important}.ros-content{padding:20px 16px 40px!important}.ros-hero{grid-template-columns:1fr!important}.posture-badge{border-left:0!important;border-top:1px solid var(--ui-line)!important;padding:16px 0 0!important}.metric-strip,.metric-strip.embedded{grid-template-columns:repeat(2,1fr)!important}.analysis-grid{grid-template-columns:1fr!important}.ros-hero h2{font-size:25px!important}}
+@media(max-width:520px){.ros-top h1{font-size:19px!important}.ros-content{padding:16px 12px 32px!important}.metric-strip,.metric-strip.embedded{grid-template-columns:1fr!important}.hero-actions{flex-direction:column!important}.hero-actions button{width:100%!important}}
