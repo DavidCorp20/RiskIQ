@@ -1,0 +1,381 @@
+/* RiskIQ Phase 2 · Portfolio + Concentration analytical cockpit
+   Visual-only layer: no business logic, props, callbacks or formatters changed. */
+
+/* ---------- shared analytical surfaces ---------- */
+.ros-content > .ros-section:has(.metric-strip.embedded),
+.ros-content > .ros-section:has(.table-wrap) {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head,
+.ros-content > .ros-section:has(.table-wrap) .section-head {
+  min-height: 72px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: flex-end;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head > div:first-child > span,
+.ros-content > .ros-section:has(.table-wrap) .section-head > div:first-child > span {
+  display: none;
+}
+
+/* ---------- PORTFOLIO ---------- */
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  font-weight: 650;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head h2::before {
+  content: 'Composición de Cartera';
+  font-size: inherit;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head h2 {
+  font-size: 0;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head h2::before {
+  font-size: 24px;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .section-head::after {
+  content: 'Estado de cartera · exposición · morosidad · corte actual';
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric {
+  min-height: 94px;
+  padding: 17px 20px;
+  border: 0;
+  border-right: 1px solid #e2e8f0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric:last-child {
+  border-right: 0;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .ros-metric span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .ros-metric strong {
+  display: block;
+  margin-top: 7px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) .ros-metric small {
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(280px, 4fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .ros-section {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .section-head {
+  min-height: 58px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .section-head > div:first-child > span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .1em;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .section-head h2 {
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows {
+  padding: 0;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows > div {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows > div:last-child {
+  border-bottom: 0;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows > div:hover {
+  background: #f8fafc;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows span {
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid .data-rows strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- CONCENTRATION ---------- */
+.ros-content > .ros-section:has(.table-wrap) .section-head h2 {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .section-head h2::before {
+  content: 'Análisis de Concentración de Riesgo';
+}
+
+.ros-content > .ros-section:has(.table-wrap) .section-head h2 {
+  font-size: 0;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .section-head h2::before {
+  font-size: 24px;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .section-head::after {
+  content: 'Dimensión analítica · exposición y deterioro';
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .table-wrap {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.ros-content > .ros-section:has(.table-wrap) table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+
+.ros-content > .ros-section:has(.table-wrap) thead th {
+  height: 42px;
+  padding: 0 14px;
+  border-bottom: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ros-content > .ros-section:has(.table-wrap) thead th:not(:first-child) {
+  text-align: right;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td {
+  height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody tr:first-child td {
+  background: #fffaf5;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody tr:first-child:hover td {
+  background: #fff7ed;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:first-child {
+  width: 34%;
+  color: #0f172a;
+  text-align: left;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:first-child b {
+  font-weight: 600;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(3) {
+  position: relative;
+  min-width: 110px;
+}
+
+/* Subtle exposure distribution track behind the Share cell. */
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(3)::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 7px;
+  height: 3px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(3)::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  bottom: 7px;
+  height: 3px;
+  width: 45%;
+  border-radius: 999px;
+  background: #64748b;
+  opacity: .55;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(3) {
+  padding-bottom: 8px;
+}
+
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(4),
+.ros-content > .ros-section:has(.table-wrap) tbody td:nth-child(5) {
+  color: #334155;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .priority-pill {
+  display: inline-flex;
+  min-width: 32px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.ros-content > .ros-section:has(.table-wrap) .empty-analysis {
+  padding: 36px 20px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric:nth-child(2) {
+    border-right: 0;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric:nth-child(-n+2) {
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) + .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ros-content > .ros-section:has(.metric-strip.embedded) .section-head,
+  .ros-content > .ros-section:has(.table-wrap) .section-head {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .section-head::after,
+  .ros-content > .ros-section:has(.table-wrap) .section-head::after {
+    display: none;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded {
+    grid-template-columns: 1fr;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric {
+    min-height: 78px;
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .ros-content > .ros-section:has(.metric-strip.embedded) .metric-strip.embedded .ros-metric:last-child {
+    border-bottom: 0;
+  }
+}
