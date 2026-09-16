@@ -4,6 +4,7 @@ import App from './RiskOperatingSystem'
 import RiskLucideBridge from './RiskLucideBridge'
 import './riskiq-tailwind.css'
 import './riskiq-portfolio-concentration.css'
+import './enterprise-ui-overrides.css'
 
 function LanguageLayer(){
   useEffect(()=>import('./riskiq-spanish-ui.js').then(({installRiskIQLanguage})=>installRiskIQLanguage()),[])
