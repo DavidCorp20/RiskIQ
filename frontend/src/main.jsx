@@ -5,10 +5,11 @@ import './riskiq-visual-v4.css'
 import './workspace-navigation.js'
 import './ros-nav-final.css'
 import './ros-production-final.css'
+import './riskiq-enterprise-system.css'
 
 // Single production entrypoint. RiskOperatingSystem owns the base shell.
-// The final stylesheet is intentionally last: it neutralizes browser defaults
-// and legacy drift without changing the application architecture.
+// Visual styles are loaded in layers; the enterprise system is the final
+// presentation authority and does not change application behavior.
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
