@@ -9,6 +9,8 @@ import './riskiq-enterprise-system.css'
 import './riskiq-nav-accordion.css'
 
 // Single production entrypoint. RiskOperatingSystem owns the base shell.
+// The workspace controller is loaded before the final accordion layer so its
+// state classes are authoritative over legacy navigation styling.
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
