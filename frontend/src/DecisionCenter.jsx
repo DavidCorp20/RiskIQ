@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react'
-import {AlertTriangle,CheckCircle2,ChevronRight,FileCheck2,Flag,ShieldAlert} from 'lucide-react'
+import {ChevronRight} from 'lucide-react'
 import {listAuditDecisions} from './api'
 import './decision-center.css'
+import './step7-governance.css'
 
 const tone={critical:'CRÍTICA',high:'ALTA',medium:'MEDIA',low:'BAJA'}
 const label=v=>String(v??'—').replaceAll('_',' ')
