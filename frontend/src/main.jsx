@@ -1,7 +1,7 @@
 import React,{useEffect} from 'react'
 import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
-import './risk-os.css'
+import './riskiq-tailwind.css'
 
 function LanguageLayer(){
   useEffect(()=>import('./riskiq-spanish-ui.js').then(({installRiskIQLanguage})=>installRiskIQLanguage()),[])
