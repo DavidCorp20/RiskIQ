@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-riskiq-bg: #F8FAFC;
+  --color-riskiq-bg: #F1F5F9;
   --color-riskiq-surface: #FFFFFF;
   --color-riskiq-border: #E2E8F0;
   --color-riskiq-text: #0F172A;
   --color-riskiq-muted: #64748B;
-  --color-riskiq-navy: #102A43;
+  --color-riskiq-navy: #0F172A;
   --color-riskiq-blue: #2563EB;
   --color-riskiq-teal: #0F766E;
 }
@@ -14,36 +14,40 @@
 @layer base {
   * { box-sizing: border-box; }
   html { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  body { margin: 0; background: #F8FAFC; color: #0F172A; font-size: 14px; }
+  body { margin: 0; background: #F1F5F9; color: #0F172A; font-size: 14px; }
   button, input, select { font: inherit; }
   button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
 }
 
 @layer components {
-  .ros-shell { @apply min-h-screen bg-slate-50 text-slate-900; }
-  .ros-sidebar { @apply fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col border-r border-slate-200 bg-white px-4 py-5; }
+  .ros-shell { @apply min-h-screen bg-slate-100 text-slate-900; }
+  .ros-sidebar { @apply fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col border-r border-slate-800 bg-slate-900 px-4 py-5 text-slate-200; }
   .ros-brand { @apply flex items-center gap-3 px-2 pb-6; }
-  .ros-mark { @apply grid size-9 place-items-center rounded-md border border-slate-300 bg-slate-900 text-base font-semibold text-white; }
-  .ros-brand strong { @apply block text-[17px] font-semibold tracking-tight text-slate-950; }
-  .ros-brand span { @apply mt-0.5 block text-xs font-medium tracking-[0.08em] text-slate-500; }
-  .ros-portfolio { @apply mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3; }
-  .ros-portfolio>span,.ros-nav-label { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
-  .ros-portfolio select { @apply mt-2 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 shadow-sm; }
+  .ros-mark { @apply grid size-9 place-items-center rounded-md border border-slate-700 bg-white text-base font-semibold text-slate-900; }
+  .ros-brand strong { @apply block text-[17px] font-semibold tracking-tight text-white; }
+  .ros-brand span { @apply mt-0.5 block text-xs font-medium tracking-[0.08em] text-slate-400; }
+  .ros-portfolio { @apply mb-6 rounded-lg border border-slate-800 bg-slate-800/70 p-3; }
+  .ros-portfolio>span,.ros-nav-label { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-400; }
+  .ros-portfolio select { @apply mt-2 min-h-10 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 shadow-sm outline-none; }
+  .ros-portfolio select:focus { @apply border-blue-500 ring-2 ring-blue-500/20; }
   .ros-nav-label { @apply mb-2 px-2; }
   .ros-sidebar nav { @apply grid gap-1; }
-  .side-group-label { @apply flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2.5 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900; }
+  .side-group-label { @apply flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2.5 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-white; }
+  .side-group-label.is-active { @apply text-slate-200; }
   .side-group-items { @apply grid gap-0.5; }
-  .ros-sidebar nav .side-group-items button { @apply flex min-h-11 w-full items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-slate-600 hover:bg-slate-100 hover:text-slate-950; }
-  .ros-sidebar nav .side-group-items button.active { @apply bg-slate-100 text-slate-950 ring-1 ring-inset ring-slate-200; }
+  .ros-sidebar nav .side-group-items button { @apply flex min-h-11 w-full items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-slate-400 hover:bg-slate-800 hover:text-white; }
+  .ros-sidebar nav .side-group-items button.active { @apply bg-slate-800 text-white ring-1 ring-inset ring-slate-700; }
   .ros-nav-icon { @apply grid size-7 shrink-0 place-items-center text-slate-500; }
+  .ros-sidebar nav .side-group-items button.active .ros-nav-icon { @apply text-blue-400; }
   .ros-sidebar nav b { @apply block text-sm font-medium; }
-  .ros-sidebar nav small { @apply mt-0.5 block text-xs text-slate-400; }
-  .ros-sidebar nav em { @apply ml-auto rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold not-italic tracking-wide text-blue-700; }
-  .ros-side-foot { @apply mt-auto border-t border-slate-200 px-2 pt-4 text-xs leading-6 text-slate-500; }
-  .ros-side-foot div { @apply ml-3.5 text-slate-400; }
-  .online-dot { @apply mr-2 inline-block size-1.5 rounded-full bg-emerald-500; }
-  .ros-main { @apply ml-[252px] min-h-screen; }
-  .ros-top { @apply sticky top-0 z-30 flex min-h-[72px] items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur; }
+  .ros-sidebar nav small { @apply mt-0.5 block text-xs text-slate-500; }
+  .ros-sidebar nav .side-group-items button.active small { @apply text-slate-400; }
+  .ros-sidebar nav em { @apply ml-auto rounded border border-blue-400/30 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold not-italic tracking-wide text-blue-300; }
+  .ros-side-foot { @apply mt-auto border-t border-slate-800 px-2 pt-4 text-xs leading-6 text-slate-400; }
+  .ros-side-foot div { @apply ml-3.5 text-slate-500; }
+  .online-dot { @apply mr-2 inline-block size-1.5 rounded-full bg-emerald-400; }
+  .ros-main { @apply ml-[252px] min-h-screen bg-slate-100; }
+  .ros-top { @apply sticky top-0 z-30 flex min-h-[72px] items-center justify-between border-b border-slate-200 bg-white/95 px-6 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur; }
   .ros-kicker { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
   .ros-top h1 { @apply mt-1 text-2xl font-semibold tracking-tight text-slate-950; }
   .ros-top-actions { @apply flex items-center gap-4; }
@@ -54,7 +58,8 @@
   .ros-menu { @apply hidden border-0 bg-transparent p-2 text-slate-700; }
   .ros-error { @apply mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800; }
   .ros-content { @apply mx-auto max-w-[1560px] px-6 py-6 pb-12; }
-  .ros-hero { @apply grid grid-cols-[minmax(0,1fr)_220px] gap-6 rounded-lg border border-slate-200 bg-white p-6; }
+  .ros-hero,.ros-section,.ros-metric,.analytics-command,.migration-hero { @apply border-slate-200 bg-white shadow-sm; }
+  .ros-hero { @apply grid grid-cols-[minmax(0,1fr)_220px] gap-6 rounded-xl border p-6; }
   .hero-eyebrow,.ros-section .section-head span,.engine-intro>div>span,.formula-panel span,.decision-hero>div>span { @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
   .ros-hero h2 { @apply mt-2 text-2xl font-semibold tracking-tight text-slate-950; }
   .hero-copy>p { @apply mt-2 max-w-4xl text-sm leading-6 text-slate-600; }
@@ -70,14 +75,14 @@
   .posture-badge.control strong { @apply text-emerald-700; }
   .metric-strip { @apply my-3 grid grid-cols-6 gap-3; }
   .metric-strip.embedded { @apply m-0 grid-cols-4; }
-  .ros-metric { @apply min-h-[92px] rounded-lg border border-slate-200 bg-white p-4; }
+  .ros-metric { @apply min-h-[92px] rounded-xl border bg-white p-4 shadow-sm; }
   .ros-metric>span { @apply block text-xs font-medium text-slate-500; }
   .ros-metric strong { @apply mt-2 block text-xl font-semibold tracking-tight text-slate-950; }
   .ros-metric small { @apply mt-1 block text-xs text-slate-500; }
   .ros-metric.risk strong { @apply text-red-700; }
   .ros-metric.severe strong { @apply text-red-800; }
   .analysis-grid,.advanced-grid { @apply my-3 grid grid-cols-2 gap-3; }
-  .ros-section { @apply min-w-0 rounded-lg border border-slate-200 bg-white p-5; }
+  .ros-section { @apply min-w-0 rounded-xl border p-5; }
   .ros-section.wide { @apply col-span-full; }
   .section-head { @apply mb-5 flex items-start justify-between gap-4; }
   .ros-section h2 { @apply mt-1 text-base font-semibold text-slate-950; }
@@ -110,7 +115,7 @@
   td { @apply border-b border-slate-100 px-3 py-3 text-sm text-slate-700; }
   td b { @apply font-semibold text-slate-900; }
   .priority-pill { @apply inline-flex min-w-8 items-center justify-center rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold; }
-  .trend-empty,.trend-panel { @apply flex min-h-[160px] items-center gap-4 rounded-md border border-slate-200 p-5; }
+  .trend-empty,.trend-panel { @apply flex min-h-[160px] items-center gap-4 rounded-md border border-slate-200 p-5 bg-white shadow-sm; }
   .trend-panel { @apply justify-between; }
   .trend-icon { @apply grid size-10 place-items-center rounded-md bg-slate-100 text-slate-600; }
   .trend-empty strong,.trend-panel strong { @apply text-sm font-semibold; }
@@ -133,7 +138,7 @@
   .empty-mark { @apply grid size-12 place-items-center rounded-lg bg-slate-900 text-lg font-semibold text-white; }
   .ros-empty h2 { @apply mt-4 text-xl font-semibold text-slate-950; }
   .ros-empty p { @apply mt-2 text-sm leading-6 text-slate-500; }
-  .analytics-command { @apply flex items-center justify-between gap-6 rounded-lg border border-slate-200 bg-white p-5; }
+  .analytics-command { @apply flex items-center justify-between gap-6 rounded-xl border p-5; }
   .analytics-command h2 { @apply mt-1 text-xl font-semibold; }
   .analytics-command p { @apply mt-1 text-sm text-slate-500; }
   .analytics-meta { @apply text-right; }
@@ -150,16 +155,16 @@
   .formula-panel strong,.decision-hero h2,.engine-intro h2 { @apply mt-1 text-xl font-semibold; }
   .formula-panel p,.decision-hero p,.engine-intro p { @apply mt-1 max-w-3xl text-sm leading-5 text-slate-300; }
   .bucket-grid { @apply grid grid-cols-4 gap-3; }
-  .bucket-grid>div { @apply rounded-md border border-slate-200 p-4; }
+  .bucket-grid>div { @apply rounded-md border border-slate-200 bg-white p-4 shadow-sm; }
   .bucket-grid span,.bucket-grid small { @apply text-xs text-slate-500; }
   .bucket-grid strong { @apply my-1 block text-xl font-semibold; }
-  .migration-hero { @apply flex items-center justify-between gap-5 rounded-md border border-slate-200 p-5; }
+  .migration-hero { @apply flex items-center justify-between gap-5 rounded-xl border p-5; }
   .migration-hero strong { @apply mt-1 block text-lg font-semibold; }
   .migration-hero p { @apply mt-1 text-sm text-slate-500; }
   .direction { @apply rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide; }
   .direction.worsening { @apply bg-red-50 text-red-700; }
   .decision-hero { @apply mb-3 flex items-center justify-between gap-5; }
-  .decision-card { @apply mt-2 rounded-md border border-slate-200 p-4; }
+  .decision-card { @apply mt-2 rounded-md border border-slate-200 bg-white p-4 shadow-sm; }
   .decision-card span { @apply text-xs font-semibold uppercase tracking-wide text-amber-700; }
   .decision-card strong { @apply mt-1 block text-base font-semibold; }
   .decision-card p { @apply mt-1 text-sm text-slate-500; }
