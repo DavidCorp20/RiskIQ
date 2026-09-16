@@ -59,3 +59,125 @@
  .ri-stage-nav button span{font-size:11px}
  .ri-policy-bar:before{position:static;display:block;margin:-3px 0 2px;padding:0;background:transparent}
 }
+
+/* ========================================================================== */
+/* RiskIQ visual conflict hotfix — no JSX / state / handler changes.         */
+/* Loaded after riskiq-tailwind.css, intentionally high-specificity.          */
+/* ========================================================================== */
+
+/* 1. SIDEBAR — restore readable enterprise navigation density */
+.ros-sidebar nav .side-group-items button,
+aside nav button,
+aside nav a{
+  font-size:0.875rem !important;
+  line-height:1.25rem !important;
+  padding-top:0.625rem !important;
+  padding-bottom:0.625rem !important;
+}
+
+aside nav .side-group-label,
+aside nav .text-xs{
+  font-size:0.75rem !important;
+  line-height:1rem !important;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+
+.ros-sidebar nav .side-group-items button b{
+  font-size:0.875rem !important;
+  line-height:1.25rem !important;
+}
+
+.ros-sidebar nav .side-group-items button small{
+  font-size:0.75rem !important;
+  line-height:1rem !important;
+}
+
+/* 2. DECISION ENGINE — isolate the stepper from inherited nav/grid rules */
+nav.overflow-x-auto,
+.decision-engine-stepper-container,
+.ri-stage-nav{
+  display:flex !important;
+  flex-direction:row !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  gap:0.5rem !important;
+  width:100% !important;
+  margin:1rem 0 !important;
+  padding:0.5rem !important;
+  box-sizing:border-box !important;
+  white-space:normal !important;
+}
+
+nav.overflow-x-auto button,
+.decision-engine-stepper-container button,
+.ri-stage-nav button{
+  display:inline-flex !important;
+  flex:0 0 auto !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:0.375rem !important;
+  width:auto !important;
+  min-width:max-content !important;
+  min-height:2.25rem !important;
+  margin:0 !important;
+  padding:0.5rem 0.875rem !important;
+  font-size:0.875rem !important;
+  font-weight:600 !important;
+  line-height:1.25rem !important;
+  white-space:nowrap !important;
+  border-radius:0.5rem !important;
+  box-sizing:border-box !important;
+}
+
+nav.overflow-x-auto button span:first-child,
+.decision-engine-stepper-container button span:first-child,
+.ri-stage-nav button b{
+  display:inline-block !important;
+  flex:0 0 auto !important;
+  font-size:0.75rem !important;
+  line-height:1rem !important;
+  padding:0.125rem 0.375rem !important;
+  border-radius:0.25rem !important;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace !important;
+}
+
+nav.overflow-x-auto button span:not(:first-child),
+.decision-engine-stepper-container button span:not(:first-child),
+.ri-stage-nav button span{
+  display:inline-block !important;
+  flex:0 0 auto !important;
+  font-size:0.875rem !important;
+  line-height:1.25rem !important;
+  white-space:nowrap !important;
+}
+
+/* The existing mobile overflow behavior remains, but cannot collapse labels. */
+@media(max-width:900px){
+  nav.overflow-x-auto,
+  .decision-engine-stepper-container,
+  .ri-stage-nav{
+    flex-wrap:nowrap !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+  }
+  nav.overflow-x-auto button,
+  .decision-engine-stepper-container button,
+  .ri-stage-nav button{
+    flex:0 0 auto !important;
+  }
+}
+
+@media(max-width:560px){
+  nav.overflow-x-auto button,
+  .decision-engine-stepper-container button,
+  .ri-stage-nav button{
+    padding:0.4375rem 0.625rem !important;
+    font-size:0.8125rem !important;
+  }
+  nav.overflow-x-auto button span:not(:first-child),
+  .decision-engine-stepper-container button span:not(:first-child),
+  .ri-stage-nav button span{
+    font-size:0.8125rem !important;
+  }
+}
