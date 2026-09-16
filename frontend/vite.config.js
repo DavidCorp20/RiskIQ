@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 function riskIqRealDataGuard(){
   return {
@@ -15,6 +16,6 @@ function riskIqRealDataGuard(){
 }
 
 export default defineConfig({
-  plugins: [riskIqRealDataGuard(),react()],
+  plugins: [riskIqRealDataGuard(),react(),tailwindcss()],
   server: { port: 5173 },
 })
