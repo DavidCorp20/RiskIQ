@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
 import RiskLucideBridge from './RiskLucideBridge'
 import './riskiq-tailwind.css'
+import './riskiq-portfolio-concentration.css'
 
 function LanguageLayer(){
   useEffect(()=>import('./riskiq-spanish-ui.js').then(({installRiskIQLanguage})=>installRiskIQLanguage()),[])
