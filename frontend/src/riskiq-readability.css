@@ -1,0 +1,123 @@
+/* RiskIQ readability layer — intentional minimum type sizes for daily analytical use. */
+:root{
+  --riq-body:14px;
+  --riq-secondary:13px;
+  --riq-label:11px;
+  --riq-table:12px;
+  --riq-title:18px;
+}
+.ros-shell{font-size:var(--riq-body)!important}
+.ros-sidebar{font-size:13px!important}
+.ros-brand strong{font-size:18px!important}
+.ros-brand span{font-size:9px!important}
+.ros-portfolio>span,.ros-nav-label{font-size:10px!important}
+.ros-portfolio select{font-size:12px!important;height:36px!important}
+.ros-command-menu .side-group-label{font-size:10px!important}
+.ros-command-menu .side-group-items>button{min-height:40px!important}
+.ros-command-menu .side-group-items b{font-size:12px!important}
+.ros-command-menu .side-group-items small{font-size:10px!important}
+.ros-side-foot{font-size:11px!important}
+.ros-side-foot div{font-size:10px!important}
+.ros-top{height:70px!important}
+.ros-kicker{font-size:10px!important}
+.ros-top h1{font-size:21px!important}
+.engine-status{font-size:11px!important}
+.run-button{font-size:12px!important}
+.ros-content{padding:24px 30px 48px!important}
+.hero-eyebrow,.ros-section .section-head span,.engine-intro>div>span,.formula-panel span,.decision-hero>div>span{font-size:10px!important}
+.ros-hero h2{font-size:25px!important}
+.hero-copy>p{font-size:14px!important;line-height:1.6!important}
+.hero-actions button{font-size:12px!important}
+.posture-badge span{font-size:10px!important}
+.posture-badge strong{font-size:19px!important}
+.posture-badge small{font-size:11px!important}
+.ros-metric>span{font-size:10px!important}
+.ros-metric strong{font-size:21px!important}
+.ros-metric small{font-size:10px!important}
+.ros-section h2{font-size:17px!important}
+.text-button{font-size:12px!important}
+.data-rows>div{padding:10px 0!important}
+.data-rows span,.data-rows strong{font-size:12px!important}
+.focus-row span{font-size:10px!important}
+.focus-row strong{font-size:17px!important}
+.focus-row p{font-size:12px!important;line-height:1.5!important}
+.focus-number strong{font-size:21px!important}
+.focus-number span{font-size:10px!important}
+.priority-row strong{font-size:13px!important}
+.priority-row p{font-size:12px!important;line-height:1.5!important}
+.priority-row small{font-size:10px!important}
+.ros-next span{font-size:9px!important}
+.ros-next strong{font-size:13px!important}
+.ros-next button{font-size:11px!important}
+.table-wrap th{font-size:9px!important;height:34px!important}
+.table-wrap td{font-size:12px!important;height:39px!important}
+.priority-pill{font-size:10px!important}
+.chart-value-row span{font-size:9px!important}
+.chart-value-row strong{font-size:13px!important}
+.bar-row span,.bar-row b{font-size:11px!important}
+.bar-row small{font-size:10px!important}
+.vintage-row span,.vintage-row strong{font-size:11px!important}
+.analytics-command h2{font-size:22px!important}
+.analytics-command p{font-size:12px!important}
+.analytics-meta span{font-size:9px!important}
+.analytics-meta strong{font-size:19px!important}
+.analytics-meta small{font-size:10px!important}
+.signal-grid span,.signal-grid small{font-size:9px!important}
+.signal-grid strong{font-size:15px!important}
+.migration-hero strong{font-size:18px!important}
+.migration-hero p{font-size:12px!important}
+.direction{font-size:9px!important}
+.stress-control span{font-size:10px!important}
+.stress-control strong{font-size:26px!important}
+.stress-control p{font-size:11px!important}
+.scenario-result{font-size:12px!important;line-height:1.6!important}
+.formula-panel strong,.engine-intro h2{font-size:16px!important}
+.formula-panel p,.engine-intro p,.decision-hero p{font-size:12px!important;line-height:1.55!important}
+.builder-context span,.builder-eyebrow{font-size:9px!important}
+.builder-context strong{font-size:12px!important}
+.builder-context-status{font-size:10px!important}
+.builder-stage-head h3{font-size:18px!important}
+.builder-stage-head p{font-size:12px!important}
+.builder-progress strong{font-size:20px!important}
+.builder-progress span{font-size:10px!important}
+
+/* Decision Center */
+.dc-header h2{font-size:25px!important}
+.dc-header p{font-size:14px!important;line-height:1.6!important}
+.dc-header-status span,.dc-header-status small,.dc-kpis span,.dc-decision-hero span,.dc-score span,.dc-panel-title,.dc-match span,.dc-governance span{font-size:10px!important}
+.dc-header-status strong{font-size:26px!important}
+.dc-kpis strong{font-size:20px!important}
+.dc-list-head{font-size:12px!important}
+.dc-case strong{font-size:14px!important}
+.dc-case small{font-size:12px!important;line-height:1.45!important}
+.dc-severity{font-size:10px!important}
+.dc-decision-hero strong{font-size:28px!important}
+.dc-decision-hero small{font-size:12px!important}
+.dc-panel{padding:17px!important}
+.dc-step b{font-size:11px!important}
+.dc-step small{font-size:10px!important}
+.dc-facts span{font-size:10px!important}
+.dc-facts b{font-size:12px!important}
+.dc-match strong{font-size:21px!important}
+.dc-match+p{font-size:12px!important}
+.dc-drivers span{font-size:12px!important}
+.dc-drivers b{font-size:12px!important}
+.dc-drivers small{font-size:11px!important;line-height:1.5!important}
+.dc-governance strong{font-size:12px!important}
+.dc-governance small{font-size:11px!important}
+.dc-muted{font-size:12px!important;line-height:1.5!important}
+.dc-empty strong{font-size:15px!important}
+.dc-empty span{font-size:13px!important}
+.dc-technical{font-size:11px!important}
+
+@media(max-width:1100px){
+  .ros-content{padding-left:22px!important;padding-right:22px!important}
+  .ros-metric strong{font-size:19px!important}
+}
+@media(max-width:720px){
+  .ros-content{padding:18px 16px 36px!important}
+  .ros-hero h2{font-size:22px!important}
+  .hero-copy>p{font-size:13px!important}
+  .ros-section h2{font-size:16px!important}
+  .table-wrap td{font-size:12px!important}
+}
