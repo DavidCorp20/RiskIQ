@@ -1,0 +1,61 @@
+/* RiskIQ Enterprise UI layer — visual-only overrides. Business logic remains in component code. */
+
+/* Decision Engine: segmented horizontal stepper */
+.ri-workspace{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ri-stage-nav{order:0;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;padding:6px;background:rgba(226,232,240,.68);border:1px solid rgba(203,213,225,.72);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.75)}
+.ri-stage-nav button{display:inline-flex;align-items:center;gap:6px;min-height:32px;width:auto;padding:6px 12px;border:1px solid transparent;border-radius:9px;background:transparent;text-align:left;cursor:pointer;transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease}
+.ri-stage-nav button:hover{background:rgba(203,213,225,.55);color:#0f172a}
+.ri-stage-nav button:active{transform:translateY(1px)}
+.ri-stage-nav button b{display:inline-block;padding:0;color:#64748b;font-size:10px;font-variant-numeric:tabular-nums;line-height:1;font-weight:800;letter-spacing:.02em}
+.ri-stage-nav button span{font-size:12px;font-weight:650;line-height:1.1;color:#475569;white-space:nowrap}
+.ri-stage-nav button small{display:none}
+.ri-stage-nav button.active{background:#fff;border-color:#e2e8f0;box-shadow:0 1px 3px rgba(15,23,42,.10),0 1px 2px rgba(15,23,42,.05)}
+.ri-stage-nav button.active b{color:#2563eb}
+.ri-stage-nav button.active span{color:#0f172a;font-weight:800}
+
+/* Context + workflow: distinct enterprise bands */
+.ri-policy-bar{position:relative;margin-bottom:0;border-radius:12px;border-color:#cbd5e1;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.ri-policy-bar:before{content:'PORTFOLIO CONTEXT';display:block;position:absolute;left:12px;top:-8px;padding:0 6px;background:#f1f5f9;color:#64748b;font-size:9px;font-weight:850;letter-spacing:.12em}
+.engine-intro{position:relative;border-radius:14px!important;border-color:#1e293b!important;background:linear-gradient(135deg,#0f172a 0%,#111c33 100%)!important;box-shadow:0 8px 24px rgba(15,23,42,.14)}
+.engine-intro:after{content:'RISK DECISION WORKFLOW';position:absolute;right:16px;top:14px;color:#64748b;font-size:9px;font-weight:850;letter-spacing:.12em}
+
+/* Enterprise canvas hierarchy */
+.ri-canvas{width:100%;order:1}
+.ri-stage-card,.ri-panel,.ri-outcome-card{border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.035)}
+.ri-stage-card{border-top:3px solid #2563eb}
+.ri-panel{border-top:2px solid #e2e8f0}
+.ri-portfolio-kpis>div{position:relative;overflow:hidden;border-radius:12px;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.ri-portfolio-kpis>div:after{content:'';position:absolute;right:14px;top:14px;width:5px;height:5px;border-radius:999px;background:#2563eb;box-shadow:0 0 0 4px #eff6ff}
+
+/* Dark analytical surfaces: deliberate contrast, not a blanket dark theme */
+.ri-stage-card .scenario-result,.ri-technical pre{background:#0b132b;border-color:#1e293b;color:#dbeafe;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.ri-impact-grid .ri-panel:first-child{border-top-color:#2563eb}
+
+/* Workspace background and depth */
+.ros-shell,.ros-main{background:#f1f5f9!important}
+.ros-content{background:transparent}
+.ros-top{box-shadow:0 1px 0 rgba(15,23,42,.05),0 4px 14px rgba(15,23,42,.025)!important}
+
+/* FinTech top bar controls */
+.ros-top-actions{gap:8px}
+.ros-top-actions:before{content:'Últimos 30 días';display:inline-flex;align-items:center;min-height:34px;padding:0 11px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc;color:#475569;font-size:12px;font-weight:650}
+
+/* Sidebar: institutional contrast */
+.ros-sidebar{background:#0b132b!important;border-right-color:#1e293b!important;box-shadow:8px 0 24px rgba(15,23,42,.08)}
+.ros-sidebar .ros-portfolio{background:rgba(30,41,59,.72);border-color:#334155}
+.ros-sidebar nav .side-group-items button{border-left:3px solid transparent;border-radius:7px;padding-left:10px}
+.ros-sidebar nav .side-group-items button.active{background:rgba(37,99,235,.20)!important;color:#fff!important;border-left-color:#3b82f6;box-shadow:none;ring:0}
+.ros-sidebar nav .side-group-items button.active .ros-nav-icon{color:#60a5fa}
+.ros-sidebar nav .side-group-items button:hover{background:rgba(51,65,85,.62)}
+
+@media(max-width:900px){
+ .ri-stage-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding:5px}
+ .ri-stage-nav button{flex:0 0 auto}
+ .engine-intro:after{position:static;display:block;margin-top:12px}
+ .ros-top-actions:before{display:none}
+}
+@media(max-width:560px){
+ .ri-stage-nav button{padding:7px 10px}
+ .ri-stage-nav button span{font-size:11px}
+ .ri-policy-bar:before{position:static;display:block;margin:-3px 0 2px;padding:0;background:transparent}
+}
