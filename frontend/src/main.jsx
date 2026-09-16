@@ -6,6 +6,7 @@ import './ros-nav-final.css'
 import './ros-production-final.css'
 import './riskiq-enterprise-system.css'
 import './riskiq-nav-accordion.css'
+import './riskiq-design-system.css'
 
 // Single production entrypoint. Navigation state is owned by React.
 createRoot(document.getElementById('root')).render(
