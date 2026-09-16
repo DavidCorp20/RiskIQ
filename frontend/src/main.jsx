@@ -1,6 +1,7 @@
 import React,{useEffect} from 'react'
 import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
+import RiskLucideBridge from './RiskLucideBridge'
 import './riskiq-tailwind.css'
 
 function LanguageLayer(){
@@ -12,6 +13,7 @@ function LanguageLayer(){
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageLayer />
+    <RiskLucideBridge />
     <App />
   </React.StrictMode>
 )
