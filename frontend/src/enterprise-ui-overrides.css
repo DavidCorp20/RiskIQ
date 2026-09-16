@@ -181,3 +181,34 @@ nav.overflow-x-auto button span:not(:first-child),
     font-size:0.8125rem !important;
   }
 }
+
+/* ==========================================================================
+   FIX DEFINITIVO: DECISION ENGINE STEPPER (LAYOUT ISOLATION)
+   Atacamos el div interno revelado en el JSX para forzar el flexbox
+   ========================================================================== */
+
+/* 1. Forzar el contenedor intermedio (div) a separar sus elementos */
+nav.overflow-x-auto.shadow-inner > div {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+/* 2. Forzar a los botones a tener dimensiones y no colapsarse */
+nav.overflow-x-auto.shadow-inner > div > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 6px 14px !important;
+  margin-right: 4px !important; /* Respaldo en caso de que flex-gap falle */
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  border-radius: 8px !important;
+  min-height: 32px !important;
+}
+
+/* 3. Forzar espacio entre el número (01) y el texto de la etapa */
+nav.overflow-x-auto.shadow-inner > div > button > span:first-child {
+  margin-right: 6px !important;
+  display: inline-block !important;
+}
