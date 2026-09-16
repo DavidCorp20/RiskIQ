@@ -15,7 +15,20 @@ function riskIqRealDataGuard(){
   }
 }
 
+function riskIqLegacyStyleGuard(){
+  const legacy = /import\s+['\"]\.\/(?:risk-os|riskiq-visual-v4|ros-nav-final|ros-production-final|riskiq-enterprise-system|riskiq-nav-accordion|riskiq-design-system|riskiq-readability)\.css['\"];?/g
+  return {
+    name: 'riskiq-legacy-style-guard',
+    enforce: 'pre',
+    transform(code, id){
+      if(!id.endsWith('.jsx')) return null
+      const next=code.replace(legacy,'')
+      return next===code?null:{code:next,map:null}
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [riskIqRealDataGuard(),react(),tailwindcss()],
+  plugins: [riskIqRealDataGuard(),riskIqLegacyStyleGuard(),react(),tailwindcss()],
   server: { port: 5173 },
 })
