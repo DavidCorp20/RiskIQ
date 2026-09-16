@@ -1,16 +1,19 @@
 .ros-command-select{display:none!important}
 
-/* The current shell renders the workspace groups from React. Keep one group visible
-   at a time and use native focus navigation so the sidebar no longer presents the
-   entire workspace as a flat expanded list. */
+/* Deterministic workspace accordion. The controller assigns .is-open, so the
+   navigation does not depend on :has(), focus state, browser quirks, or legacy
+   sidebar rules. Exactly one group is expanded at a time. */
 .ros-command-menu{display:flex!important;flex-direction:column!important;gap:6px!important}
 .ros-command-menu .side-group{display:block!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
-.ros-command-menu .side-group-label{width:100%!important;display:flex!important;align-items:center!important;justify-content:space-between!important;cursor:pointer!important}
+.ros-command-menu .side-group-label{width:100%!important;display:flex!important;align-items:center!important;justify-content:space-between!important;cursor:pointer!important;box-sizing:border-box!important}
 .ros-command-menu .side-group-label::after{content:'⌄';font-size:12px;opacity:.7;transition:transform .18s ease}
-.ros-command-menu .side-group:not(:has(.active)):not(:focus-within)>button:not(.side-group-label){display:none!important}
-.ros-command-menu .side-group:has(.active)>button:not(.side-group-label),
-.ros-command-menu .side-group:focus-within>button:not(.side-group-label){display:flex!important}
-.ros-command-menu .side-group:has(.active)>.side-group-label::after,
-.ros-command-menu .side-group:focus-within>.side-group-label::after{transform:rotate(180deg)}
-.ros-command-menu .side-group:not(:has(.active)):focus-within{background:rgba(255,255,255,.035);border-radius:10px}
-.ros-command-menu .side-group-label:focus-visible{outline:2px solid rgba(130,153,255,.75);outline-offset:2px}
+
+/* Closed groups expose only their heading. !important intentionally wins over
+   the accumulated legacy sidebar styles already present in production. */
+.ros-command-menu .side-group:not(.is-open)>button:not(.side-group-label){display:none!important}
+.ros-command-menu .side-group.is-open>button:not(.side-group-label){display:flex!important}
+.ros-command-menu .side-group.is-open>.side-group-label::after{transform:rotate(180deg)}
+
+.ros-command-menu .side-group-label:focus-visible{outline:2px solid rgba(130,153,255,.75);outline-offset:2px;border-radius:10px}
+.ros-command-menu .side-group.is-open{padding-bottom:2px!important}
+.ros-command-menu .side-group.is-open>.side-group-label{margin-bottom:3px!important}
