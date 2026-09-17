@@ -173,15 +173,69 @@ def test_integrity_negative_outstanding_principal_is_rejected(service):
 
 def test_migration_matrix_reconciles_exact_t0_balance(service):
     rows = [
-        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "segment": "A"},
-        {"loan_id": "L2", "snapshot_date": "2026-08-01", "outstanding_principal": 200, "dpd": 10, "segment": "A"},
-        {"loan_id": "L3", "snapshot_date": "2026-08-01", "outstanding_principal": 300, "dpd": 35, "segment": "B"},
-        {"loan_id": "L4", "snapshot_date": "2026-08-01", "outstanding_principal": 400, "dpd": 70, "segment": "B"},
-        {"loan_id": "L5", "snapshot_date": "2026-08-01", "outstanding_principal": 500, "dpd": 95, "segment": "C"},
-        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 35, "segment": "A"},
-        {"loan_id": "L2", "snapshot_date": "2026-09-01", "outstanding_principal": 200, "dpd": 0, "segment": "A"},
-        {"loan_id": "L3", "snapshot_date": "2026-09-01", "outstanding_principal": 300, "dpd": 60, "segment": "B"},
-        {"loan_id": "L4", "snapshot_date": "2026-09-01", "outstanding_principal": 400, "dpd": 95, "segment": "B"},
+        {
+            "loan_id": "L1",
+            "snapshot_date": "2026-08-01",
+            "outstanding_principal": 100,
+            "dpd": 0,
+            "segment": "A",
+        },
+        {
+            "loan_id": "L2",
+            "snapshot_date": "2026-08-01",
+            "outstanding_principal": 200,
+            "dpd": 10,
+            "segment": "A",
+        },
+        {
+            "loan_id": "L3",
+            "snapshot_date": "2026-08-01",
+            "outstanding_principal": 300,
+            "dpd": 35,
+            "segment": "B",
+        },
+        {
+            "loan_id": "L4",
+            "snapshot_date": "2026-08-01",
+            "outstanding_principal": 400,
+            "dpd": 70,
+            "segment": "B",
+        },
+        {
+            "loan_id": "L5",
+            "snapshot_date": "2026-08-01",
+            "outstanding_principal": 500,
+            "dpd": 95,
+            "segment": "C",
+        },
+        {
+            "loan_id": "L1",
+            "snapshot_date": "2026-09-01",
+            "outstanding_principal": 100,
+            "dpd": 35,
+            "segment": "A",
+        },
+        {
+            "loan_id": "L2",
+            "snapshot_date": "2026-09-01",
+            "outstanding_principal": 200,
+            "dpd": 0,
+            "segment": "A",
+        },
+        {
+            "loan_id": "L3",
+            "snapshot_date": "2026-09-01",
+            "outstanding_principal": 300,
+            "dpd": 60,
+            "segment": "B",
+        },
+        {
+            "loan_id": "L4",
+            "snapshot_date": "2026-09-01",
+            "outstanding_principal": 400,
+            "dpd": 95,
+            "segment": "B",
+        },
     ]
 
     migration = service.analyze(rows)["migration"]
@@ -190,9 +244,14 @@ def test_migration_matrix_reconciles_exact_t0_balance(service):
     assert migration["initial_exposure"] == 1500
     assert flows["downgrades"]["balance"] == 800
     assert flows["upgrades"]["balance"] == 200
-    assert flows["statics"]["balance"] == 300
-    assert flows["closed"]["balance"] == 200
-    assert sum(flow["balance"] for flow in flows.values()) == 1500
+    assert flows["statics"]["balance"] == 0
+    assert flows["closed"]["balance"] == 500
+
+    assert sum(
+        flow["balance"]
+        for flow in flows.values()
+    ) == 1500
+
     assert migration["reconciliation"]["reconciled"] is True
 
 
