@@ -1,15 +1,34 @@
 import {useEffect,useMemo,useState} from 'react'
-import {getDatasetRecords,discoverDatasetData,assessDatasetQuality,getCanonicalSchema,getDatasetMapping,saveDatasetMapping} from './api'
+import {getDataset,getDatasetRecords,discoverDatasetData,assessDatasetQuality,getCanonicalSchema,getDatasetMapping,saveDatasetMapping} from './api'
 import SegmentStudio from './SegmentStudio'
 import './data-foundation.css'
 
 const label={critical:'BLOQUEA',high:'ALTO',medium:'MEDIO',warning:'ADVERTENCIA'}
 const friendly={loan_id:'Crédito / cuenta',customer_id:'Cliente',outstanding_principal:'Saldo de capital',dpd:'Días de mora',origination_date:'Fecha de originación',snapshot_date:'Fecha de corte',segment:'Segmento'}
 
+function localDiscovery(rows,existing){
+ const columns=[...new Set(rows.flatMap(row=>Object.keys(row||{})))].map(name=>({name,type:'text',completeness:rows.length?rows.filter(row=>row?.[name] not in (null,'' )).length/rows.length:0,sample:rows.slice(0,3).map(row=>row?.[name]).filter(v=>v not in (null,''))}))
+ const aliases={loan_id:['loan_id','credito','crédito','credit_id'],customer_id:['customer_id','cliente','client_id'],snapshot_date:['snapshot_date','snapshot_month','fecha_corte','fecha corte','as_of_date'],outstanding_principal:['outstanding_principal','saldo','saldo_capital','saldo_pendiente','balance'],dpd:['dpd','dias_mora','días_mora','days_past_due','mora'],origination_date:['origination_date','fecha_desembolso','fecha_otorgamiento'],segment:['segment','segmento','categoria','categoría']}
+ const suggestions=[]
+ columns.forEach(column=>{const normalized=String(column.name).trim().toLowerCase();for(const [target,names] of Object.entries(aliases)){if(names.some(alias=>normalized===alias||normalized.replace(/[^a-z0-9áéíóúüñ]/g,'_')===alias)){suggestions.push({source:column.name,target,confidence:1,matched_alias:column.name,required:false});break}}})
+ const mappings=existing?.mapping?.mappings?.length?existing.mapping.mappings:suggestions
+ return {version:'local-fallback-v1',row_count:rows.length,column_count:columns.length,columns,mapping_suggestions:mappings,mapped_target_count:new Set(mappings.map(m=>m.target)).size,warnings:['Perfil reconstruido localmente a partir de las columnas recibidas.']}
+}
+
 export default function DataFoundation({datasetId='',onContinue}){
  const [records,setRecords]=useState([]),[discovery,setDiscovery]=useState(null),[quality,setQuality]=useState(null),[schema,setSchema]=useState(null),[loading,setLoading]=useState(false),[saving,setSaving]=useState(false),[saved,setSaved]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState('quality')
  useEffect(()=>{if(datasetId)load(datasetId)},[datasetId])
- async function load(id){setLoading(true);setSaved(false);setError('');try{const rows=await getDatasetRecords(id);const data=Array.isArray(rows)?rows:(rows?.records||rows?.data||[]);setRecords(data);const existing=await getDatasetMapping(id);const d=await discoverDatasetData(data);if(existing?.mapping?.mappings?.length)d.mapping_suggestions=existing.mapping.mappings;setDiscovery(d);const [q,s]=await Promise.all([assessDatasetQuality(data,d.mapping_suggestions||[]),getCanonicalSchema()]);setQuality(q);setSchema(s)}catch(e){setError(e.message)}finally{setLoading(false)}}
+ async function load(id){setLoading(true);setSaved(false);setError('');try{
+   const raw=await getDatasetRecords(id);const data=Array.isArray(raw)?raw:(raw?.records||raw?.data||[]);setRecords(data)
+   const [existing,meta,s]=await Promise.all([getDatasetMapping(id).catch(()=>null),getDataset(id).catch(()=>null),getCanonicalSchema().catch(()=>null)])
+   let d;try{d=await discoverDatasetData(data)}catch{d=localDiscovery(data,existing)}
+   if(!d?.columns?.length&&data.length)d=localDiscovery(data,existing)
+   if(existing?.mapping?.mappings?.length)d.mapping_suggestions=existing.mapping.mappings
+   setDiscovery(d);setSchema(s)
+   try{const q=await assessDatasetQuality(data,d.mapping_suggestions||[]);setQuality(q)}catch{
+     const persistedScore=Number(meta?.quality_score);setQuality({quality_score:Number.isFinite(persistedScore)?persistedScore:0,status:meta?.quality_status||'warning',row_count:data.length,column_count:d.column_count||0,issue_count:meta?.quality_issue_count||0,issues:meta?.quality_issues||[],row_issues:[],analysis_impacts:[],checks:{completeness:0,validity:0},limitations:['La evaluación detallada de calidad no respondió; se muestra el último estado persistido del dataset.']})
+   }
+ }catch(e){setError(e.message)}finally{setLoading(false)}}
  async function confirmMapping(){if(!datasetId||!mappings.length)return;setSaving(true);setError('');try{await saveDatasetMapping(datasetId,mappings);setSaved(true)}catch(e){setError(e.message)}finally{setSaving(false)}}
  const columns=useMemo(()=>discovery?.columns||[],[discovery]);const mappings=discovery?.mapping_suggestions||[];const readyModels=(quality?.analysis_impacts||[]).filter(x=>x.ready).length;const modelTotal=(quality?.analysis_impacts||[]).length;const canContinue=Boolean(quality&&(quality.status==='passed'||quality.status==='warning'))
  if(!datasetId)return <div className="df-empty"><strong>Selecciona una cartera para preparar sus datos.</strong><span>RiskIQ validará la estructura antes de ejecutar análisis.</span></div>
