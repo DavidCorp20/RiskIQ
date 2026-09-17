@@ -17,3 +17,5 @@ export const validateDecisionScorecard=scorecard=>request('/api/v1/decision-buil
 export const listAuditDecisions=(datasetId='',status='')=>{const params=new URLSearchParams();if(status)params.set('status',status);if(datasetId)params.set('dataset_id',datasetId);const suffix=params.toString()?`?${params}`:'';return request(`/api/v1/audit/decisions${suffix}`)}
 export const recordAuditDecision=(decision,actor='system')=>request('/api/v1/audit/decisions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({decision,actor})})
 export const resolveAuditDecision=(decisionId,outcome)=>request(`/api/v1/audit/decisions/${encodeURIComponent(decisionId)}/outcome`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({outcome})})
+export const listIndicators=(datasetId='')=>{const params=new URLSearchParams();if(datasetId)params.set('dataset_id',datasetId);const suffix=params.toString()?`?${params.toString()}`:'';return request(`/api/indicators${suffix}`)}
+export const saveIndicator=(indicator)=>request('/api/indicators',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(indicator)})
