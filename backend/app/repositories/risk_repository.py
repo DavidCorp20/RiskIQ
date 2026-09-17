@@ -20,7 +20,10 @@ class RiskAnalysisRepository:
         client: MongoClient | None = None,
         database_name: str | None = None,
     ) -> None:
-        self._client = client or MongoClient(settings.mongo_url, serverSelectionTimeoutMS=2000)
+        self._client = client or MongoClient(
+            settings.mongo_url,
+            serverSelectionTimeoutMS=2000,
+        )
         self._db = self._client[database_name or settings.mongo_db]
         self._collection: Collection = self._db[self.COLLECTION_NAME]
 
@@ -34,6 +37,7 @@ class RiskAnalysisRepository:
         result_id = str(uuid4())
         migration = payload.get("migration") or {}
         integrity = payload.get("integrity") or {}
+        integrity_status = "valid" if all(integrity.values()) else "invalid"
 
         document: dict[str, Any] = {
             "result_id": result_id,
@@ -42,7 +46,7 @@ class RiskAnalysisRepository:
             "engine_version": engine_version,
             "t0_snapshot": migration.get("t0"),
             "t1_snapshot": migration.get("t1"),
-            "integrity_status": integrity.get("status", "unknown"),
+            "integrity_status": integrity_status,
             "payload": payload,
         }
         self._collection.insert_one(document)
