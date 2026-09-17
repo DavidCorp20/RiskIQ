@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.audit.reconciliation import ReconciliationAuditService
 from app.config import settings
 from app.data.discovery import DataDiscoveryService
 from app.data.ingestion import FileIngestionService
@@ -12,6 +13,7 @@ from app.data.normalizer import DataNormalizer, FieldMapping
 from app.data.persistence import PortfolioPersistenceService
 from app.data.portfolio_projection import PortfolioProjectionService
 from app.data.quality import DataQualityService
+from app.data.reconciliation import preview as reconciliation_preview, snapshot_key
 
 router = APIRouter(prefix="/v1/data", tags=["data"])
 ingestion = FileIngestionService()
@@ -20,18 +22,24 @@ normalizer = DataNormalizer()
 quality = DataQualityService()
 projection = PortfolioProjectionService()
 persistence = PortfolioPersistenceService()
+audit = ReconciliationAuditService()
 
 
 def _snapshot_key(row: dict) -> str:
-    for field in ("snapshot_date", "snapshot_month", "as_of_date"):
-        value = row.get(field)
-        if value not in (None, ""):
-            return str(value)[:10]
-    return ""
+    return snapshot_key(row)
 
 
 def _loan_key(row: dict) -> str:
     return str(row.get("loan_id") or row.get("id") or "").strip()
+
+
+def _reconciliation_payload(raw: str | None) -> dict:
+    if not raw:
+        return {}
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise ValueError("reconciliation must be a JSON object")
+    return value
 
 
 @router.post("/discover")
@@ -71,14 +79,31 @@ def project_dataset(rows: list[dict]) -> dict:
     return projection.project(rows)
 
 
+def _rebuild_dataset(dataset_id: str, filename: str, quality_result: dict, field_mappings: list[FieldMapping], source_rows: int) -> dict:
+    all_history = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    portfolio = projection.project(all_history)
+    projection_persisted = persistence.save_projection(portfolio, dataset_id=dataset_id)
+    persistence.save_dataset_mapping(dataset_id=dataset_id, mappings=[item.__dict__ for item in field_mappings], source_name=filename)
+    total_rows = len(all_history)
+    persistence.save_dataset_metadata(
+        dataset_id=dataset_id,
+        source_name=filename,
+        source_rows=total_rows,
+        quality_result=quality_result,
+        projection_summary={**portfolio["summary"], "snapshot_date": portfolio["summary"].get("snapshot_date")},
+    )
+    return {"historical_rows": total_rows, "portfolio": portfolio, "projection_persisted": projection_persisted, "source_rows": source_rows}
+
+
 @router.post("/ingest")
 async def ingest_dataset(
     file: UploadFile = File(...),
     mappings: str = Form(...),
     dataset_id: str | None = Form(default=None),
     snapshot_date: str | None = Form(default=None),
+    reconciliation: str | None = Form(default=None),
 ) -> dict:
-    """Append a new snapshot while preserving all historical observations and current state."""
+    """Ingest a snapshot using deterministic historical identity and reconciliation."""
     try:
         content = await file.read()
         filename = file.filename or "upload.csv"
@@ -88,7 +113,6 @@ async def ingest_dataset(
         if not isinstance(raw_mappings, list):
             raise ValueError("mappings must be a JSON array")
         field_mappings = [FieldMapping(**item) for item in raw_mappings]
-
         normalized = normalizer.normalize(rows, field_mappings)
         if snapshot_date:
             for row in normalized:
@@ -101,7 +125,6 @@ async def ingest_dataset(
         validation_errors = normalizer.validate_required(normalized, required_fields)
         if validation_errors:
             raise ValueError("Required field validation failed: " + "; ".join(validation_errors[:20]))
-
         try:
             quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
         except TypeError:
@@ -111,36 +134,87 @@ async def ingest_dataset(
 
         resolved_dataset_id = dataset_id or str(uuid4())
         existing_rows = persistence.portfolio_records.find({"dataset_id": resolved_dataset_id}, limit=100000) if dataset_id else []
-        existing_keys = {_loan_key(row) + "|" + _snapshot_key(row) for row in existing_rows if _loan_key(row) and _snapshot_key(row)}
-        incoming_keys = set()
-        for row in normalized:
-            loan_id, snap = _loan_key(row), _snapshot_key(row)
-            key = loan_id + "|" + snap if loan_id and snap else ""
-            if key and (key in existing_keys or key in incoming_keys):
-                raise ValueError(f"Duplicate credit observation for loan_id={loan_id} at snapshot={snap}.")
-            if key:
-                incoming_keys.add(key)
+        reconciliation_report = reconciliation_preview(existing_rows, normalized)
+        reconciliation_input = _reconciliation_payload(reconciliation)
 
-        persisted = persistence.save_normalized_portfolio(normalized, dataset_id=resolved_dataset_id, source_name=filename, quality_result=quality_result)
-        all_history = persistence.portfolio_records.find({"dataset_id": resolved_dataset_id}, limit=100000)
-        portfolio = projection.project(all_history)
-        projection_persisted = persistence.save_projection(portfolio, dataset_id=resolved_dataset_id)
-        persistence.save_dataset_mapping(dataset_id=resolved_dataset_id, mappings=[item.__dict__ for item in field_mappings], source_name=filename)
-        total_rows = len(all_history)
-        persistence.save_dataset_metadata(dataset_id=resolved_dataset_id, source_name=filename, source_rows=total_rows, quality_result=quality_result, projection_summary={**portfolio["summary"], "snapshot_date": portfolio["summary"].get("snapshot_date")})
+        # Existing snapshot collisions become a preview first. This makes enriched
+        # reuploads safe and gives the user an explicit decision for financial conflicts.
+        has_collisions = reconciliation_report["counts"]["identical"] + reconciliation_report["counts"]["enriched"] + reconciliation_report["counts"]["conflict"] > 0
+        if dataset_id and has_collisions and not reconciliation_input:
+            return {
+                "status": "reconciliation_required",
+                "dataset_id": resolved_dataset_id,
+                "source_name": filename,
+                "source_rows": len(rows),
+                "normalized_rows": len(normalized),
+                "persistence_blocked": False,
+                "quality": quality_result,
+                "reconciliation": reconciliation_report,
+                "mapping": {"confirmed": True, "mapped_fields": len(field_mappings), "readiness": normalizer.mapping_summary(field_mappings)},
+                "discovery": {"coverage_score": discovery_result.get("coverage_score", 0), "warnings": discovery_result.get("warnings", [])},
+            }
 
+        # A reconciliation request must resolve every financial conflict explicitly.
+        conflicts = {item["key"]: item for item in reconciliation_report["items"] if item["classification"] == "conflict"}
+        resolutions = reconciliation_input.get("resolutions") or {}
+        missing = sorted(key for key in conflicts if resolutions.get(key) not in {"keep", "force"})
+        if missing:
+            raise HTTPException(status_code=409, detail={
+                "message": "Financial conflicts require a resolution before the snapshot can be committed.",
+                "reconciliation": reconciliation_report,
+                "unresolved_conflicts": missing,
+            })
+
+        existing_by_key = {_snapshot_key(row): row for row in existing_rows if _snapshot_key(row)}
+        report_items = reconciliation_report["items"]
+        inserted = enriched = identical = updated = conflicts_kept = forced = 0
+        for item in report_items:
+            key = item["key"]
+            incoming = item["incoming"]
+            classification = item["classification"]
+            loan_id = item["loan_id"]
+            snap = item["snapshot_date"]
+            existing = existing_by_key.get(key)
+            if classification == "inserted":
+                persistence.save_normalized_portfolio([incoming], resolved_dataset_id, filename, quality_result)
+                audit.record(dataset_id=resolved_dataset_id, operation="inserted", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), incoming=incoming)
+                inserted += 1
+            elif classification == "identical":
+                audit.record(dataset_id=resolved_dataset_id, operation="identical", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), reason="Incoming observation matches the frozen historical observation; ignored.", previous=existing or {}, incoming=incoming)
+                identical += 1
+            elif classification == "enriched":
+                merged = persistence.reconcile_update(existing or {}, incoming, resolved_dataset_id, filename, force=False)
+                audit.record(dataset_id=resolved_dataset_id, operation="enriched", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), reason="Incoming file fills previously missing metadata without changing populated values.", previous=existing or {}, incoming=incoming, changed_fields=item.get("added_fields", []))
+                audit.record(dataset_id=resolved_dataset_id, operation="updated", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), reason="Applied deterministic metadata merge.", previous=existing or {}, incoming=merged, changed_fields=item.get("added_fields", []))
+                enriched += 1
+                updated += 1
+            elif classification == "conflict":
+                resolution = resolutions.get(key)
+                audit.record(dataset_id=resolved_dataset_id, operation="conflict", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), reason=str(reconciliation_input.get("reason") or "Financial conflict detected during historical reconciliation."), previous=existing or {}, incoming=incoming, changed_fields=[c["field"] for c in item.get("conflicts", [])])
+                if resolution == "keep":
+                    conflicts_kept += 1
+                    continue
+                reason = str((reconciliation_input.get("reasons") or {}).get(key) or reconciliation_input.get("reason") or "Forced historical correction approved by user.")
+                merged = persistence.reconcile_update(existing or {}, incoming, resolved_dataset_id, filename, force=True)
+                audit.record(dataset_id=resolved_dataset_id, operation="updated", key=key, loan_id=loan_id, snapshot_date=snap, actor=str(reconciliation_input.get("actor") or "user"), reason=reason, previous=existing or {}, incoming=merged, changed_fields=[c["field"] for c in item.get("conflicts", [])])
+                forced += 1
+                updated += 1
+
+        rebuilt = _rebuild_dataset(resolved_dataset_id, filename, quality_result, field_mappings, len(rows))
+        final_counts = {"inserted": inserted, "identical": identical, "enriched": enriched, "conflict": len(conflicts), "conflicts_kept": conflicts_kept, "forced": forced, "updated": updated}
         return {
-            "status": "snapshot_appended" if dataset_id else "ingested",
+            "status": "snapshot_reconciled" if dataset_id else "ingested",
             "dataset_id": resolved_dataset_id,
             "source_name": filename,
             "source_rows": len(rows),
-            "historical_rows": total_rows,
+            "historical_rows": rebuilt["historical_rows"],
             "normalized_rows": len(normalized),
-            "persisted_rows": persisted,
+            "persisted_rows": inserted + updated,
             "persistence_blocked": False,
             "snapshot_date": _snapshot_key(normalized[0]) if normalized else snapshot_date,
             "quality": quality_result,
-            "projection": {**portfolio["summary"], "persisted": projection_persisted},
+            "reconciliation": {"counts": final_counts, "committed": True},
+            "projection": {**rebuilt["portfolio"]["summary"], "persisted": rebuilt["projection_persisted"]},
             "mapping": {"confirmed": True, "mapped_fields": len(field_mappings), "readiness": normalizer.mapping_summary(field_mappings)},
             "discovery": {"coverage_score": discovery_result.get("coverage_score", 0), "warnings": discovery_result.get("warnings", [])},
         }
