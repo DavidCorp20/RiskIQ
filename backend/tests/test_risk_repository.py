@@ -104,7 +104,7 @@ def test_save_and_read_analysis_by_result_id() -> None:
     assert stored["engine_version"] == "1.0.0"
     assert stored["t0_snapshot"] == "2026-08-01"
     assert stored["t1_snapshot"] == "2026-09-01"
-    assert stored["integrity_status"] == "unknown"
+    assert stored["integrity_status"] == "valid"
     assert stored["payload"] == payload
     assert stored["calculated_at"].endswith("+00:00")
 
@@ -135,7 +135,12 @@ def test_api_persist_true_injects_result_id(monkeypatch) -> None:
         def __init__(self) -> None:
             pass
 
-        def save_analysis(self, dataset_id: str, payload: dict[str, Any], engine_version: str = "1.0.0") -> str:
+        def save_analysis(
+            self,
+            dataset_id: str,
+            payload: dict[str, Any],
+            engine_version: str = "1.0.0",
+        ) -> str:
             assert dataset_id == "api-persist"
             assert payload["exposure"] == 1500
             return expected_result_id
