@@ -88,7 +88,7 @@ def test_post_analytics_multi_snapshot_includes_migration() -> None:
                 "dpd": 0,
                 "segment": "A",
                 "origination_date": "2026-01-10",
-                "snapshot_date": "2026-08-01",
+                "snapshot_date": "2026-09-01",
                 "product_id": "P1",
             },
         ],
