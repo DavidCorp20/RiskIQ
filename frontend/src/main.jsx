@@ -1,6 +1,7 @@
 import React,{useEffect} from 'react'
 import {createRoot} from 'react-dom/client'
 import App from './RiskOperatingSystem'
+import DataUpload from './DataUpload'
 import RiskLucideBridge from './RiskLucideBridge'
 import './riskiq-tailwind.css'
 import './riskiq-portfolio-concentration.css'
@@ -17,5 +18,6 @@ createRoot(document.getElementById('root')).render(
     <LanguageLayer />
     <RiskLucideBridge />
     <App />
+    <DataUpload />
   </React.StrictMode>
 )
