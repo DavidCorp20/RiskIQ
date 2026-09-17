@@ -29,6 +29,11 @@ function riskIqLegacyStyleGuard(){
 }
 
 export default defineConfig({
-  plugins: [riskIqRealDataGuard(),riskIqLegacyStyleGuard(),react(),tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss()
+    // riskIqRealDataGuard(),
+    // riskIqLegacyStyleGuard()
+  ],
   server: { port: 5173 },
 })
