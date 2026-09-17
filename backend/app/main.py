@@ -28,6 +28,7 @@ from app.api.simulation_routes import router as simulation_router
 from app.api.snapshot_routes import router as snapshot_router
 from app.api.vintage_routes import router as vintage_router
 from app.api.workspace_routes import router as workspace_router
+from app.api.v1.endpoints.risk import router as risk_analytics_router
 from app.config import settings
 
 app = FastAPI(title="RiskIQ API", version="0.1.0", description="Credit Risk & Portfolio Decision Intelligence API")
@@ -43,6 +44,7 @@ app.include_router(quality_router,prefix="/api")
 app.include_router(diagnosis_router,prefix="/api")
 app.include_router(indicator_router,prefix="/api")
 app.include_router(risk_router,prefix="/api")
+app.include_router(risk_analytics_router,prefix="/api")
 app.include_router(npl_router,prefix="/api")
 app.include_router(intelligence_router,prefix="/api")
 app.include_router(vintage_router,prefix="/api")
