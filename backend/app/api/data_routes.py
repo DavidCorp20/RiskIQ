@@ -13,7 +13,7 @@ from app.data.normalizer import DataNormalizer, FieldMapping
 from app.data.persistence import PortfolioPersistenceService
 from app.data.portfolio_projection import PortfolioProjectionService
 from app.data.quality import DataQualityService
-from app.data.reconciliation import preview as reconciliation_preview, snapshot_key
+from app.data.reconciliation import preview as reconciliation_preview, snapshot_key, classify
 
 router = APIRouter(prefix="/v1/data", tags=["data"])
 ingestion = FileIngestionService()
@@ -95,6 +95,98 @@ def _rebuild_dataset(dataset_id: str, filename: str, quality_result: dict, field
     return {"historical_rows": total_rows, "portfolio": portfolio, "projection_persisted": projection_persisted, "source_rows": source_rows}
 
 
+@router.post("/reconciliation/batch-override")
+def batch_override_conflicts(payload: dict) -> dict:
+    """Force a reviewed set of financial conflicts in one audited transaction batch.
+
+    The client sends the logical conflict keys plus the incoming observations from
+    the reconciliation preview. The backend re-reads and re-classifies each row
+    before applying it, preventing stale previews from overwriting a newer state.
+    """
+    dataset_id = str(payload.get("dataset_id") or "").strip()
+    conflict_ids = payload.get("conflict_ids") or []
+    incoming_by_key = payload.get("incoming_by_key") or {}
+    actor = str(payload.get("actor") or "user").strip() or "user"
+    reason = str(payload.get("justification") or "").strip()
+
+    if not dataset_id:
+        raise HTTPException(status_code=400, detail="dataset_id is required")
+    if not isinstance(conflict_ids, list) or not conflict_ids:
+        raise HTTPException(status_code=400, detail="conflict_ids must contain at least one historical key")
+    if not reason:
+        raise HTTPException(status_code=400, detail="A global justification is required for a batch financial override.")
+    if not isinstance(incoming_by_key, dict):
+        raise HTTPException(status_code=400, detail="incoming_by_key must be an object keyed by snapshot identity")
+
+    existing_rows = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    existing_by_key = {_snapshot_key(row): row for row in existing_rows if _snapshot_key(row)}
+    updated = []
+    rejected = []
+
+    for raw_key in conflict_ids:
+        key = str(raw_key)
+        existing = existing_by_key.get(key)
+        incoming = incoming_by_key.get(key)
+        if not existing or not isinstance(incoming, dict):
+            rejected.append({"key": key, "reason": "Historical observation or incoming row not found."})
+            continue
+        if _snapshot_key(incoming) != key:
+            rejected.append({"key": key, "reason": "Incoming observation identity does not match requested conflict key."})
+            continue
+        current = classify(existing, incoming)
+        if current.classification != "conflict":
+            rejected.append({"key": key, "reason": f"Stale reconciliation state: current classification is {current.classification}."})
+            continue
+
+        merged = persistence.reconcile_update(existing, incoming, dataset_id, str(payload.get("source_name") or existing.get("source_name") or "batch-reconciliation"), force=True)
+        changed_fields = [item["field"] for item in current.conflicts]
+        audit.record(
+            dataset_id=dataset_id,
+            operation="conflict",
+            key=key,
+            loan_id=current.loan_id,
+            snapshot_date=current.snapshot_date,
+            actor=actor,
+            reason=reason,
+            previous=existing,
+            incoming=incoming,
+            changed_fields=changed_fields,
+        )
+        audit.record(
+            dataset_id=dataset_id,
+            operation="updated",
+            key=key,
+            loan_id=current.loan_id,
+            snapshot_date=current.snapshot_date,
+            actor=actor,
+            reason=reason,
+            previous=existing,
+            incoming=merged,
+            changed_fields=changed_fields,
+        )
+        updated.append({"key": key, "loan_id": current.loan_id, "snapshot_date": current.snapshot_date, "changed_fields": changed_fields})
+
+    if updated:
+        all_history = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+        portfolio = projection.project(all_history)
+        projection_persisted = persistence.save_projection(portfolio, dataset_id=dataset_id)
+    else:
+        portfolio = None
+        projection_persisted = {}
+
+    return {
+        "status": "batch_override_applied" if updated else "batch_override_rejected",
+        "dataset_id": dataset_id,
+        "requested": len(conflict_ids),
+        "updated": len(updated),
+        "rejected": len(rejected),
+        "results": updated,
+        "rejections": rejected,
+        "projection": {"summary": portfolio["summary"] if portfolio else None, "persisted": projection_persisted},
+        "audit": {"operation": "batch_override", "actor": actor, "justification": reason},
+    }
+
+
 @router.post("/ingest")
 async def ingest_dataset(
     file: UploadFile = File(...),
@@ -137,8 +229,6 @@ async def ingest_dataset(
         reconciliation_report = reconciliation_preview(existing_rows, normalized)
         reconciliation_input = _reconciliation_payload(reconciliation)
 
-        # Existing snapshot collisions become a preview first. This makes enriched
-        # reuploads safe and gives the user an explicit decision for financial conflicts.
         has_collisions = reconciliation_report["counts"]["identical"] + reconciliation_report["counts"]["enriched"] + reconciliation_report["counts"]["conflict"] > 0
         if dataset_id and has_collisions and not reconciliation_input:
             return {
@@ -154,7 +244,6 @@ async def ingest_dataset(
                 "discovery": {"coverage_score": discovery_result.get("coverage_score", 0), "warnings": discovery_result.get("warnings", [])},
             }
 
-        # A reconciliation request must resolve every financial conflict explicitly.
         conflicts = {item["key"]: item for item in reconciliation_report["items"] if item["classification"] == "conflict"}
         resolutions = reconciliation_input.get("resolutions") or {}
         missing = sorted(key for key in conflicts if resolutions.get(key) not in {"keep", "force"})
