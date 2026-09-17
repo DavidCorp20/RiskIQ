@@ -22,7 +22,7 @@ ALIASES: dict[str, tuple[str, ...]] = {
     "product_id": ("product_id", "producto_id", "id_producto", "product", "producto"),
     "origination_date": ("origination_date", "fecha_desembolso", "fecha desembolso", "desembolso", "start_date", "fecha_otorgamiento", "fecha de otorgamiento", "fecha_apertura"),
     "due_date": ("due_date", "fecha_vencimiento", "fecha vencimiento", "vencimiento", "next_due_date"),
-    "snapshot_date": ("snapshot_date", "fecha_corte", "fecha corte", "as_of_date", "corte", "fecha_snapshot"),
+    "snapshot_date": ("snapshot_date", "snapshot_month", "snapshot_month_date", "fecha_corte", "fecha corte", "as_of_date", "corte", "fecha_snapshot", "mes_corte", "mes_snapshot"),
     "scheduled_amount": ("scheduled_amount", "cuota", "cuota_programada", "cuota programada", "installment_amount", "monto_cuota"),
     "paid_amount": ("paid_amount", "pagado", "monto_pagado", "amount_paid", "pago", "pagos"),
     "outstanding_principal": ("outstanding_principal", "saldo", "saldo_capital", "outstanding", "outstanding_balance", "balance", "capital_pendiente", "saldo_pendiente"),
