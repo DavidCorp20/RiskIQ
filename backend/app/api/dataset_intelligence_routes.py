@@ -42,7 +42,7 @@ def _persist_decisions(dataset_id:str,snapshot_id:Any,decisions:dict[str,Any])->
     for decision in decisions.get("decisions",[]):
         decision_id=str(decision.get("id") or "")
         if not decision_id: continue
-        entry={**decision,"id":f"{dataset_id}:{snapshot_id}:{decision_id}","code":decision_id,"dataset_id":dataset_id,"snapshot_id":str(snapshot_id) if snapshot_id is not None else None,"policy_id":"risk-intelligence-v1","policy_version":"dataset-intelligence-v6","status":"proposed","mode":"suggested","recommendation":decision.get("recommendation") or decision.get("recommended_action") or "","evidence":{"signals":decision.get("evidence",[]),"impact":decision.get("impact"),"confidence":decision.get("confidence"),"requires_human_review":decision.get("requires_human_review",True)}}
+        entry={**decision,"id":f"{dataset_id}:{snapshot_id}:{decision_id}","code":decision_id,"dataset_id":dataset_id,"snapshot_id":str(snapshot_id) if snapshot_id is not None else None,"policy_id":"risk-intelligence-v1","policy_version":"dataset-intelligence-v7","status":"proposed","mode":"suggested","recommendation":decision.get("recommendation") or decision.get("recommended_action") or "","evidence":{"signals":decision.get("evidence",[]),"impact":decision.get("impact"),"confidence":decision.get("confidence"),"requires_human_review":decision.get("requires_human_review",True)}}
         entries.append(decision_history.record(entry,actor="risk-engine"))
     return entries
 
