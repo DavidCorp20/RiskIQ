@@ -22,6 +22,18 @@ projection = PortfolioProjectionService()
 persistence = PortfolioPersistenceService()
 
 
+def _snapshot_key(row: dict) -> str:
+    for field in ("snapshot_date", "snapshot_month", "as_of_date"):
+        value = row.get(field)
+        if value not in (None, ""):
+            return str(value)[:10]
+    return ""
+
+
+def _loan_key(row: dict) -> str:
+    return str(row.get("loan_id") or row.get("id") or "").strip()
+
+
 @router.post("/discover")
 async def discover_dataset(file: UploadFile = File(...)) -> dict:
     """Read CSV/XLSX data and return profile plus conservative mapping suggestions."""
@@ -37,24 +49,17 @@ async def discover_dataset(file: UploadFile = File(...)) -> dict:
 def database_health() -> dict:
     """Check connectivity to the configured MongoDB database."""
     health = persistence.health()
-    return {
-        "database": "mongodb",
-        "environment": settings.app_env,
-        "status": "ok" if all(health.values()) else "degraded",
-        "collections": health,
-    }
+    return {"database": "mongodb", "environment": settings.app_env, "status": "ok" if all(health.values()) else "degraded", "collections": health}
 
 
 @router.get("/{dataset_id}/mapping")
 def get_dataset_mapping(dataset_id: str) -> dict:
-    """Return the latest confirmed source-to-canonical mapping for a dataset."""
     mapping = persistence.get_dataset_mapping(dataset_id)
     return {"dataset_id": dataset_id, "mapping": mapping}
 
 
 @router.post("/{dataset_id}/mapping")
 def save_dataset_mapping(dataset_id: str, mappings: list[dict]) -> dict:
-    """Persist a confirmed mapping so future refreshes reuse the dataset semantics."""
     try:
         parsed = [FieldMapping(**item) for item in mappings]
         readiness = normalizer.mapping_summary(parsed)
@@ -66,7 +71,6 @@ def save_dataset_mapping(dataset_id: str, mappings: list[dict]) -> dict:
 
 @router.post("/project")
 def project_dataset(rows: list[dict]) -> dict:
-    """Project normalized records into the canonical RiskIQ portfolio model."""
     return projection.project(rows)
 
 
@@ -77,20 +81,18 @@ async def ingest_dataset(
     dataset_id: str | None = Form(default=None),
     snapshot_date: str | None = Form(default=None),
 ) -> dict:
-    """Ingest a full portfolio or append one snapshot to an existing portfolio.
+    """Ingest a full portfolio or append one snapshot without losing prior state.
 
-    The dataset_id is the stable portfolio identity. Reusing it appends new
-    observations instead of creating a second unrelated portfolio. snapshot_date
-    gives RiskIQ an explicit observation date when the source file does not carry
-    one, enabling defensible longitudinal comparisons without requiring the user
-    to re-upload prior months.
+    The landing layer is append-only. When an existing dataset receives a new
+    monthly file, RiskIQ rebuilds the canonical projection from the complete
+    stored history, so loans absent from the new file remain in the current state
+    at their latest known observation.
     """
     try:
         content = await file.read()
         filename = file.filename or "upload.csv"
         rows = ingestion.read(filename, content)
         discovery_result = discovery.discover(rows)
-
         raw_mappings = json.loads(mappings)
         if not isinstance(raw_mappings, list):
             raise ValueError("mappings must be a JSON array")
@@ -101,74 +103,53 @@ async def ingest_dataset(
             for row in normalized:
                 if not row.get("snapshot_date"):
                     row["snapshot_date"] = snapshot_date
+        if dataset_id and any(not _snapshot_key(row) for row in normalized):
+            raise ValueError("An incremental snapshot requires snapshot_date or a mapped snapshot date column.")
+
         required_fields = {item.target for item in field_mappings if item.required}
         validation_errors = normalizer.validate_required(normalized, required_fields)
         if validation_errors:
             raise ValueError("Required field validation failed: " + "; ".join(validation_errors[:20]))
 
-        quality_result = quality.assess(
-            normalized,
-            mappings=[item.__dict__ for item in field_mappings],
-        )
+        quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
         if quality_result["status"] == "blocked":
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "message": "Dataset blocked by Data Quality Gate",
-                    "persistence_blocked": True,
-                    "quality": quality_result,
-                },
-            )
+            raise HTTPException(status_code=422, detail={"message": "Dataset blocked by Data Quality Gate", "persistence_blocked": True, "quality": quality_result})
 
         resolved_dataset_id = dataset_id or str(uuid4())
-        portfolio = projection.project(normalized)
+        existing_rows = persistence.portfolio_records.find({"dataset_id": resolved_dataset_id}, limit=100000) if dataset_id else []
+        existing_keys = {_loan_key(row) + "|" + _snapshot_key(row) for row in existing_rows if _loan_key(row) and _snapshot_key(row)}
+        incoming_keys = set()
+        for row in normalized:
+            loan_id = _loan_key(row)
+            snap = _snapshot_key(row)
+            key = loan_id + "|" + snap if loan_id and snap else ""
+            if key and (key in existing_keys or key in incoming_keys):
+                raise ValueError(f"Duplicate credit observation for loan_id={loan_id} at snapshot={snap}.")
+            if key:
+                incoming_keys.add(key)
 
-        persisted = persistence.save_normalized_portfolio(
-            normalized,
-            dataset_id=resolved_dataset_id,
-            source_name=filename,
-            quality_result=quality_result,
-        )
-        projection_persisted = persistence.save_projection(
-            portfolio,
-            dataset_id=resolved_dataset_id,
-        )
-        persistence.save_dataset_mapping(
-            dataset_id=resolved_dataset_id,
-            mappings=[item.__dict__ for item in field_mappings],
-            source_name=filename,
-        )
-        persistence.save_dataset_metadata(
-            dataset_id=resolved_dataset_id,
-            source_name=filename,
-            source_rows=len(rows),
-            quality_result=quality_result,
-            projection_summary={**portfolio["summary"], "snapshot_date": snapshot_date},
-        )
+        persisted = persistence.save_normalized_portfolio(normalized, dataset_id=resolved_dataset_id, source_name=filename, quality_result=quality_result)
+        all_history = persistence.portfolio_records.find({"dataset_id": resolved_dataset_id}, limit=100000)
+        portfolio = projection.project(all_history)
+        projection_persisted = persistence.save_projection(portfolio, dataset_id=resolved_dataset_id)
+        persistence.save_dataset_mapping(dataset_id=resolved_dataset_id, mappings=[item.__dict__ for item in field_mappings], source_name=filename)
+        total_rows = len(all_history)
+        persistence.save_dataset_metadata(dataset_id=resolved_dataset_id, source_name=filename, source_rows=total_rows, quality_result=quality_result, projection_summary={**portfolio["summary"], "snapshot_date": portfolio["summary"].get("snapshot_date")})
 
         return {
             "status": "snapshot_appended" if dataset_id else "ingested",
             "dataset_id": resolved_dataset_id,
             "source_name": filename,
             "source_rows": len(rows),
+            "historical_rows": total_rows,
             "normalized_rows": len(normalized),
             "persisted_rows": persisted,
             "persistence_blocked": False,
-            "snapshot_date": snapshot_date,
+            "snapshot_date": _snapshot_key(normalized[0]) if normalized else snapshot_date,
             "quality": quality_result,
-            "projection": {
-                **portfolio["summary"],
-                "persisted": projection_persisted,
-            },
-            "mapping": {
-                "confirmed": True,
-                "mapped_fields": len(field_mappings),
-                "readiness": normalizer.mapping_summary(field_mappings),
-            },
-            "discovery": {
-                "coverage_score": discovery_result.get("coverage_score", 0),
-                "warnings": discovery_result.get("warnings", []),
-            },
+            "projection": {**portfolio["summary"], "persisted": projection_persisted},
+            "mapping": {"confirmed": True, "mapped_fields": len(field_mappings), "readiness": normalizer.mapping_summary(field_mappings)},
+            "discovery": {"coverage_score": discovery_result.get("coverage_score", 0), "warnings": discovery_result.get("warnings", [])},
         }
     except HTTPException:
         raise
