@@ -7,7 +7,7 @@ const label={critical:'BLOQUEA',high:'ALTO',medium:'MEDIO',warning:'ADVERTENCIA'
 const friendly={loan_id:'Crédito / cuenta',customer_id:'Cliente',outstanding_principal:'Saldo de capital',dpd:'Días de mora',origination_date:'Fecha de originación',snapshot_date:'Fecha de corte',segment:'Segmento'}
 
 function localDiscovery(rows,existing){
- const columns=[...new Set(rows.flatMap(row=>Object.keys(row||{})))].map(name=>({name,type:'text',completeness:rows.length?rows.filter(row=>row?.[name] not in (null,'' )).length/rows.length:0,sample:rows.slice(0,3).map(row=>row?.[name]).filter(v=>v not in (null,''))}))
+ const columns=[...new Set(rows.flatMap(row=>Object.keys(row||{})))].map(name=>({name,type:'text',completeness:rows.length?rows.filter(row=>row?.[name]!==null&&row?.[name]!=='').length/rows.length:0,sample:rows.slice(0,3).map(row=>row?.[name]).filter(v=>v!==null&&v!=='')}))
  const aliases={loan_id:['loan_id','credito','crédito','credit_id'],customer_id:['customer_id','cliente','client_id'],snapshot_date:['snapshot_date','snapshot_month','fecha_corte','fecha corte','as_of_date'],outstanding_principal:['outstanding_principal','saldo','saldo_capital','saldo_pendiente','balance'],dpd:['dpd','dias_mora','días_mora','days_past_due','mora'],origination_date:['origination_date','fecha_desembolso','fecha_otorgamiento'],segment:['segment','segmento','categoria','categoría']}
  const suggestions=[]
  columns.forEach(column=>{const normalized=String(column.name).trim().toLowerCase();for(const [target,names] of Object.entries(aliases)){if(names.some(alias=>normalized===alias||normalized.replace(/[^a-z0-9áéíóúüñ]/g,'_')===alias)){suggestions.push({source:column.name,target,confidence:1,matched_alias:column.name,required:false});break}}})
