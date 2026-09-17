@@ -21,8 +21,10 @@ class RiskAnalyticsService:
         products = self._concentration(active, exposure, "product_id")
         vintages = self._concentration(active, exposure, "origination_date", vintage=True)
         drivers: list[dict[str, Any]] = []
+        # Risk drivers represent observed deterioration. Exposure materiality is
+        # evidence used to rank a deteriorated segment, not a substitute for risk.
         for item in segments[:5]:
-            if item["par30"] >= 0.08 or item["share_of_exposure"] >= 0.25:
+            if item["par30"] > 0:
                 drivers.append({"id": f"segment:{item['key']}", "title": item.get("label", f"Segmento {item['key']}"), "severity": "high" if item["par30"] >= 0.08 else "medium", "evidence": f"{item['loans']} créditos, {item['share_of_exposure'] * 100:.1f}% de exposición y PAR30 de {item['par30'] * 100:.1f}%.", "exposure_share": item["share_of_exposure"], "confidence": "deterministic"})
         return {"available": bool(active), "loan_count": len(active), "exposure": round(exposure, 2), "par": buckets, "concentration": {"segments": segments, "products": products}, "vintage": vintages, "drivers": drivers, "methodology": {"deterministic": True, "causality_inferred": False, "npl_regulatory_definition": False, "point_in_time": True, "note": "Point-in-time PAR ratios use the latest available observation per loan. Historical records are reserved for longitudinal analytics."}, "snapshot": self.snapshot_label(current)}
 
