@@ -15,19 +15,22 @@ class FieldMapping:
 
 
 class DataNormalizer:
-    """Normalize external source columns into the RiskIQ canonical vocabulary."""
+    """Normalize external columns while preserving the complete source dataset.
+
+    RiskIQ has a canonical financial vocabulary, but unknown/custom columns are
+    valuable analytical dimensions (age, employment, vehicle ownership, score,
+    geography, etc.) and must survive ingestion unchanged.
+    """
 
     def normalize(self, rows: list[dict[str, Any]], mappings: list[FieldMapping]) -> list[dict[str, Any]]:
         mapping = {item.source: item.target for item in mappings}
-        unknown_targets = set(mapping.values()) - set(CANONICAL_FIELDS)
-        if unknown_targets:
-            raise ValueError(f"Unknown canonical fields: {sorted(unknown_targets)}")
-
         normalized: list[dict[str, Any]] = []
         for row in rows:
-            output: dict[str, Any] = {}
+            # Preserve every source column first. Canonical mappings then add or
+            # override the normalized financial names without destroying custom data.
+            output: dict[str, Any] = dict(row)
             for source, target in mapping.items():
-                if source in row:
+                if source in row and target:
                     output[target] = row[source]
             normalized.append(output)
         return normalized
