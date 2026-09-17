@@ -11,9 +11,11 @@ class Scenario:
 
 
 class ScenarioSimulator:
-    """Applies transparent sensitivity assumptions to current portfolio metrics.
+    """Apply transparent sensitivity assumptions to current portfolio metrics.
 
-    This is not a predictive ML model. Results are directional scenario estimates.
+    The simulator is deliberately deterministic. ``par_shock_points`` is
+    expressed in percentage points (e.g. 0.05 means +5 percentage points).
+    Results are sensitivity estimates, not predictive or causal forecasts.
     """
 
     def simulate(self, portfolio: dict[str, Any], changes: dict[str, float], name: str = "Custom scenario") -> dict[str, Any]:
@@ -24,6 +26,10 @@ class ScenarioSimulator:
         originations_change = self._number(changes.get("originations_pct"))
         collection_change = self._number(changes.get("collection_effectiveness_pct"))
         approval_change = self._number(changes.get("approval_cutoff_points"))
+        # Canonical stress convention for the MVP: 0.05 == +5 percentage points.
+        # Keep the old ``shock_pct`` input as a compatibility alias so existing
+        # clients do not silently lose the scenario shock.
+        par_shock_points = self._number(changes.get("par_shock_points", changes.get("shock_pct")))
 
         balance_factor = max(0.0, 1.0 + originations_change)
         estimated_balance = balance * balance_factor
@@ -35,6 +41,9 @@ class ScenarioSimulator:
             cutoff_factor = max(0.0, 1.0 - min(0.20, approval_change / 1000.0))
             estimated_par30 *= cutoff_factor
             estimated_par90 *= cutoff_factor
+
+        estimated_par30 = min(1.0, max(0.0, estimated_par30 + par_shock_points))
+        estimated_par90 = min(1.0, max(0.0, estimated_par90 + par_shock_points))
 
         estimated_balance = self._round(estimated_balance)
         estimated_par30 = self._round(estimated_par30)
@@ -74,8 +83,10 @@ class ScenarioSimulator:
                 "originations_pct": originations_change,
                 "collection_effectiveness_pct": collection_change,
                 "approval_cutoff_points": approval_change,
+                "par_shock_points": par_shock_points,
+                "par_shock_unit": "percentage_points",
             },
-            "interpretation": "Sensibilidad determinística sobre el snapshot actual; no constituye una predicción ML ni una estimación causal.",
+            "interpretation": "Sensibilidad determinística sobre el snapshot actual; el shock PAR se expresa en puntos porcentuales y no constituye una predicción ML ni una estimación causal.",
             "governance": {
                 "causality_inferred": False,
                 "requires_human_review": True,
