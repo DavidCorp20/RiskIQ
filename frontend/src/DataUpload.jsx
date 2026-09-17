@@ -15,7 +15,7 @@ export default function DataUpload(){
  const ingest=async(payload={})=>{if(!file||!mappings.length)return;if(appendMode&&!snapshotDate){setError('Indica la fecha de corte del snapshot.');return}setLoading(true);setError('');try{const result=await ingestFile(file,mappings,appendMode?activeDatasetId():'',snapshotDate,payload);if(result.status==='reconciliation_required'){setReconciliation(result.reconciliation);setResolutions({});return}setDone(true);setReconciliation(null);setTimeout(()=>window.location.reload(),700)}catch(error){const data=error?.data;if(data?.reconciliation){setReconciliation(data.reconciliation);return}setError(error.message||'No se pudo procesar la cartera.')}finally{setLoading(false)}}
  const commit=()=>ingest({resolutions,actor:'user',reason})
  const bulkOverride=async(justification)=>{const datasetId=activeDatasetId();const conflicts=(reconciliation?.items||[]).filter(item=>item.classification==='conflict');if(!datasetId||!conflicts.length)return;setBulkLoading(true);setError('');try{const result=await batchOverrideConflicts(datasetId,conflicts.map(item=>item.key),Object.fromEntries(conflicts.map(item=>[item.key,item.incoming])),justification,'user',file?.name||'batch-reconciliation',reconciliation?.items||[]);if(result.rejected)throw new Error(`No se pudieron completar ${result.rejected} observaciones: ${result.rejections?.map(item=>`${item.key}: ${item.reason}`).join(' · ')||'revisa la carga.'}`);setReason(justification);setDone(true);setReconciliation(null);setTimeout(()=>window.location.reload(),700)}catch(error){setError(error.message||'No se pudo aplicar la actualización masiva.')}finally{setBulkLoading(false)}}
- return <>
+ return <div className="riskiq-upload-layer">
   <div className="fixed right-5 top-20 z-40 flex gap-2">
    {activeDatasetId()&&<button type="button" onClick={()=>setExplorerOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50"><Eye size={16}/> Ver datos</button>}
    <button type="button" onClick={openUpload} className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">{appendMode?'Actualizar cartera':'Cargar cartera'}</button>
@@ -35,5 +35,5 @@ export default function DataUpload(){
   </div></div>}
 
   {reconciliation&&<ReconciliationPanel report={reconciliation} resolutions={resolutions} setResolutions={setResolutions} reason={reason} setReason={setReason} loading={loading} bulkLoading={bulkLoading} onBulkOverride={bulkOverride} onCancel={()=>setReconciliation(null)} onCommit={commit}/>} 
- </>
+ </div>
 }
