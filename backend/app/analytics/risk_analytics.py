@@ -25,8 +25,6 @@ class RiskAnalyticsService:
                 f"Duplicate loan_id + snapshot key detected: {duplicate_keys}"
             )
 
-        # Validate raw balances before selecting active exposure. Negative
-        # balances must never disappear merely because they are excluded by > 0.
         for row in rows:
             balance = self._number(row.get("outstanding_principal"))
             if balance < 0:
@@ -38,8 +36,8 @@ class RiskAnalyticsService:
         active = [r for r in current if self._number(r.get("outstanding_principal")) > 0]
         exposure = sum(self._number(r.get("outstanding_principal")) for r in active)
 
-        dpd_buckets = self._dpd_buckets(active)
-        par = self._par_from_buckets(dpd_buckets, exposure)
+        dpd_buckets, par7_balance, par7_loans = self._dpd_buckets(active)
+        par = self._par_from_buckets(dpd_buckets, exposure, par7_balance, par7_loans)
         integrity = self._validate_integrity(exposure, dpd_buckets, par)
 
         segments = self._concentration(active, exposure, "segment")
@@ -102,11 +100,13 @@ class RiskAnalyticsService:
         keys = [cls._snapshot_key(r) for r in rows if cls._snapshot_key(r)]
         return max(keys) if keys else None
 
-    def _dpd_buckets(self, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    def _dpd_buckets(self, rows: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], float, int]:
         buckets = {
             key: {"balance": 0.0, "loans": 0}
             for key in self.DPD_BUCKETS
         }
+        par7_balance = 0.0
+        par7_loans = 0
         for row in rows:
             balance = self._number(row.get("outstanding_principal"))
             dpd = self._number(row.get("dpd"))
@@ -126,23 +126,36 @@ class RiskAnalyticsService:
                 )
             buckets[key]["balance"] += balance
             buckets[key]["loans"] += 1
+            if dpd >= 7:
+                par7_balance += balance
+                par7_loans += 1
 
         for value in buckets.values():
             value["balance"] = round(value["balance"], 2)
-        return buckets
+        return buckets, round(par7_balance, 2), par7_loans
 
     @classmethod
-    def _par_from_buckets(cls, buckets: dict[str, dict[str, Any]], total: float) -> dict[str, dict[str, Any]]:
-        def make(name: str, keys: tuple[str, ...], threshold: int) -> dict[str, Any]:
-            balance = round(sum(buckets[key]["balance"] for key in keys), 2)
-            loans = sum(buckets[key]["loans"] for key in keys)
+    def _par_from_buckets(cls, buckets: dict[str, dict[str, Any]], total: float, par7_balance: float, par7_loans: int) -> dict[str, dict[str, Any]]:
+        def make(balance: float, loans: int, threshold: int) -> dict[str, Any]:
+            balance = round(balance, 2)
             return {"balance": balance, "ratio": round(balance / total, 4) if total else 0, "loans": loans, "dpd_threshold": threshold}
 
+        par30_balance = round(
+            buckets["dpd_30_59"]["balance"]
+            + buckets["dpd_60_89"]["balance"]
+            + buckets["dpd_90_plus"]["balance"],
+            2,
+        )
+        par60_balance = round(
+            buckets["dpd_60_89"]["balance"] + buckets["dpd_90_plus"]["balance"],
+            2,
+        )
+        par90_balance = buckets["dpd_90_plus"]["balance"]
         return {
-            "par7": make("par7", ("dpd_1_29", "dpd_30_59", "dpd_60_89", "dpd_90_plus"), 7),
-            "par30": make("par30", ("dpd_30_59", "dpd_60_89", "dpd_90_plus"), 30),
-            "par60": make("par60", ("dpd_60_89", "dpd_90_plus"), 60),
-            "par90": make("par90", ("dpd_90_plus",), 90),
+            "par7": make(par7_balance, par7_loans, 7),
+            "par30": make(par30_balance, buckets["dpd_30_59"]["loans"] + buckets["dpd_60_89"]["loans"] + buckets["dpd_90_plus"]["loans"], 30),
+            "par60": make(par60_balance, buckets["dpd_60_89"]["loans"] + buckets["dpd_90_plus"]["loans"], 60),
+            "par90": make(par90_balance, buckets["dpd_90_plus"]["loans"], 90),
         }
 
     @classmethod
