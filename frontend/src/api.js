@@ -1,9 +1,14 @@
 const RAW_API_URL=(import.meta.env.VITE_API_BASE_URL||'').trim()
-const API_URL=RAW_API_URL
+const NORMALIZED_API_URL=RAW_API_URL
   .replace(/\/+$/,'')
   .replace(/\/api\/v1$/i,'')
   .replace(/\/api$/i,'')
-const apiUrl=path=>`${API_URL}${path.startsWith('/')?path:`/${path}`}`
+const API_URL=NORMALIZED_API_URL
+  ? /^https?:\/\//i.test(NORMALIZED_API_URL)
+    ? NORMALIZED_API_URL
+    : `https://${NORMALIZED_API_URL}`
+  : ''
+const apiUrl=path=>`${API_URL}${path.startsWith("/")?path:`/${path}`}`
 
 async function request(url,options={}){
   if(!API_URL)throw new Error('VITE_API_BASE_URL is not configured in the frontend environment')
