@@ -8,6 +8,7 @@ import PolicyPortfolioLab from './PolicyPortfolioLab'
 import PolicyBacktest from './PolicyBacktest'
 import GovernancePanel from './GovernancePanel'
 import ExecutiveRiskReport from './ExecutiveRiskReport'
+import './builder-stepper-fix.css'
 
 const stages=[
   {id:'data',label:'Data Foundation',short:'Datos',description:'Descubre, mapea y valida la evidencia de cartera.'},
