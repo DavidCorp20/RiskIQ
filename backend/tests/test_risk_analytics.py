@@ -38,6 +38,8 @@ def test_risk_analytics_returns_zero_ratios_for_zero_exposure(service):
     assert result["loan_count"] == 0
     assert result["exposure"] == 0
     assert all(bucket["ratio"] == 0 for bucket in result["par"].values())
+    assert result["migration"] == {}
+    assert result["deterioration_drivers"] == []
     assert result["integrity"] == {
         "exposure_reconciled": True,
         "cumulative_par_monotonic": True,
@@ -167,3 +169,97 @@ def test_integrity_negative_outstanding_principal_is_rejected(service):
             {"loan_id": "L1", "outstanding_principal": -10, "dpd": 0},
             {"loan_id": "L2", "outstanding_principal": 100, "dpd": 0},
         ])
+
+
+def test_migration_matrix_reconciles_exact_t0_balance(service):
+    rows = [
+        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "segment": "A"},
+        {"loan_id": "L2", "snapshot_date": "2026-08-01", "outstanding_principal": 200, "dpd": 10, "segment": "A"},
+        {"loan_id": "L3", "snapshot_date": "2026-08-01", "outstanding_principal": 300, "dpd": 35, "segment": "B"},
+        {"loan_id": "L4", "snapshot_date": "2026-08-01", "outstanding_principal": 400, "dpd": 70, "segment": "B"},
+        {"loan_id": "L5", "snapshot_date": "2026-08-01", "outstanding_principal": 500, "dpd": 95, "segment": "C"},
+        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 35, "segment": "A"},
+        {"loan_id": "L2", "snapshot_date": "2026-09-01", "outstanding_principal": 200, "dpd": 0, "segment": "A"},
+        {"loan_id": "L3", "snapshot_date": "2026-09-01", "outstanding_principal": 300, "dpd": 60, "segment": "B"},
+        {"loan_id": "L4", "snapshot_date": "2026-09-01", "outstanding_principal": 400, "dpd": 95, "segment": "B"},
+    ]
+
+    migration = service.analyze(rows)["migration"]
+    flows = migration["flows"]
+
+    assert migration["initial_exposure"] == 1500
+    assert flows["downgrades"]["balance"] == 800
+    assert flows["upgrades"]["balance"] == 200
+    assert flows["statics"]["balance"] == 300
+    assert flows["closed"]["balance"] == 200
+    assert sum(flow["balance"] for flow in flows.values()) == 1500
+    assert migration["reconciliation"]["reconciled"] is True
+
+
+def test_migration_ignores_new_originations_in_t0_base(service):
+    rows = [
+        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0},
+        {"loan_id": "L2", "snapshot_date": "2026-08-01", "outstanding_principal": 200, "dpd": 10},
+        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 0},
+        {"loan_id": "L2", "snapshot_date": "2026-09-01", "outstanding_principal": 200, "dpd": 10},
+        {"loan_id": "L3", "snapshot_date": "2026-09-01", "outstanding_principal": 500, "dpd": 0},
+    ]
+
+    migration = service.analyze(rows)["migration"]
+
+    assert migration["initial_exposure"] == 300
+    assert migration["new_originations"] == {
+        "balance": 500.0,
+        "loans": 1,
+        "ratio_of_t1": round(500 / 800, 4),
+    }
+    assert migration["flows"]["statics"]["balance"] == 300
+    assert migration["flows"]["statics"]["ratio_of_t0"] == 1.0
+    assert sum(flow["balance"] for flow in migration["flows"].values()) == 300
+
+
+def test_deterioration_driver_identifies_worst_performing_segment(service):
+    rows = [
+        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "segment": "Stable", "origination_date": "2026-01-10"},
+        {"loan_id": "L2", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "segment": "Risky", "origination_date": "2026-02-10"},
+        {"loan_id": "L3", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 10, "segment": "Risky", "origination_date": "2026-02-10"},
+        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 0, "segment": "Stable", "origination_date": "2026-01-10"},
+        {"loan_id": "L2", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 35, "segment": "Risky", "origination_date": "2026-02-10"},
+        {"loan_id": "L3", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 40, "segment": "Risky", "origination_date": "2026-02-10"},
+    ]
+
+    drivers = service.analyze(rows)["deterioration_drivers"]
+    risky = next(item for item in drivers if item["dimension"] == "segment" and item["key"] == "Risky")
+
+    assert risky["to_30_plus_balance"] == 200
+    assert risky["to_30_plus_rate"] == 1.0
+    assert risky["downgrade_rate"] == 1.0
+    assert risky["to_30_plus_loans"] == 2
+
+
+def test_deterioration_driver_identifies_worst_vintage(service):
+    rows = [
+        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "origination_date": "2026-01-10"},
+        {"loan_id": "L2", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "origination_date": "2026-02-10"},
+        {"loan_id": "L3", "snapshot_date": "2026-08-01", "outstanding_principal": 100, "dpd": 0, "origination_date": "2026-02-15"},
+        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 0, "origination_date": "2026-01-10"},
+        {"loan_id": "L2", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 45, "origination_date": "2026-02-10"},
+        {"loan_id": "L3", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 60, "origination_date": "2026-02-15"},
+    ]
+
+    drivers = service.analyze(rows)["deterioration_drivers"]
+    vintage = next(item for item in drivers if item["dimension"] == "vintage")
+
+    assert vintage["key"] == "2026-02"
+    assert vintage["to_30_plus_rate"] == 1.0
+    assert vintage["to_30_plus_balance"] == 200
+
+
+def test_integrity_layer_enforced_on_both_snapshots(service):
+    rows = [
+        {"loan_id": "L1", "snapshot_date": "2026-08-01", "outstanding_principal": -100, "dpd": 0},
+        {"loan_id": "L1", "snapshot_date": "2026-09-01", "outstanding_principal": 100, "dpd": 0},
+    ]
+
+    with pytest.raises(RiskAnalyticsIntegrityError, match="2026-08-01"):
+        service.analyze(rows)
