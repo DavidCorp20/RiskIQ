@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState} from 'react'
 import {archiveSegment,listSegments,previewSegment,saveSegment} from './api'
+import './segment-studio.css'
 
 const OPS=[['=','igual a'],['!=','distinto de'],['>','mayor que'],['>=','mayor o igual'],['<','menor que'],['<=','menor o igual'],['contains','contiene'],['is_empty','está vacío'],['is_not_empty','no está vacío']]
 
