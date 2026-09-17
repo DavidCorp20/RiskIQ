@@ -13,6 +13,31 @@ def test_quality_blocks_duplicate_loan_ids() -> None:
     assert any(issue["code"] == "DUPLICATE_LOAN_ID" for issue in result["issues"])
 
 
+def test_quality_allows_same_loan_across_snapshot_dates() -> None:
+    rows = [
+        {"customer_id": "C1", "loan_id": "L1", "snapshot_date": "2026-01-31", "outstanding_principal": 100},
+        {"customer_id": "C1", "loan_id": "L1", "snapshot_date": "2026-02-28", "outstanding_principal": 90},
+        {"customer_id": "C1", "loan_id": "L1", "snapshot_date": "2026-03-31", "outstanding_principal": 80},
+    ]
+
+    result = DataQualityService().assess(rows)
+
+    assert result["status"] == "passed"
+    assert not any(issue["code"] == "DUPLICATE_LOAN_ID" for issue in result["issues"])
+
+
+def test_quality_blocks_duplicate_loan_in_same_snapshot() -> None:
+    rows = [
+        {"customer_id": "C1", "loan_id": "L1", "snapshot_date": "2026-01-31", "outstanding_principal": 100},
+        {"customer_id": "C2", "loan_id": "L1", "snapshot_date": "2026-01-31", "outstanding_principal": 200},
+    ]
+
+    result = DataQualityService().assess(rows)
+
+    assert result["status"] == "blocked"
+    assert any(issue["code"] == "DUPLICATE_LOAN_ID" for issue in result["issues"])
+
+
 def test_quality_detects_invalid_numbers_and_dates() -> None:
     rows = [
         {
