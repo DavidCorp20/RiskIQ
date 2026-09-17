@@ -44,6 +44,7 @@ class FakePersistence:
         self.installments = FakeCollection([])
         self.payments = FakeCollection([])
         self.snapshots = FakeCollection([])
+        self.dataset_mappings = FakeCollection([])
 
 
 def test_health_endpoint() -> None:
