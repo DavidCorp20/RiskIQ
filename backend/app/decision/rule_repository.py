@@ -65,3 +65,22 @@ class DecisionRuleRepository:
         if dataset_id: filters["dataset_id"] = dataset_id
         if business_id: filters["business_id"] = business_id
         return self.rules.find(filters, limit=limit)
+
+    def list_active(self, dataset_id: str, business_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        """Return only the latest governed APPROVED/DEPLOYED version per policy.
+
+        Drafts and retired versions remain visible in the builder but never enter
+        the production decision path.
+        """
+        candidates = self.list(dataset_id=dataset_id, business_id=business_id, limit=limit * 5)
+        active: dict[str, dict[str, Any]] = {}
+        for rule in candidates:
+            policy_id = self._policy_id(rule)
+            if not policy_id:
+                continue
+            if self._effective_status(rule) not in {"APPROVED", "DEPLOYED"}:
+                continue
+            current = active.get(policy_id)
+            if current is None or self._version(rule) > self._version(current):
+                active[policy_id] = {**rule, "effective_status": self._effective_status(rule)}
+        return sorted(active.values(), key=lambda x: (self._version(x), self._policy_id(x)))[:limit]
