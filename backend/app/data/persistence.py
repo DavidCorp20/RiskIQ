@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.data.mongo import MongoRepository
+from app.data.reconciliation import merge_enriched, snapshot_key
 
 
 class PortfolioPersistenceService:
@@ -38,6 +39,18 @@ class PortfolioPersistenceService:
         for document in documents:
             self.portfolio_records.insert(document)
         return len(documents)
+
+    def reconcile_update(self, existing: dict[str, Any], incoming: dict[str, Any], dataset_id: str, source_name: str, force: bool = False) -> dict[str, Any]:
+        """Update one logical historical observation without creating a duplicate key."""
+        merged = dict(incoming) if force else merge_enriched(existing, incoming)
+        merged["dataset_id"] = dataset_id
+        merged["source_name"] = source_name
+        merged["reconciled_at"] = datetime.now(timezone.utc).isoformat()
+        self.portfolio_records.update(
+            {"dataset_id": dataset_id, "loan_id": existing.get("loan_id"), "snapshot_date": existing.get("snapshot_date")},
+            {"$set": merged},
+        )
+        return merged
 
     def save_dataset_mapping(self, dataset_id: str, mappings: list[dict[str, Any]], source_name: str | None = None) -> str:
         return self.dataset_mappings.insert({
