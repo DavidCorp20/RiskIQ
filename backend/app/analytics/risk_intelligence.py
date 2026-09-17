@@ -31,6 +31,7 @@ class RiskIntelligenceService:
             dimension = str(r.get("segment") or r.get("product") or r.get("product_id") or r.get("product_name") or "Sin segmentación").strip() or "Sin segmentación"
             groups[dimension].append(r)
         out = []
+        portfolio_par30 = bad30 / total if total else 0
         for name, items in groups.items():
             exposure = sum(self._num(r.get("outstanding_principal", r.get("outstanding_balance"))) for r in items)
             b30 = sum(self._num(r.get("outstanding_principal", r.get("outstanding_balance"))) for r in items if self._num(r.get("dpd")) >= 30)
@@ -38,10 +39,16 @@ class RiskIntelligenceService:
             share = exposure / total if total else 0
             par30 = b30 / exposure if exposure else 0
             contribution = b30 / bad30 if bad30 else 0
-            excess = par30 - (bad30 / total if total else 0)
+            excess = par30 - portfolio_par30
             severity = self._severity(par30)
-            score = min(100, round(100 * share * (1 + min(2, max(0, excess * 5))) * (1 + (1 if severity == "critical" else .5 if severity == "high" else 0)), 1))
-            out.append({"name": name, "loans": len(items), "exposure": round(exposure, 2), "exposure_share": round(share, 4), "bad_balance_30_plus": round(b30, 2), "bad_balance_90_plus": round(b90, 2), "par30": round(par30, 4), "par90": round(b90 / exposure if exposure else 0, 4), "contribution_to_portfolio_bad_30": round(contribution, 4), "excess_par30_vs_portfolio": round(excess, 4), "priority_score": score, "risk_level": severity})
+            # Materiality is reported independently. Review priority is zero for
+            # a segment with no observed 30+ deterioration; size alone is context.
+            if b30 <= 0 or par30 <= 0:
+                score = 0.0
+            else:
+                severity_factor = 1 + (1 if severity == "critical" else .5 if severity == "high" else 0)
+                score = min(100, round(100 * share * severity_factor * (1 + min(2, max(0, excess * 5))) * (0.5 + 0.5 * contribution), 1))
+            out.append({"name": name, "loans": len(items), "exposure": round(exposure, 2), "exposure_share": round(share, 4), "bad_balance_30_plus": round(b30, 2), "bad_balance_90_plus": round(b90, 2), "par30": round(par30, 4), "par90": round(b90 / exposure if exposure else 0, 4), "contribution_to_portfolio_bad_30": round(contribution, 4), "excess_par30_vs_portfolio": round(excess, 4), "priority_score": score, "risk_level": severity, "risk_status": "deteriorated" if b30 > 0 else "healthy"})
         return sorted(out, key=lambda x: (-x["priority_score"], -x["exposure"]))[:12]
 
     def _priorities(self, concentration: list[dict[str, Any]], par: dict[int, float], bad: dict[int, float]) -> list[dict[str, Any]]:
@@ -50,9 +57,9 @@ class RiskIntelligenceService:
             priorities.append({"rank": 1, "type": "recovery", "title": "Recuperación de 90+", "evidence": {"par90": round(par[90], 4), "exposure": round(bad[90], 2)}, "why": "La mora severa representa una exposición material que requiere cuantificación de antigüedad y capacidad de recuperación."})
         if par[30] >= .10:
             priorities.append({"rank": len(priorities) + 1, "type": "entry", "title": "Entrada y acumulación en 30+", "evidence": {"par30": round(par[30], 4), "exposure": round(bad[30], 2)}, "why": "La cartera presenta deterioro temprano suficiente para investigar dónde se origina y qué segmentos lo explican."})
-        for item in concentration[:3]:
-            if item["priority_score"] >= 20:
-                priorities.append({"rank": len(priorities) + 1, "type": "concentration", "title": f"Revisar {item['name']}", "evidence": {"exposure_share": item["exposure_share"], "par30": item["par30"], "bad30_contribution": item["contribution_to_portfolio_bad_30"], "priority_score": item["priority_score"]}, "why": "Combina materialidad y deterioro; el score ordena la revisión y no representa una clasificación regulatoria."})
+        for item in concentration:
+            if item["bad_balance_30_plus"] > 0 and item["priority_score"] >= 20:
+                priorities.append({"rank": len(priorities) + 1, "type": "concentration", "title": f"Revisar {item['name']}", "evidence": {"exposure_share": item["exposure_share"], "par30": item["par30"], "bad30_contribution": item["contribution_to_portfolio_bad_30"], "priority_score": item["priority_score"]}, "why": "Combina materialidad, severidad y contribución observada a la mora; el score ordena la revisión y no representa una clasificación regulatoria."})
         return priorities[:6]
 
     @staticmethod
@@ -80,14 +87,15 @@ class RiskIntelligenceService:
         id_coverage = sum(bool(x) for x in ids) / len(current) if current else 0
         checks.append({"field": "loan_id", "label": "identidad de crédito", "coverage": round(id_coverage, 4), "status": "ok" if id_coverage >= .95 and unique_ids == len([x for x in ids if x]) else "weak"})
         score = round(sum(c["coverage"] for c in checks) / len(checks) * 100) if checks else 0
-        return {"score": score, "confidence": "high" if score >= 90 else "medium" if score >= 75 else "low", "checks": checks, "records_total": n, "current_loans": len(current), "limitation": "La calidad mide cobertura de campos analíticos; no valida por sí sola la veracidad económica del origen."}
+        return {"score": score, "confidence": "high" if score >= 90 else "medium" if score >= 75 else "low", "checks": checks, "records_total": n, "current_loans": len(current), "limitation": "La calidad mide cobertura de campos analíticos; no valida por sí sola la veracidad económica del origen.", "limitations": ["No se puede inferir tendencia temporal ni velocidad de deterioro con un único snapshot.", "Los roll rates requieren al menos dos snapshots comparables y la misma identidad de crédito.", "NPL se trata como proxy de exposición 90+ y no como definición regulatoria."]}
 
     @staticmethod
     def _interpretation(posture: dict[str, Any], concentration: list[dict[str, Any]], par: dict[int, float], quality: dict[str, Any]) -> str:
-        top = concentration[0] if concentration else None
+        deteriorated = [item for item in concentration if item["bad_balance_30_plus"] > 0]
+        top = deteriorated[0] if deteriorated else None
         if top:
-            return f"{posture['label']}. El principal foco de revisión es {top['name']}, que representa {top['exposure_share']*100:.1f}% de la exposición y {top['contribution_to_portfolio_bad_30']*100:.1f}% de la mora 30+; la prioridad combina materialidad y severidad."
-        return f"{posture['label']}. La lectura debe profundizarse con segmentación y evidencia histórica. Confianza de datos: {quality['confidence']}."
+            return f"{posture['label']}. El segmento con mayor prioridad entre los deteriorados es {top['name']}, con {top['exposure_share']*100:.1f}% de exposición y {top['contribution_to_portfolio_bad_30']*100:.1f}% de la mora 30+. La prioridad combina materialidad, severidad y contribución observada."
+        return f"{posture['label']}. No se observan segmentos deteriorados en 30+ en el corte actual. Confianza de datos: {quality['confidence']}."
 
     @staticmethod
     def _num(value: Any) -> float:
