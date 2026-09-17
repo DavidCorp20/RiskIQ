@@ -12,7 +12,7 @@ class RiskIntelligenceService:
     def analyze(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         current = RiskAnalyticsService.latest_snapshot(rows)
         if not current:
-            return {"version": "risk-intelligence-v1", "posture": {}, "materiality": {}, "concentration": [], "priorities": [], "data_quality": {"score": 0, "confidence": "low", "checks": []}}
+            return {"version": "risk-intelligence-v1", "posture": {}, "materiality": {}, "concentration": [], "priorities": [], "data_quality": {"score": 0, "confidence": "low", "checks": [], "limitations": []}}
 
         balance = sum(self._num(r.get("outstanding_principal", r.get("outstanding_balance"))) for r in current)
         loans = len(current)
@@ -23,7 +23,7 @@ class RiskIntelligenceService:
         priorities = self._priorities(concentration, par, bad)
         quality = self._quality(rows, current)
 
-        return {"version": "risk-intelligence-v1", "posture": posture, "materiality": {"exposure": round(balance, 2), "bad_balance_1_plus": round(bad[1], 2), "bad_balance_30_plus": round(bad[30], 2), "bad_balance_60_plus": round(bad[60], 2), "bad_balance_90_plus": round(bad[90], 2), "shares": {f"par{b}": round(par[b], 4) for b in (7, 30, 60, 90)}}, "concentration": concentration, "priorities": priorities, "data_quality": quality, "interpretation": self._interpretation(posture, concentration, par, quality), "governance": {"deterministic": True, "priority_score_is_internal": True, "no_causality_claim": True, "no_customer_action_executed": True, "point_in_time": True}}
+        return {"version": "risk-intelligence-v1", "posture": posture, "materiality": {"exposure": round(balance, 2), "bad_balance_1_plus": round(bad[1], 2), "bad_balance_30_plus": round(bad[30], 2), "bad_balance_60_plus": round(bad[60], 2), "bad_balance_90_plus": round(bad[90], 2), "shares": {f"par{b}": round(par[b], 4) for b in (7, 30, 60, 90)}}, "concentration": concentration, "priorities": priorities, "data_quality": quality, "interpretation": self._interpretation(posture, concentration, par, quality), "definitions": {"exposure": "Outstanding principal/saldo pendiente de los créditos activos en el último corte por crédito.", "par30": "Saldo pendiente de créditos con DPD >= 30 dividido por la exposición total del corte.", "par90": "Saldo pendiente de créditos con DPD >= 90 dividido por la exposición total del corte.", "materiality": "Peso del segmento sobre la exposición total; no implica deterioro.", "severity": "Porcentaje del saldo del segmento que está en 30+ o 90+ según la métrica.", "contribution_to_bad_30": "Participación del segmento en el saldo total 30+ de la cartera.", "early_deterioration": "PAR30 / PAR7; relación observada entre buckets, no una inferencia causal.", "severe_conversion": "PAR90 / PAR30; relación observada entre buckets, no una predicción."}, "governance": {"deterministic": True, "priority_score_is_internal": True, "no_causality_claim": True, "no_customer_action_executed": True, "point_in_time": True}}
 
     def _concentration(self, rows: list[dict[str, Any]], total: float, bad30: float) -> list[dict[str, Any]]:
         groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -41,8 +41,6 @@ class RiskIntelligenceService:
             contribution = b30 / bad30 if bad30 else 0
             excess = par30 - portfolio_par30
             severity = self._severity(par30)
-            # Materiality is reported independently. Review priority is zero for
-            # a segment with no observed 30+ deterioration; size alone is context.
             if b30 <= 0 or par30 <= 0:
                 score = 0.0
             else:
@@ -87,7 +85,7 @@ class RiskIntelligenceService:
         id_coverage = sum(bool(x) for x in ids) / len(current) if current else 0
         checks.append({"field": "loan_id", "label": "identidad de crédito", "coverage": round(id_coverage, 4), "status": "ok" if id_coverage >= .95 and unique_ids == len([x for x in ids if x]) else "weak"})
         score = round(sum(c["coverage"] for c in checks) / len(checks) * 100) if checks else 0
-        return {"score": score, "confidence": "high" if score >= 90 else "medium" if score >= 75 else "low", "checks": checks, "records_total": n, "current_loans": len(current), "limitation": "La calidad mide cobertura de campos analíticos; no valida por sí sola la veracidad económica del origen.", "limitations": ["No se puede inferir tendencia temporal ni velocidad de deterioro con un único snapshot.", "Los roll rates requieren al menos dos snapshots comparables y la misma identidad de crédito.", "NPL se trata como proxy de exposición 90+ y no como definición regulatoria."]}
+        return {"score": score, "confidence": "high" if score >= 90 else "medium" if score >= 75 else "low", "checks": checks, "records_total": n, "current_loans": len(current), "limitation": "La calidad mide cobertura de campos analíticos; no valida por sí sola la veracidad económica del origen.", "limitations": ["No se puede inferir tendencia temporal ni velocidad de deterioro con un único snapshot.", "Los roll rates requieren al menos dos snapshots comparables y la misma identidad de crédito.", "NPL se trata como proxy de exposición 90+ y no como definición regulatoria.", "Confirmar que outstanding_principal represente saldo pendiente y no principal original/desembolsado antes de interpretar exposición y PAR."]}
 
     @staticmethod
     def _interpretation(posture: dict[str, Any], concentration: list[dict[str, Any]], par: dict[int, float], quality: dict[str, Any]) -> str:
