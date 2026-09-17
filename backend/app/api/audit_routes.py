@@ -3,9 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.audit.decision_history import DecisionHistoryService
+from app.audit.reconciliation import ReconciliationAuditService
 
 router = APIRouter(prefix="/v1/audit", tags=["audit"])
 service = DecisionHistoryService()
+reconciliation_service = ReconciliationAuditService()
 
 
 @router.post("/decisions")
@@ -27,3 +29,9 @@ def resolve_decision(decision_id: str, payload: dict) -> dict:
         return service.resolve(decision_id, payload.get("outcome", payload))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Decision not found") from exc
+
+
+@router.get("/reconciliation")
+def list_reconciliation_audit(dataset_id: str | None = None, limit: int = 500) -> dict:
+    entries = reconciliation_service.list(dataset_id=dataset_id, limit=max(1, min(limit, 1000)))
+    return {"count": len(entries), "entries": entries}
