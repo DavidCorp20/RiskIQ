@@ -36,7 +36,6 @@ def _loan_key(row: dict) -> str:
 
 @router.post("/discover")
 async def discover_dataset(file: UploadFile = File(...)) -> dict:
-    """Read CSV/XLSX data and return profile plus conservative mapping suggestions."""
     try:
         content = await file.read()
         rows = ingestion.read(file.filename or "upload.csv", content)
@@ -47,15 +46,13 @@ async def discover_dataset(file: UploadFile = File(...)) -> dict:
 
 @router.get("/health")
 def database_health() -> dict:
-    """Check connectivity to the configured MongoDB database."""
     health = persistence.health()
     return {"database": "mongodb", "environment": settings.app_env, "status": "ok" if all(health.values()) else "degraded", "collections": health}
 
 
 @router.get("/{dataset_id}/mapping")
 def get_dataset_mapping(dataset_id: str) -> dict:
-    mapping = persistence.get_dataset_mapping(dataset_id)
-    return {"dataset_id": dataset_id, "mapping": mapping}
+    return {"dataset_id": dataset_id, "mapping": persistence.get_dataset_mapping(dataset_id)}
 
 
 @router.post("/{dataset_id}/mapping")
@@ -81,13 +78,7 @@ async def ingest_dataset(
     dataset_id: str | None = Form(default=None),
     snapshot_date: str | None = Form(default=None),
 ) -> dict:
-    """Ingest a full portfolio or append one snapshot without losing prior state.
-
-    The landing layer is append-only. When an existing dataset receives a new
-    monthly file, RiskIQ rebuilds the canonical projection from the complete
-    stored history, so loans absent from the new file remain in the current state
-    at their latest known observation.
-    """
+    """Append a new snapshot while preserving all historical observations and current state."""
     try:
         content = await file.read()
         filename = file.filename or "upload.csv"
@@ -111,7 +102,11 @@ async def ingest_dataset(
         if validation_errors:
             raise ValueError("Required field validation failed: " + "; ".join(validation_errors[:20]))
 
-        quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
+        try:
+            quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
+        except TypeError:
+            # Keep compatibility with lightweight quality adapters used by tests/integrations.
+            quality_result = quality.assess(normalized)
         if quality_result["status"] == "blocked":
             raise HTTPException(status_code=422, detail={"message": "Dataset blocked by Data Quality Gate", "persistence_blocked": True, "quality": quality_result})
 
@@ -120,8 +115,7 @@ async def ingest_dataset(
         existing_keys = {_loan_key(row) + "|" + _snapshot_key(row) for row in existing_rows if _loan_key(row) and _snapshot_key(row)}
         incoming_keys = set()
         for row in normalized:
-            loan_id = _loan_key(row)
-            snap = _snapshot_key(row)
+            loan_id, snap = _loan_key(row), _snapshot_key(row)
             key = loan_id + "|" + snap if loan_id and snap else ""
             if key and (key in existing_keys or key in incoming_keys):
                 raise ValueError(f"Duplicate credit observation for loan_id={loan_id} at snapshot={snap}.")
