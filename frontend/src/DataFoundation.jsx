@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState} from 'react'
 import {getDatasetRecords,discoverDatasetData,assessDatasetQuality,getCanonicalSchema,getDatasetMapping,saveDatasetMapping} from './api'
+import SegmentStudio from './SegmentStudio'
 import './data-foundation.css'
 
 const label={critical:'BLOQUEA',high:'ALTO',medium:'MEDIO',warning:'ADVERTENCIA'}
@@ -16,8 +17,8 @@ export default function DataFoundation({datasetId='',onContinue}){
   <div className="df-head"><div><span>DATA FOUNDATION</span><h2>Preparación y confianza de datos</h2><p>RiskIQ separa el dato original del modelo financiero canónico antes de calcular riesgo.</p></div><div className={`df-status ${loading?'loading':quality?.status||'blocked'}`}>{loading?'VALIDANDO':quality?.status==='passed'?'LISTO':quality?.status==='warning'?'REVISAR':'BLOQUEADO'}</div></div>
   {error&&<div className="df-error">{error}</div>}
   <div className="df-summary"><div><span>FILAS</span><strong>{records.length.toLocaleString()}</strong></div><div><span>CAMPOS DETECTADOS</span><strong>{discovery?.column_count||0}</strong></div><div><span>CALIDAD</span><strong>{quality?.quality_score??0}<small>/100</small></strong></div><div><span>ANÁLISIS LISTOS</span><strong>{readyModels}<small>/{modelTotal||0}</small></strong></div></div>
-  <div className="df-tabs"><button className={tab==='quality'?'active':''} onClick={()=>setTab('quality')}>Calidad</button><button className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>Mapeo universal</button><button className={tab==='rows'?'active':''} onClick={()=>setTab('rows')}>Datos y errores</button><button className={tab==='models'?'active':''} onClick={()=>setTab('models')}>Readiness</button></div>
-  {tab==='quality'&&<QualityView quality={quality}/>} {tab==='mapping'&&<MappingView mappings={mappings} schema={schema} saving={saving} saved={saved} onConfirm={confirmMapping}/>} {tab==='rows'&&<RowsView records={records} issues={quality?.row_issues||[]} columns={columns}/>} {tab==='models'&&<ReadinessView impacts={quality?.analysis_impacts||[]}/>} 
+  <div className="df-tabs"><button className={tab==='quality'?'active':''} onClick={()=>setTab('quality')}>Calidad</button><button className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>Mapeo universal</button><button className={tab==='rows'?'active':''} onClick={()=>setTab('rows')}>Datos y errores</button><button className={tab==='segments'?'active':''} onClick={()=>setTab('segments')}>Segmentación</button><button className={tab==='models'?'active':''} onClick={()=>setTab('models')}>Readiness</button></div>
+  {tab==='quality'&&<QualityView quality={quality}/>} {tab==='mapping'&&<MappingView mappings={mappings} schema={schema} saving={saving} saved={saved} onConfirm={confirmMapping}/>} {tab==='rows'&&<RowsView records={records} issues={quality?.row_issues||[]} columns={columns}/>} {tab==='segments'&&<SegmentStudio datasetId={datasetId} columns={columns}/>} {tab==='models'&&<ReadinessView impacts={quality?.analysis_impacts||[]}/>} 
   {canContinue&&<div className="df-next-step"><div><span>NEXT STEP</span><strong>La evidencia está lista para diagnóstico</strong><p>RiskIQ conservará este corte como base y pasará al motor de diagnóstico sin modificar los datos fuente.</p></div><button type="button" onClick={onContinue}>Continuar a diagnóstico →</button></div>}
  </section>
 }
