@@ -9,16 +9,16 @@ from app.analytics.npl import NPLAnalyticsService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.risk_analytics import RiskAnalyticsService
 from app.analytics.risk_intelligence import RiskIntelligenceService
-from app.analytics.snapshot_engine import SnapshotEngine
 from app.analytics.vintage_rollrate import VintageRollRateService
 from app.analytics.decision_engine import DecisionEngineService
 from app.analytics.segment_analytics import SegmentAnalyticsService
 from app.audit.decision_history import DecisionHistoryService
 from app.data.persistence import PortfolioPersistenceService
 from app.decision.workspace import DecisionWorkspaceService
+from app.decision.rule_repository import DecisionRuleRepository
 
 router=APIRouter(prefix="/v1/datasets",tags=["dataset-intelligence"])
-persistence=PortfolioPersistenceService();intelligence=PortfolioIntelligenceService();risk_analytics=RiskAnalyticsService();risk_intelligence=RiskIntelligenceService();decision_engine=DecisionEngineService();snapshot_engine=SnapshotEngine();vintage=VintageRollRateService();npl=NPLAnalyticsService();workspace=DecisionWorkspaceService();decision_history=DecisionHistoryService();segment_analytics=SegmentAnalyticsService()
+persistence=PortfolioPersistenceService();intelligence=PortfolioIntelligenceService();risk_analytics=RiskAnalyticsService();risk_intelligence=RiskIntelligenceService();decision_engine=DecisionEngineService();vintage=VintageRollRateService();npl=NPLAnalyticsService();workspace=DecisionWorkspaceService();decision_history=DecisionHistoryService();segment_analytics=SegmentAnalyticsService();rules_repo=DecisionRuleRepository()
 
 
 def _require_dataset(dataset_id:str)->dict[str,Any]:
@@ -56,22 +56,54 @@ def _latest_source_date(records:list[dict[str,Any]])->str|None:
     return max(dates) if dates else None
 
 
+def _current_from_risk(risk:dict[str,Any], as_of:str, dataset_id:str)->dict[str,Any]:
+    """Build the shared current snapshot contract from Risk Analytics evidence."""
+    par=risk.get("par") or {}
+    return {"snapshot_date":as_of,"business_id":dataset_id,"active_loans":int(risk.get("loan_count") or 0),"outstanding_balance":float(risk.get("exposure") or 0),"par7":float((par.get("par7") or {}).get("ratio") or 0),"par30":float((par.get("par30") or {}).get("ratio") or 0),"par60":float((par.get("par60") or {}).get("ratio") or 0),"par90":float((par.get("par90") or {}).get("ratio") or 0),"metric_basis":"latest point-in-time observation per loan"}
+
+
 @router.post("/{dataset_id}/run")
 def run_dataset_workspace(dataset_id:str,payload:dict[str,Any]|None=None)->dict[str,Any]:
     metadata=_require_dataset(dataset_id);records=persistence.portfolio_records.find({"dataset_id":dataset_id},limit=100000)
     portfolio={"customers":persistence.customers.find({"dataset_id":dataset_id},limit=100000),"loans":persistence.loans.find({"dataset_id":dataset_id},limit=100000),"installments":persistence.installments.find({"dataset_id":dataset_id},limit=100000),"payments":persistence.payments.find({"dataset_id":dataset_id},limit=100000)}
     if not portfolio["loans"]: raise HTTPException(status_code=422,detail="Dataset has no canonical loans to analyze")
-    body=payload or {};as_of=str(body.get("snapshot_date") or _latest_source_date(records) or date.today().isoformat())
-    current=snapshot_engine.build(loans=portfolio["loans"],installments=portfolio["installments"],snapshot_date=as_of,business_id=dataset_id)
-    analysis=intelligence.analyze(records);risk=risk_analytics.analyze(records);vintage_analysis=vintage.analyze(records);npl_analysis=npl.analyze(records);decisions=decision_engine.build(risk,npl_analysis)
+    body=payload or {}
+
+    # Risk Analytics is the canonical point-in-time metric source shared by the
+    # dashboard, decisioning and stress testing. Do not create a second balance/PAR calculation here.
+    risk=risk_analytics.analyze(records)
+    if not risk.get("available"): raise HTTPException(status_code=422,detail="Dataset has no active point-in-time portfolio")
+    as_of=str(body.get("snapshot_date") or risk.get("snapshot") or _latest_source_date(records) or date.today().isoformat())
+    current=_current_from_risk(risk,as_of,dataset_id)
+    analysis=intelligence.analyze(records);vintage_analysis=vintage.analyze(records);npl_analysis=npl.analyze(records);decisions=decision_engine.build(risk,npl_analysis)
+
     snapshots=persistence.snapshots.find({"dataset_id":dataset_id},limit=500);previous_candidates=[row for row in snapshots if str(row.get("snapshot_date") or "")<as_of];previous=max(previous_candidates,key=lambda row:str(row.get("snapshot_date") or ""),default=None)
-    result=workspace.run({"current":current,"previous":previous,"current_analysis":analysis,"history_entries":snapshots,"custom_rules":list(body.get("custom_rules") or [])})
+
+    # Only governed APPROVED/DEPLOYED policies enter the production decision path.
+    persisted_rules=rules_repo.list_active(dataset_id)
+    requested_rules=list(body.get("custom_rules") or [])
+    by_policy={str(rule.get("id")):rule for rule in persisted_rules}
+    for rule in requested_rules:
+        if isinstance(rule,dict) and rule.get("id"):
+            by_policy[str(rule["id"])]=rule
+    effective_rules=list(by_policy.values())
+    result=workspace.run({"current":current,"previous":previous,"current_analysis":analysis,"history_entries":snapshots,"custom_rules":effective_rules})
+
+    # Keep the deterministic baseline decision engine as the default policy, while
+    # exposing governed Low-Code cards as additional reviewable decisions.
+    workspace_center=result.get("decision_center") or {}
+    custom_cards=list(workspace_center.get("priority_cards") or []) if effective_rules else []
+    if custom_cards:
+        existing_ids={str(card.get("id")) for card in decisions.get("cards",[])}
+        for card in custom_cards:
+            if str(card.get("id")) not in existing_ids: decisions["cards"].append(card)
+        decisions["counts"]={"critical":sum(1 for c in decisions["cards"] if c.get("severity")=="critical"),"high":sum(1 for c in decisions["cards"] if c.get("severity")=="high"),"watch":sum(1 for c in decisions["cards"] if c.get("severity") not in {"critical","high"}),"total_cards":len(decisions["cards"])}
+        decisions["low_code"]={"active_policies":len(persisted_rules),"executed":True,"execution_mode":"governed_low_code"}
+
     existing=persistence.snapshots.find({"dataset_id":dataset_id,"snapshot_date":as_of},limit=1);snapshot_id=existing[0].get("id") if existing else persistence.snapshots.insert({**current,"dataset_id":dataset_id})
     ledger_entries=_persist_decisions(dataset_id,snapshot_id,decisions);advanced=_advanced_analytics(risk,vintage_analysis,current,previous);intelligence_result=risk_intelligence.analyze(records)
     stored_segments=persistence.dataset_mappings.find({"dataset_id":dataset_id,"record_type":"segment","active":True},limit=1000)
     segment_results=segment_analytics.analyze(records,stored_segments)
-    ad_hoc=body.get("segment")
-    selected_segment=None
-    if isinstance(ad_hoc,dict):
-        selected_segment={"name":str(ad_hoc.get("name") or "Ad hoc"),"conditions":list(ad_hoc.get("conditions") or []),"analytics":segment_analytics.calculate(records,list(ad_hoc.get("conditions") or []))}
-    return {"status":result.get("status","healthy"),"contract_version":"dataset-intelligence-v7","dataset":metadata,"dataset_id":dataset_id,"snapshot":{"id":snapshot_id,**current},"previous_snapshot":previous,"analysis":analysis,"risk_analytics":{"deterministic":risk,"npl":npl_analysis},"advanced_analytics":advanced,"segments":{"saved":segment_results,"selected":selected_segment,"point_in_time":True,"source":"latest_state_per_loan"},"risk_intelligence":intelligence_result,"decision_engine":decisions,"decision_evidence_ledger":{"count":len(ledger_entries),"entries":ledger_entries},"vintage":vintage_analysis,"workspace":result,"governance":{"real_dataset":True,"analytics_are_deterministic":True,"decision_engine_is_deterministic":True,"customer_actions_executed":False,"human_review_required":True,"trend_available":previous is not None,"roll_rate_requires_historical_snapshots":True,"causality_inferred":False,"npl_is_regulatory_definition":False,"risk_intelligence_version":"risk-intelligence-v1","decision_ledger_persisted":True,"as_of":as_of,"custom_segments_supported":True,"segment_metrics_use_latest_state":True}}
+    ad_hoc=body.get("segment");selected_segment=None
+    if isinstance(ad_hoc,dict): selected_segment={"name":str(ad_hoc.get("name") or "Ad hoc"),"conditions":list(ad_hoc.get("conditions") or []),"analytics":segment_analytics.calculate(records,list(ad_hoc.get("conditions") or []))}
+    return {"status":result.get("status",decisions.get("status","healthy")),"contract_version":"dataset-intelligence-v7","dataset":metadata,"dataset_id":dataset_id,"snapshot":{"id":snapshot_id,**current},"previous_snapshot":previous,"analysis":analysis,"risk_analytics":{"deterministic":risk,"npl":npl_analysis},"advanced_analytics":advanced,"segments":{"saved":segment_results,"selected":selected_segment,"point_in_time":True,"source":"latest_state_per_loan"},"risk_intelligence":intelligence_result,"decision_engine":decisions,"decision_evidence_ledger":{"count":len(ledger_entries),"entries":ledger_entries},"vintage":vintage_analysis,"workspace":result,"governance":{"real_dataset":True,"analytics_are_deterministic":True,"decision_engine_is_deterministic":True,"customer_actions_executed":False,"human_review_required":True,"trend_available":previous is not None,"roll_rate_requires_historical_snapshots":True,"causality_inferred":False,"npl_is_regulatory_definition":False,"risk_intelligence_version":"risk-intelligence-v1","decision_ledger_persisted":True,"as_of":as_of,"custom_segments_supported":True,"segment_metrics_use_latest_state":True,"low_code_active_policies":len(persisted_rules)}}
