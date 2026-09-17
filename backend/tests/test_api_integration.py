@@ -119,7 +119,7 @@ def test_dataset_run_endpoint_returns_unified_contract(monkeypatch) -> None:
     response = TestClient(app).post("/api/v1/datasets/api-e2e/run", json={"snapshot_date": "2026-09-09"})
     assert response.status_code == 200
     body = response.json()
-    assert body["contract_version"] == "dataset-intelligence-v6"
+    assert body["contract_version"] == "dataset-intelligence-v7"
     assert body["dataset_id"] == "api-e2e"
     assert body["snapshot"]["active_loans"] == 3
     assert float(body["snapshot"]["outstanding_balance"]) == 4500
