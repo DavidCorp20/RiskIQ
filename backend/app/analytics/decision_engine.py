@@ -4,7 +4,7 @@ from typing import Any
 
 
 class DecisionEngineService:
-    """Deterministic risk-to-decision layer.
+    """Deterministic risk-to-decision layer with auditable execution trace.
 
     Converts measured risk into prioritized review decisions. It never infers
     causality, approves/denies credit, or executes customer actions.
@@ -22,22 +22,12 @@ class DecisionEngineService:
             order = {"critical": 1, "high": 2, "medium": 3, "low": 4}
             priority = order[severity]
             decision = {
-                "id": id_,
-                "priority": priority,
-                "severity": severity,
-                "title": title,
-                "reason": reason,
-                "rationale": reason,
-                "evidence": evidence,
-                "recommended_action": action,
-                "recommendation": action,
-                "suggested_action": action,
-                "trigger": reason,
-                "impact": f"Exposure affected by this signal: {exposure:.2f}.",
-                "confidence": "evidence backed · deterministic rule",
-                "requires_human_review": True,
-                "human_review_required": True,
-                "executed": False,
+                "id": id_, "priority": priority, "severity": severity, "title": title,
+                "reason": reason, "rationale": reason, "evidence": evidence,
+                "recommended_action": action, "recommendation": action, "suggested_action": action,
+                "trigger": reason, "impact": f"Exposure affected by this signal: {exposure:.2f}.",
+                "confidence": "evidence backed · deterministic rule", "requires_human_review": True,
+                "human_review_required": True, "executed": False,
             }
             decisions.append(decision)
 
@@ -78,28 +68,26 @@ class DecisionEngineService:
                 "Continue routine monitoring and reassess on the next dataset snapshot.")
 
         decisions.sort(key=lambda x: (x["priority"], x["id"]))
-        card_keys = (
-            "id", "priority", "severity", "title", "reason", "rationale", "evidence",
-            "recommended_action", "recommendation", "suggested_action", "trigger", "impact",
-            "confidence", "requires_human_review", "human_review_required", "executed"
-        )
-        cards = [{k: d[k] for k in card_keys} for d in decisions]
-
+        triggered_rules=[{"rule_id":d["id"],"severity":d["severity"],"condition":d["trigger"],"matched":True} for d in decisions]
+        reason_codes=[d["id"] for d in decisions]
+        decision_path=[
+            {"stage":"FACTS","label":"Facts","evidence":{"PAR30":par30,"PAR60":par60,"PAR90":par90,"exposure":exposure}},
+            {"stage":"INDICATORS","label":"Indicators","evidence":"PAR buckets evaluated"},
+            {"stage":"RULES","label":"Rules","evidence":len(triggered_rules)},
+            {"stage":"DECISION","label":"Decision","evidence":decisions[0]["title"]},
+            {"stage":"IMPACT","label":"Impact","evidence":decisions[0]["impact"]},
+            {"stage":"HUMAN_REVIEW","label":"Human review","evidence":"Required"},
+            {"stage":"AUDIT","label":"Audit","evidence":"Ledger persisted by dataset intelligence"},
+        ]
+        card_keys=("id","priority","severity","title","reason","rationale","evidence","recommended_action","recommendation","suggested_action","trigger","impact","confidence","requires_human_review","human_review_required","executed")
+        cards=[{k:d[k] for k in card_keys} for d in decisions]
+        counts={"critical":sum(d["severity"]=="critical" for d in decisions),"high":sum(d["severity"]=="high" for d in decisions),"watch":sum(d["severity"] not in {"critical","high"} for d in decisions),"total_cards":len(cards)}
         return {
             "available": bool(risk.get("available", False)),
             "status": "critical" if decisions[0]["severity"] == "critical" else "high" if decisions[0]["severity"] == "high" else "monitoring",
-            "decisions": decisions,
-            "cards": cards,
-            "methodology": {
-                "deterministic": True,
-                "thresholds_are_explicit": True,
-                "causality_inferred": False,
-                "customer_actions_executed": False,
-                "human_review_required": True,
-            },
-            "governance": {
-                "requires_human_review": True,
-                "customer_actions_executed": False,
-                "ai_is_not_source_of_truth": True,
-            },
+            "decisions": decisions, "cards": cards, "counts": counts,
+            "triggered_rules": triggered_rules, "reason_codes": reason_codes, "decision_path": decision_path,
+            "decision_evidence": {"facts":{"PAR30":par30,"PAR60":par60,"PAR90":par90,"exposure":exposure},"triggered_rules":triggered_rules,"reason_codes":reason_codes,"decision":decisions[0]["recommended_action"],"policy":{"id":"risk-intelligence-v1","name":"Dataset Intelligence","version":"v7"}},
+            "methodology": {"deterministic":True,"thresholds_are_explicit":True,"causality_inferred":False,"customer_actions_executed":False,"human_review_required":True},
+            "governance": {"requires_human_review":True,"customer_actions_executed":False,"ai_is_not_source_of_truth":True},
         }
