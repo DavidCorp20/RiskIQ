@@ -98,7 +98,10 @@ async def ingest_dataset(
         if validation_errors:
             raise ValueError("Required field validation failed: " + "; ".join(validation_errors[:20]))
 
-        quality_result = quality.assess(normalized)
+        quality_result = quality.assess(
+            normalized,
+            mappings=[item.__dict__ for item in field_mappings],
+        )
         if quality_result["status"] == "blocked":
             raise HTTPException(
                 status_code=422,
