@@ -21,13 +21,21 @@ class DataQualityService:
         row_issues: list[dict[str, Any]] = []
         field_stats: dict[str, dict[str, Any]] = {}
         duplicate_ids: set[str] = set()
-        seen_ids: dict[str, int] = {}
+        seen_keys: dict[str, int] = {}
         columns = list(dict.fromkeys(key for row in rows for key in row))
         mapped = {item.get("source"): item.get("target") for item in (mappings or []) if item.get("source") and item.get("target")}
 
         def add_row_issue(row_index: int, code: str, severity: str, field: str | None, message: str) -> None:
             issues[(code, severity)] += 1
             row_issues.append({"row": row_index, "field": field, "code": code, "severity": severity, "message": message})
+
+        # A loan identifier is unique within a reporting snapshot, not necessarily
+        # across the whole file. Longitudinal portfolios intentionally repeat the
+        # same loan on multiple snapshot dates. If no snapshot field exists we keep
+        # the conservative legacy behavior and treat repeated loan ids as blocking.
+        has_snapshot = any(
+            row.get("snapshot_date") not in (None, "") for row in rows
+        ) or any(source in columns and target == "snapshot_date" for source, target in mapped.items())
 
         for index, row in enumerate(rows):
             canonical_row = {mapped.get(key, key): value for key, value in row.items()}
@@ -42,11 +50,24 @@ class DataQualityService:
             if loan_id in (None, ""):
                 add_row_issue(index, "MISSING_LOAN_ID", "critical", next((source for source, target in mapped.items() if target == "loan_id"), "loan_id"), "Falta el identificador del crédito/cuenta.")
             else:
-                key = str(loan_id)
-                seen_ids[key] = seen_ids.get(key, 0) + 1
-                if seen_ids[key] > 1:
-                    duplicate_ids.add(key)
-                    add_row_issue(index, "DUPLICATE_LOAN_ID", "critical", next((source for source, target in mapped.items() if target == "loan_id"), "loan_id"), "El identificador del crédito aparece más de una vez.")
+                loan_key = str(loan_id)
+                if has_snapshot:
+                    snapshot = canonical_row.get("snapshot_date")
+                    # Missing snapshot values cannot safely establish uniqueness,
+                    # so they remain conservative; complete longitudinal rows use
+                    # loan_id + snapshot_date as the natural observation key.
+                    key = f"{loan_key}::{snapshot}" if snapshot not in (None, "") else loan_key
+                else:
+                    key = loan_key
+                seen_keys[key] = seen_keys.get(key, 0) + 1
+                if seen_keys[key] > 1:
+                    duplicate_ids.add(loan_key)
+                    message = (
+                        "El crédito aparece más de una vez en la misma fecha de corte."
+                        if has_snapshot and canonical_row.get("snapshot_date") not in (None, "")
+                        else "El identificador del crédito aparece más de una vez y no hay una fecha de corte para distinguir observaciones."
+                    )
+                    add_row_issue(index, "DUPLICATE_LOAN_ID", "critical", next((source for source, target in mapped.items() if target == "loan_id"), "loan_id"), message)
 
             if canonical_row.get("customer_id") in (None, ""):
                 add_row_issue(index, "MISSING_CUSTOMER_ID", "critical", next((source for source, target in mapped.items() if target == "customer_id"), "customer_id"), "Falta el identificador del cliente.")
@@ -108,7 +129,7 @@ class DataQualityService:
             "row_issue_truncated": len(row_issues) > 500,
             "column_issues": column_issues,
             "analysis_impacts": impacts,
-            "checks": {"completeness": round(completeness, 4), "validity": round(validity, 4), "unique_loan_ids": len([value for value in seen_ids if seen_ids[value] == 1]), "duplicate_loan_ids": len(duplicate_ids)},
+            "checks": {"completeness": round(completeness, 4), "validity": round(validity, 4), "unique_loan_ids": len([value for value in seen_keys if seen_keys[value] == 1]), "duplicate_loan_ids": len(duplicate_ids)},
             "mapping": {"provided": mappings is not None, "mapped_fields": len(mappings or []), "canonical_targets": sorted(set(mapped.values()))},
             "policy": "Errors block affected analysis; warnings remain processable and are surfaced with their analytical impact.",
         }
