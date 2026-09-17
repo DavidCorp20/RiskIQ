@@ -46,22 +46,10 @@ class DataNormalizer:
         targets = {item.target for item in mappings}
         required = {field for field, meta in CANONICAL_FIELDS.items() if meta.get("required")}
         missing_required = sorted(required - targets)
-        semantic_warnings: list[dict[str, str]] = []
-        for item in mappings:
-            source = item.source.strip().lower()
-            target = item.target.strip().lower()
-            if target == "outstanding_principal" and source in {"principal", "original_principal", "original_amount", "loan_amount", "disbursed_amount"}:
-                semantic_warnings.append({
-                    "code": "BALANCE_PROXY",
-                    "source": item.source,
-                    "target": item.target,
-                    "message": "La columna parece representar monto original/desembolsado, no necesariamente saldo pendiente. PAR, exposición y severidad podrían quedar sobreestimados si se usa como saldo actual.",
-                })
         return {
             "mapped_fields": len(mappings),
             "canonical_fields": len(CANONICAL_FIELDS),
             "coverage": round(len(targets) / max(1, len(CANONICAL_FIELDS)), 4),
             "missing_required": missing_required,
             "ready_for_normalization": not missing_required,
-            "semantic_warnings": semantic_warnings,
         }
