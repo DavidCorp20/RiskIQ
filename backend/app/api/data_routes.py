@@ -88,6 +88,7 @@ async def ingest_dataset(
         if not isinstance(raw_mappings, list):
             raise ValueError("mappings must be a JSON array")
         field_mappings = [FieldMapping(**item) for item in raw_mappings]
+        mapping_summary = normalizer.mapping_summary(field_mappings)
 
         normalized = normalizer.normalize(rows, field_mappings)
         if snapshot_date:
@@ -105,7 +106,6 @@ async def ingest_dataset(
         try:
             quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
         except TypeError:
-            # Keep compatibility with lightweight quality adapters used by tests/integrations.
             quality_result = quality.assess(normalized)
         if quality_result["status"] == "blocked":
             raise HTTPException(status_code=422, detail={"message": "Dataset blocked by Data Quality Gate", "persistence_blocked": True, "quality": quality_result})
@@ -142,7 +142,8 @@ async def ingest_dataset(
             "snapshot_date": _snapshot_key(normalized[0]) if normalized else snapshot_date,
             "quality": quality_result,
             "projection": {**portfolio["summary"], "persisted": projection_persisted},
-            "mapping": {"confirmed": True, "mapped_fields": len(field_mappings), "readiness": normalizer.mapping_summary(field_mappings)},
+            "mapping": {"confirmed": True, "mapped_fields": len(field_mappings), "readiness": mapping_summary},
+            "semantic_warnings": mapping_summary.get("semantic_warnings", []),
             "discovery": {"coverage_score": discovery_result.get("coverage_score", 0), "warnings": discovery_result.get("warnings", [])},
         }
     except HTTPException:
