@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.config import settings
 from app.data.discovery import DataDiscoveryService
 from app.data.ingestion import FileIngestionService
 from app.data.normalizer import DataNormalizer, FieldMapping
@@ -17,14 +18,15 @@ ingestion = FileIngestionService()
 discovery = DataDiscoveryService()
 normalizer = DataNormalizer()
 quality = DataQualityService()
-persistence = PortfolioPersistenceService()
 projection = PortfolioProjectionService()
+persistence = PortfolioPersistenceService()
 
 
 def _snapshot_key(row: dict) -> str:
-    for key in ("snapshot_date", "snapshot_month", "as_of_date"):
-        if row.get(key) not in (None, ""):
-            return str(row[key])[:10]
+    for field in ("snapshot_date", "snapshot_month", "as_of_date"):
+        value = row.get(field)
+        if value not in (None, ""):
+            return str(value)[:10]
     return ""
 
 
@@ -34,10 +36,39 @@ def _loan_key(row: dict) -> str:
 
 @router.post("/discover")
 async def discover_dataset(file: UploadFile = File(...)) -> dict:
-    content = await file.read()
-    rows = ingestion.read(file.filename or "upload.csv", content)
-    result = discovery.discover(rows)
-    return {"status": "discovered", "source_name": file.filename, "rows": len(rows), **result}
+    try:
+        content = await file.read()
+        rows = ingestion.read(file.filename or "upload.csv", content)
+        return discovery.discover(rows)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/health")
+def database_health() -> dict:
+    health = persistence.health()
+    return {"database": "mongodb", "environment": settings.app_env, "status": "ok" if all(health.values()) else "degraded", "collections": health}
+
+
+@router.get("/{dataset_id}/mapping")
+def get_dataset_mapping(dataset_id: str) -> dict:
+    return {"dataset_id": dataset_id, "mapping": persistence.get_dataset_mapping(dataset_id)}
+
+
+@router.post("/{dataset_id}/mapping")
+def save_dataset_mapping(dataset_id: str, mappings: list[dict]) -> dict:
+    try:
+        parsed = [FieldMapping(**item) for item in mappings]
+        readiness = normalizer.mapping_summary(parsed)
+        record_id = persistence.save_dataset_mapping(dataset_id, [item.__dict__ for item in parsed])
+        return {"saved": True, "dataset_id": dataset_id, "mapping_id": record_id, "readiness": readiness}
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/project")
+def project_dataset(rows: list[dict]) -> dict:
+    return projection.project(rows)
 
 
 @router.post("/ingest")
@@ -74,7 +105,6 @@ async def ingest_dataset(
         try:
             quality_result = quality.assess(normalized, mappings=[item.__dict__ for item in field_mappings])
         except TypeError:
-            # Keep compatibility with lightweight quality adapters used by tests/integrations.
             quality_result = quality.assess(normalized)
         if quality_result["status"] == "blocked":
             raise HTTPException(status_code=422, detail={"message": "Dataset blocked by Data Quality Gate", "persistence_blocked": True, "quality": quality_result})
