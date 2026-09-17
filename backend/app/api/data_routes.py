@@ -97,92 +97,97 @@ def _rebuild_dataset(dataset_id: str, filename: str, quality_result: dict, field
 
 @router.post("/reconciliation/batch-override")
 def batch_override_conflicts(payload: dict) -> dict:
-    """Force a reviewed set of financial conflicts in one audited transaction batch.
+    """Apply a reviewed reconciliation batch atomically from the analyst's perspective.
 
-    The client sends the logical conflict keys plus the incoming observations from
-    the reconciliation preview. The backend re-reads and re-classifies each row
-    before applying it, preventing stale previews from overwriting a newer state.
+    Conflict keys are explicitly approved for force-update. The preview items are
+    also sent so inserts/enrichments/identical observations can be committed in
+    the same user action instead of leaving a half-ingested upload behind.
     """
     dataset_id = str(payload.get("dataset_id") or "").strip()
-    conflict_ids = payload.get("conflict_ids") or []
+    conflict_ids = [str(value) for value in (payload.get("conflict_ids") or [])]
+    pending_items = payload.get("pending_items") or []
     incoming_by_key = payload.get("incoming_by_key") or {}
     actor = str(payload.get("actor") or "user").strip() or "user"
     reason = str(payload.get("justification") or "").strip()
+    source_name = str(payload.get("source_name") or "batch-reconciliation")
 
     if not dataset_id:
         raise HTTPException(status_code=400, detail="dataset_id is required")
-    if not isinstance(conflict_ids, list) or not conflict_ids:
+    if not conflict_ids:
         raise HTTPException(status_code=400, detail="conflict_ids must contain at least one historical key")
     if not reason:
         raise HTTPException(status_code=400, detail="A global justification is required for a batch financial override.")
+    if not isinstance(pending_items, list):
+        raise HTTPException(status_code=400, detail="pending_items must be an array")
     if not isinstance(incoming_by_key, dict):
         raise HTTPException(status_code=400, detail="incoming_by_key must be an object keyed by snapshot identity")
 
     existing_rows = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
     existing_by_key = {_snapshot_key(row): row for row in existing_rows if _snapshot_key(row)}
-    updated = []
+    pending_by_key = {str(item.get("key")): item for item in pending_items if isinstance(item, dict) and item.get("key")}
+    results = []
     rejected = []
 
-    for raw_key in conflict_ids:
-        key = str(raw_key)
+    for key, item in pending_by_key.items():
+        incoming = item.get("incoming") if isinstance(item.get("incoming"), dict) else incoming_by_key.get(key)
+        classification = str(item.get("classification") or "")
         existing = existing_by_key.get(key)
-        incoming = incoming_by_key.get(key)
-        if not existing or not isinstance(incoming, dict):
+        if classification == "inserted":
+            if existing is not None:
+                rejected.append({"key": key, "reason": "Preview is stale: observation already exists."})
+                continue
+            if not isinstance(incoming, dict):
+                rejected.append({"key": key, "reason": "Incoming observation is missing."})
+                continue
+            persistence.save_normalized_portfolio([incoming], dataset_id, source_name, None)
+            loan_id = str(incoming.get("loan_id") or "")
+            snap = key.split("|", 1)[1] if "|" in key else ""
+            audit.record(dataset_id=dataset_id, operation="inserted", key=key, loan_id=loan_id, snapshot_date=snap, actor=actor, reason="Inserted as a new point-in-time observation.", incoming=incoming)
+            results.append({"key": key, "operation": "inserted"})
+            continue
+        if existing is None or not isinstance(incoming, dict):
             rejected.append({"key": key, "reason": "Historical observation or incoming row not found."})
             continue
-        if _snapshot_key(incoming) != key:
-            rejected.append({"key": key, "reason": "Incoming observation identity does not match requested conflict key."})
-            continue
         current = classify(existing, incoming)
-        if current.classification != "conflict":
-            rejected.append({"key": key, "reason": f"Stale reconciliation state: current classification is {current.classification}."})
-            continue
+        if classification == "identical":
+            audit.record(dataset_id=dataset_id, operation="identical", key=key, loan_id=current.loan_id, snapshot_date=current.snapshot_date, actor=actor, reason="Incoming observation matches the historical observation; ignored.", previous=existing, incoming=incoming)
+            results.append({"key": key, "operation": "identical"})
+        elif classification == "enriched":
+            merged = persistence.reconcile_update(existing, incoming, dataset_id, source_name, force=False)
+            fields = list(item.get("added_fields") or current.added_fields)
+            audit.record(dataset_id=dataset_id, operation="enriched", key=key, loan_id=current.loan_id, snapshot_date=current.snapshot_date, actor=actor, reason="Incoming file fills previously missing metadata without changing populated values.", previous=existing, incoming=incoming, changed_fields=fields)
+            audit.record(dataset_id=dataset_id, operation="updated", key=key, loan_id=current.loan_id, snapshot_date=current.snapshot_date, actor=actor, reason="Applied deterministic metadata merge.", previous=existing, incoming=merged, changed_fields=fields)
+            results.append({"key": key, "operation": "updated", "classification": "enriched"})
+        elif classification == "conflict":
+            if key not in conflict_ids:
+                rejected.append({"key": key, "reason": "Conflict was not explicitly included in the bulk override approval."})
+                continue
+            if current.classification != "conflict":
+                rejected.append({"key": key, "reason": f"Stale reconciliation state: current classification is {current.classification}."})
+                continue
+            changed_fields = [change["field"] for change in current.conflicts]
+            merged = persistence.reconcile_update(existing, incoming, dataset_id, source_name, force=True)
+            audit.record(dataset_id=dataset_id, operation="conflict", key=key, loan_id=current.loan_id, snapshot_date=current.snapshot_date, actor=actor, reason=reason, previous=existing, incoming=incoming, changed_fields=changed_fields)
+            audit.record(dataset_id=dataset_id, operation="updated", key=key, loan_id=current.loan_id, snapshot_date=current.snapshot_date, actor=actor, reason=reason, previous=existing, incoming=merged, changed_fields=changed_fields)
+            results.append({"key": key, "operation": "updated", "classification": "conflict", "changed_fields": changed_fields})
+        else:
+            rejected.append({"key": key, "reason": f"Unsupported or stale reconciliation classification: {classification or 'missing'}"})
 
-        merged = persistence.reconcile_update(existing, incoming, dataset_id, str(payload.get("source_name") or existing.get("source_name") or "batch-reconciliation"), force=True)
-        changed_fields = [item["field"] for item in current.conflicts]
-        audit.record(
-            dataset_id=dataset_id,
-            operation="conflict",
-            key=key,
-            loan_id=current.loan_id,
-            snapshot_date=current.snapshot_date,
-            actor=actor,
-            reason=reason,
-            previous=existing,
-            incoming=incoming,
-            changed_fields=changed_fields,
-        )
-        audit.record(
-            dataset_id=dataset_id,
-            operation="updated",
-            key=key,
-            loan_id=current.loan_id,
-            snapshot_date=current.snapshot_date,
-            actor=actor,
-            reason=reason,
-            previous=existing,
-            incoming=merged,
-            changed_fields=changed_fields,
-        )
-        updated.append({"key": key, "loan_id": current.loan_id, "snapshot_date": current.snapshot_date, "changed_fields": changed_fields})
+    if rejected:
+        raise HTTPException(status_code=409, detail={"message": "Batch reconciliation was not fully committed because the preview is stale or incomplete.", "rejected": rejected, "applied": results})
 
-    if updated:
-        all_history = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
-        portfolio = projection.project(all_history)
-        projection_persisted = persistence.save_projection(portfolio, dataset_id=dataset_id)
-    else:
-        portfolio = None
-        projection_persisted = {}
+    all_history = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    portfolio = projection.project(all_history)
+    projection_persisted = persistence.save_projection(portfolio, dataset_id=dataset_id)
 
     return {
-        "status": "batch_override_applied" if updated else "batch_override_rejected",
+        "status": "batch_override_applied",
         "dataset_id": dataset_id,
         "requested": len(conflict_ids),
-        "updated": len(updated),
-        "rejected": len(rejected),
-        "results": updated,
-        "rejections": rejected,
-        "projection": {"summary": portfolio["summary"] if portfolio else None, "persisted": projection_persisted},
+        "updated": sum(item["operation"] == "updated" for item in results),
+        "processed": len(results),
+        "results": results,
+        "projection": {"summary": portfolio["summary"], "persisted": projection_persisted},
         "audit": {"operation": "batch_override", "actor": actor, "justification": reason},
     }
 
