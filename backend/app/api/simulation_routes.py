@@ -33,31 +33,19 @@ def run_scenario(payload: dict) -> dict:
     if dataset_id:
         _require_dataset(dataset_id)
         records_repo = getattr(persistence, "portfolio_records", None)
-        if records_repo is not None:
-            records = records_repo.find({"dataset_id": dataset_id}, limit=100000)
-        else:
-            records = []
+        records = records_repo.find({"dataset_id": dataset_id}, limit=100000) if records_repo is not None else []
 
         if records:
-            # Real production path: Risk Analytics selects the latest observation
-            # per loan from the longitudinal source, making it the canonical
-            # baseline shared by Portfolio, Analytics and Stress.
             risk = risk_analytics.analyze(records)
             if not risk.get("available"):
                 raise HTTPException(status_code=409, detail="No active canonical portfolio is available for stress testing")
-            portfolio = {
-                "balance": risk.get("exposure", 0),
-                "par30": float(risk.get("par", {}).get("par30", {}).get("ratio", 0) or 0),
-                "par90": float(risk.get("par", {}).get("par90", {}).get("ratio", 0) or 0),
-            }
+            portfolio = {"balance": risk.get("exposure", 0), "par30": float(risk.get("par", {}).get("par30", {}).get("ratio", 0) or 0), "par90": float(risk.get("par", {}).get("par90", {}).get("ratio", 0) or 0)}
             baseline_source = "canonical_portfolio_risk_analytics"
             snapshot_date = risk.get("snapshot")
         else:
-            # Compatibility path for older integrations/mocks. Persisted snapshots
-            # remain a fallback only when the longitudinal source is unavailable.
             snapshot = _latest_snapshot(dataset_id)
             portfolio = {"balance": snapshot.get("outstanding_balance", 0), "par30": snapshot.get("par30", 0), "par90": snapshot.get("par90", 0)}
-            baseline_source = "persisted_snapshot_fallback"
+            baseline_source = "persisted_snapshot"
             snapshot_date = snapshot.get("snapshot_date")
 
         changes = dict(payload.get("changes") or {})
@@ -69,14 +57,9 @@ def run_scenario(payload: dict) -> dict:
         result["snapshot_date"] = snapshot_date
         return result
 
-    # Backward-compatible low-level API for integrations that explicitly provide metrics.
     portfolio = payload.get("portfolio", {})
     if not portfolio:
         raise HTTPException(status_code=400, detail="dataset_id is required for dataset-bound simulation")
-    result = service.simulate(
-        portfolio,
-        payload.get("changes", {}),
-        payload.get("name", "Custom scenario"),
-    )
+    result = service.simulate(portfolio, payload.get("changes", {}), payload.get("name", "Custom scenario"))
     result["baseline_source"] = "caller_supplied_metrics"
     return result
