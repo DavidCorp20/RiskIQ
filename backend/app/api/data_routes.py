@@ -75,11 +75,15 @@ async def ingest_dataset(
     file: UploadFile = File(...),
     mappings: str = Form(...),
     dataset_id: str | None = Form(default=None),
+    snapshot_date: str | None = Form(default=None),
 ) -> dict:
-    """Discover, normalize, quality-check and persist a confirmed dataset.
+    """Ingest a full portfolio or append one snapshot to an existing portfolio.
 
-    Critical quality issues block persistence. Successful ingestion also
-    projects the normalized landing data into the canonical portfolio model.
+    The dataset_id is the stable portfolio identity. Reusing it appends new
+    observations instead of creating a second unrelated portfolio. snapshot_date
+    gives RiskIQ an explicit observation date when the source file does not carry
+    one, enabling defensible longitudinal comparisons without requiring the user
+    to re-upload prior months.
     """
     try:
         content = await file.read()
@@ -93,6 +97,10 @@ async def ingest_dataset(
         field_mappings = [FieldMapping(**item) for item in raw_mappings]
 
         normalized = normalizer.normalize(rows, field_mappings)
+        if snapshot_date:
+            for row in normalized:
+                if not row.get("snapshot_date"):
+                    row["snapshot_date"] = snapshot_date
         required_fields = {item.target for item in field_mappings if item.required}
         validation_errors = normalizer.validate_required(normalized, required_fields)
         if validation_errors:
@@ -135,17 +143,18 @@ async def ingest_dataset(
             source_name=filename,
             source_rows=len(rows),
             quality_result=quality_result,
-            projection_summary=portfolio["summary"],
+            projection_summary={**portfolio["summary"], "snapshot_date": snapshot_date},
         )
 
         return {
-            "status": "ingested",
+            "status": "snapshot_appended" if dataset_id else "ingested",
             "dataset_id": resolved_dataset_id,
             "source_name": filename,
             "source_rows": len(rows),
             "normalized_rows": len(normalized),
             "persisted_rows": persisted,
             "persistence_blocked": False,
+            "snapshot_date": snapshot_date,
             "quality": quality_result,
             "projection": {
                 **portfolio["summary"],
