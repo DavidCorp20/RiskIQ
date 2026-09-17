@@ -1,6 +1,8 @@
-const API_URL=(import.meta.env.VITE_API_URL||'https://riskiq-api-v2-production.up.railway.app').replace(/\/$/,'')
-async function request(url,options={}){const response=await fetch(`${API_URL}${url}`,options);const data=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(data.detail?.message||data.detail||`API error ${response.status}`);error.status=response.status;error.data=data.detail||data;throw error}return data}
+const API_URL=(import.meta.env.VITE_API_BASE_URL||'').trim().replace(/\/+$/,'')
+const apiUrl=path=>`${API_URL}${path.startsWith('/')?path:`/${path}`}`
+async function request(url,options={}){if(!API_URL)throw new Error('VITE_API_BASE_URL is not configured in the frontend environment');const response=await fetch(apiUrl(url),options);const data=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(data.detail?.message||data.detail||`API error ${response.status}`);error.status=response.status;error.data=data.detail||data;throw error}return data}
 const activeDatasetId=()=>{try{return JSON.parse(localStorage.getItem('riskiq.activeDataset')||'null')?.dataset_id||''}catch{return ''}}
+export const checkHealth=()=>request('/health')
 export const runWorkspace=p=>request('/api/v1/workspace/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
 export const discoverFile=file=>{const f=new FormData();f.append('file',file);return request('/api/v1/data/discover',{method:'POST',body:f})}
 export const ingestFile=(file,mappings,datasetId='',snapshotDate='',reconciliation={})=>{const f=new FormData();f.append('file',file);f.append('mappings',JSON.stringify(mappings));if(datasetId)f.append('dataset_id',datasetId);if(snapshotDate)f.append('snapshot_date',snapshotDate);if(reconciliation&&Object.keys(reconciliation).length)f.append('reconciliation',JSON.stringify(reconciliation));return request('/api/v1/data/ingest',{method:'POST',body:f})}
