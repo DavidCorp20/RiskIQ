@@ -1,7 +1,6 @@
 import pytest
 
 from app.api import data_routes
-from app.data.reconciliation import classify
 
 
 class FakeRepository:
@@ -78,7 +77,7 @@ def test_batch_override_requires_global_justification():
 
 
 def test_batch_override_rechecks_conflict_and_audits_each_transaction(monkeypatch):
-    existing = row()
+    existing = {**row(), "dataset_id": "ds"}
     persistence = FakePersistence([existing])
     audit = FakeAudit()
     monkeypatch.setattr(data_routes, "persistence", persistence)
@@ -105,7 +104,7 @@ def test_batch_override_rechecks_conflict_and_audits_each_transaction(monkeypatc
 
 
 def test_batch_override_rejects_stale_non_conflict(monkeypatch):
-    existing = row(dpd=35)
+    existing = {**row(dpd=35), "dataset_id": "ds"}
     persistence = FakePersistence([existing])
     monkeypatch.setattr(data_routes, "persistence", persistence)
     monkeypatch.setattr(data_routes, "audit", FakeAudit())
