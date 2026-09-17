@@ -42,3 +42,5 @@ class RiskAnalyticsResponse(BaseModel):
     deterioration_drivers: list[dict[str, Any]]
     methodology: dict[str, Any]
     snapshot: str
+    result_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
