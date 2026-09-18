@@ -1,67 +1,92 @@
 from __future__ import annotations
 
-import pytest\n\nfrom app.ai.copilot import RiskCopilotService
+import pytest
+
+from app.ai.copilot import RiskCopilotService
 from app.analytics.risk_analytics import RiskAnalyticsService
+from app.core.ai.provider import AIProvider
 
 
-def test_cro_evidence_calculates_par_dollar_impact_and_migration_stress() -> None:
-    rows = [
-        {"loan_id": "L1", "snapshot_date": "2026-08-31", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
-        {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 95, "outstanding_principal": 900, "segment": "A"},
-        {"loan_id": "L2", "snapshot_date": "2026-08-31", "dpd": 10, "outstanding_principal": 500, "segment": "B"},
-        {"loan_id": "L2", "snapshot_date": "2026-09-30", "dpd": 65, "outstanding_principal": 450, "segment": "B"},
-    ]
+class FakeProvider(AIProvider):
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
 
-    analysis = RiskAnalyticsService().analyze(rows)
-    evidence = analysis["cro_evidence"]
-
-    assert evidence["exposure"]["total_balance"] == 1350
-    assert evidence["par"]["par30"]["ratio"] == round(1350 / 1350, 4)
-    assert evidence["exposure_impact"]["par30_balance"] == 1350
-    assert evidence["exposure_impact"]["stress_if_30_to_89_migrates_to_90_plus"] == 450
-    assert evidence["migration"]["available"] is True
-    assert evidence["migration"]["early_to_hard"]["roll_rate_by_balance"] == 1.0
+    async def generate(self, prompt: str, context: dict) -> dict:
+        self.calls.append((prompt, context))
+        return {"answer": "Respuesta de prueba."}
 
 
-async @pytest.mark.asyncio\nasync def test_cro_copilot_adapts_to_question_and_does_not_claim_causality() -> None:
-    risk = RiskAnalyticsService().analyze([
-        {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
-        {"loan_id": "L2", "snapshot_date": "2026-09-30", "dpd": 0, "outstanding_principal": 1000, "segment": "B"},
-    ])
-
-    result = await await RiskCopilotService().answer(
-        "¿Qué debería revisar primero?",
-        risk,
-        drivers=risk["drivers"],
+def _risk() -> dict:
+    return RiskAnalyticsService().analyze(
+        [
+            {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
+            {"loan_id": "L2", "snapshot_date": "2026-09-30", "dpd": 0, "outstanding_principal": 1000, "segment": "B"},
+        ]
     )
 
-    assert result["prompt_version"] == "cro-interactive-risk-analyst-v6"
+
+@pytest.mark.asyncio
+async def test_conversational_mode_does_not_send_risk_evidence() -> None:
+    provider = FakeProvider()
+    result = await RiskCopilotService(provider).answer(
+        "Hola, buenos días",
+        _risk(),
+        conversation=[{"role": "user", "content": "Hola"}],
+    )
+
+    assert result["conversation_mode"] == "conversational"
+    assert result["prompt_version"] == "cro-dual-mode-v1"
     assert result["grounded"] is True
-    answer = result["answer"]
-    assert "**Situación de la cartera**" not in answer
-    assert "**Deterioro y migración**" not in answer
-    assert "**Concentraciones e hipótesis de trabajo**" not in answer
-    assert "**Prioridades de gestión**" not in answer
-    assert "causality" not in answer.lower()
-    assert "como hecho observado" not in answer.lower()
-    assert "como hipótesis a validar" not in answer.lower()
-    assert "no es un forecast" not in answer.lower()
-    assert "\n- " not in answer
-    assert "\n1. " not in answer
+    _, context = provider.calls[0]
+    assert "EVIDENCE_JSON" not in context
+    assert "FACTS" not in context
+    assert context["CURRENT_QUESTION"] == "Hola, buenos días"
 
-    segment_result = RiskCopilotService().answer("Analiza el Segmento A", risk, drivers=risk["drivers"])
-    assert segment_result["prompt_version"] == "cro-interactive-risk-analyst-v6"
-    assert "Segmento A" in segment_result["answer"]
-    assert "PAR30" in segment_result["answer"]
 
-async @pytest.mark.asyncio\nasync def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
-    risk = RiskAnalyticsService().analyze([
-        {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
-    ])
-    result = RiskCopilotService().answer("Analiza la migración", risk, drivers=risk["drivers"])
-    assert result["prompt_version"] == "cro-interactive-risk-analyst-v4"
-    assert "La evidencia es insuficiente" in result["answer"]
-    assert "snapshots longitudinales" in result["answer"]
-    assert "no es un forecast" not in result["answer"].lower()
-    assert "como hecho observado" not in result["answer"].lower()
-    assert "como hipótesis a validar" not in result["answer"].lower()
+@pytest.mark.asyncio
+async def test_analytical_mode_sends_deterministic_evidence_and_history() -> None:
+    provider = FakeProvider()
+    result = await RiskCopilotService(provider).answer(
+        "Analiza el PAR30 de la cartera",
+        _risk(),
+        conversation=[
+            {"role": "user", "content": "¿Qué está pasando?"},
+            {"role": "assistant", "content": "Hay deterioro temprano."},
+        ],
+    )
+
+    assert result["conversation_mode"] == "analytical"
+    assert result["prompt_version"] == "cro-dual-mode-v1"
+    _, context = provider.calls[0]
+    assert context["EVIDENCE_JSON"]
+    assert context["FACTS"]
+    assert len(context["CONVERSATION"]) == 2
+    assert context["CURRENT_QUESTION"] == "Analiza el PAR30 de la cartera"
+
+
+@pytest.mark.asyncio
+async def test_provider_failure_keeps_deterministic_fallback() -> None:
+    class FailingProvider(AIProvider):
+        async def generate(self, prompt: str, context: dict) -> dict:
+            raise RuntimeError("provider unavailable")
+
+    result = await RiskCopilotService(FailingProvider()).answer(
+        "Analiza la migración",
+        _risk(),
+    )
+
+    assert result["conversation_mode"] == "analytical"
+    assert result["grounded"] is True
+    assert result["answer"]
+
+
+@pytest.mark.asyncio
+async def test_conversation_is_preserved_in_service_context() -> None:
+    provider = FakeProvider()
+    service = RiskCopilotService(provider)
+    history = [{"role": "user", "content": "Hola"}]
+
+    await service.answer("¿Qué es PAR30?", _risk(), conversation=history)
+
+    context = service.build_context(_risk(), conversation=history)
+    assert context["conversation"] == history
