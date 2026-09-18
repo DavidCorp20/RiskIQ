@@ -35,7 +35,7 @@ async @pytest.mark.asyncio\nasync def test_cro_copilot_adapts_to_question_and_do
         drivers=risk["drivers"],
     )
 
-    assert result["prompt_version"] == "cro-interactive-risk-analyst-v5"
+    assert result["prompt_version"] == "cro-interactive-risk-analyst-v6"
     assert result["grounded"] is True
     answer = result["answer"]
     assert "**Situación de la cartera**" not in answer
@@ -50,7 +50,7 @@ async @pytest.mark.asyncio\nasync def test_cro_copilot_adapts_to_question_and_do
     assert "\n1. " not in answer
 
     segment_result = RiskCopilotService().answer("Analiza el Segmento A", risk, drivers=risk["drivers"])
-    assert segment_result["prompt_version"] == "cro-interactive-risk-analyst-v5"
+    assert segment_result["prompt_version"] == "cro-interactive-risk-analyst-v6"
     assert "Segmento A" in segment_result["answer"]
     assert "PAR30" in segment_result["answer"]
 
