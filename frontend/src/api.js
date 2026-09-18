@@ -1,3 +1,7 @@
+/**
+ * Shared RiskIQ API client. Keep the API base URL absolute so browser requests
+ * resolve against Railway instead of the Vercel frontend origin.
+ */
 const RAW_API_URL=(import.meta.env.VITE_API_BASE_URL||'').trim()
 const NORMALIZED_API_URL=RAW_API_URL
   .replace(/\/+$/,'')
