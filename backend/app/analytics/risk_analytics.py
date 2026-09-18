@@ -164,6 +164,7 @@ class RiskAnalyticsService:
                 "early_30_59_balance": round(early_30_59_balance, 2),
                 "late_60_89_balance": round(late_60_89_balance, 2),
                 "30_to_89_balance_at_risk": round(early_30_89_balance, 2),
+                "containment_gap_balance": round(max(par30_balance - par90_balance, 0.0), 2),
                 "stress_if_30_to_89_migrates_to_90_plus": round(early_30_89_balance, 2),
                 "stress_par90_ratio_if_30_to_89_migrates": round(
                     (par90_balance + early_30_89_balance) / exposure, 4
