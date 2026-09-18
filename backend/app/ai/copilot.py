@@ -190,7 +190,41 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             pass
         return fallback()
 
+    def _adaptive_narrative(
+        self,
+        question: str,
+        severity: str,
+        total: Any,
+        par: dict[str, Any],
+        impact: dict[str, Any],
+        migration: dict[str, Any],
+        segments: Any,
+        drivers: list[dict[str, Any]],
+    ) -> str:
         q = (question or "").strip().lower()
+        segment_items = [s for s in segments if isinstance(s, dict)] if isinstance(segments, list) else []
+
+        for segment in segment_items:
+            label = str(segment.get("label") or segment.get("segment") or "").strip()
+            key = str(segment.get("key") or "").strip()
+            normalized_q = q.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+            normalized_label = label.lower().replace("segmento ", "").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+            normalized_key = key.lower().replace("segmento ", "").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+            if normalized_label and normalized_label in normalized_q or normalized_key and normalized_key in normalized_q:
+                return self._segment_narrative(label, segment)
+
+        if any(term in q for term in ("migración", "migracion", "rollover", "roll rate", "roll-rate", "mora dura", "90+", "90 +")):
+            return self._migration_narrative(par, impact, migration)
+
+        if any(term in q for term in ("cobranzas", "collections", "cobranza", "acción", "accion", "prioridad", "qué debería revisar", "que deberia revisar", "revisar primero")):
+            return self._mitigation_narrative(migration, segment_items, drivers)
+
+        if any(term in q for term in ("resumen", "situación", "situacion", "estado", "cartera", "exposición", "exposicion", "riesgo general", "overview")) or not q:
+            return self._executive_narrative(severity, total, par, impact)
+
+        return self._general_narrative(severity, total, par, impact, migration, segment_items, drivers)
+
+    def _segment_narrative
         segment_items = [s for s in segments if isinstance(s, dict)] if isinstance(segments, list) else []
 
         for segment in segment_items:
