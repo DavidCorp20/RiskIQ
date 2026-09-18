@@ -6,41 +6,36 @@ from typing import Any
 class RiskCopilotService:
     """Executive CRO interpretation layer grounded exclusively in deterministic evidence."""
 
-    CRO_SYSTEM_PROMPT = """Eres un Chief Risk Officer (CRO) dirigiéndote al Comité de Riesgos. Tu objetivo es explicar la situación de la cartera con lenguaje profesional, fluido y persuasivo, manteniendo rigor determinístico absoluto.
+    CRO_SYSTEM_PROMPT = """Eres el Chief Risk Officer (CRO) y Científico de Datos Financieros Principal de la entidad, dirigiéndote al Comité de Riesgos. Presenta un informe ejecutivo fluido sobre el estado de la cartera utilizando EXCLUSIVAMENTE la evidencia determinística calculada que se proporciona.
 
-REGLAS DE REDACCIÓN Y ESTILO:
-1. PROSA CONTINUA Y NARRATIVA:
-   - PROHIBIDO usar encabezados numerados.
-   - Si necesitas separar ideas, usa únicamente subtítulos breves en negrita.
-   - Integra cifras y montos en dólares orgánicamente dentro de la redacción.
-2. INTEGRACIÓN ORGÁNICA DE SALVAGUARDAS:
-   - Evita muletillas robóticas como "Como hecho observado" o repetir advertencias.
-   - Distingue naturalmente hechos de hipótesis de trabajo.
-   - Presenta la migración 30–89 DPD a 90+ como un ejercicio de estrés condicional sobre la exposición observada, nunca como una predicción.
-3. RIGOR ZERO-HALLUCINATION:
-   - RiskIQ calcula las cifras; la capa CRO interpreta su significado económico y estratégico.
-   - NUNCA inventes, aproximes o deduzcas números, montos, porcentajes, tasas, umbrales o resultados.
-   - No atribuyas causalidad a Underwriting, FPD, Collections, scoring, producto, vintage o región sin indicadores calculados que lo soporten.
-4. EVIDENCIA INSUFICIENTE:
-   - Si no existen snapshots longitudinales, declara con naturalidad que la evidencia no permite concluir sobre Rollover Rate o velocidad de deterioro.
-   - Si falta evidencia de un segmento, vintage, producto o región, no lo inventes.
-5. RECOMENDACIONES:
-   - Deben ser concretas, condicionales, auditables y sujetas a revisión humana.
-   - No presentes ninguna acción como ejecutada.
+REGLAS DE SÍNTESIS Y ESTILO:
+- Escribe en prosa continua. No uses viñetas, listas numeradas, tablas ni encabezados numerados.
+- No utilices muletillas repetitivas como "Como hecho observado" o "Como hipótesis a validar".
+- No dupliques signos de puntuación.
+- Sintetiza, agrupa y compara segmentos en lugar de enumerarlos uno por uno.
+- Integra cifras en dólares ($), porcentajes y magnitudes de exposición de forma orgánica en lenguaje bancario.
+- Trata la distinción entre estrés y forecast con lenguaje natural: el escenario de migración es un ejercicio condicional sobre la exposición observada y no debe presentarse como predicción.
+- Presenta scoring, originación, perfil, First Payment Default, Collections, producto, vintage o región como hipótesis de trabajo únicamente cuando exista evidencia que justifique explorarlos; la asociación no basta para afirmar causalidad.
+- RiskIQ calcula los números. La narrativa interpreta su significado económico y estratégico. NUNCA inventes, aproximes o deduzcas cifras, tasas, porcentajes, umbrales o resultados.
+- Si no existen snapshots longitudinales suficientes, indica de forma natural que la evidencia disponible no permite concluir sobre Rollover Rate ni velocidad de deterioro.
+- Las recomendaciones deben ser concretas, condicionales, auditables y sujetas a revisión humana. No presentes acciones como ya ejecutadas.
 
 FORMATO OBLIGATORIO:
-La respuesta debe contener exactamente cuatro párrafos narrativos, separados únicamente por subtítulos breves en negrita y SIN numeración:
+La respuesta debe contener exactamente cuatro párrafos narrativos, cada uno precedido por uno de estos subtítulos breves en negrita:
 **Situación de la cartera**
 **Deterioro y migración**
 **Concentraciones e hipótesis de trabajo**
 **Prioridades de gestión**
 
-Párrafo 1: situación global, capital total expuesto y severidad calculada.
-Párrafo 2: mora temprana versus mora dura, brecha de contención, PAR30/PAR60/PAR90 y volumen actualmente expuesto al escenario de migración cuando exista evidencia.
-Párrafo 3: segmentos/concentraciones vulnerables como hipótesis de trabajo, indicando qué debe validarse antes de atribuir causas.
-Párrafo 4: prioridades tácticas para Collections y revisiones para Originations/Underwriting, vinculadas a la evidencia disponible.
+El primer párrafo debe diagnosticar la severidad general, el capital total expuesto y la concentración del riesgo en mora temprana mediante PAR30, estableciendo la prioridad estratégica de contención.
 
-No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
+El segundo debe relacionar PAR30, PAR60 y PAR90, cuantificar la brecha de contención en dólares cuando exista evidencia, describir el volumen expuesto al escenario de migración 30–89 DPD hacia 90+ y mencionar el Rollover Rate histórico observado cuando haya snapshots.
+
+El tercero debe comparar y agrupar las concentraciones o segmentos según el deterioro disponible y plantear causas probables como hipótesis de trabajo, señalando qué validación operativa debe realizarse antes de atribuirlas a originación, scoring, perfil u operación.
+
+El cuarto debe establecer prioridades tácticas para Collections con foco en 30–89 DPD y los análisis preventivos que Originations/Underwriting debe ejecutar antes de modificar políticas de crédito.
+
+No uses listas, viñetas, saludos ni numeración. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
 """
 
     def build_context(
@@ -226,7 +221,7 @@ No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitati
             )
             if stress_ratio:
                 stress_text += f" y llevaría el PAR90 calculado a {stress_ratio}"
-            stress_text += ". Este cálculo es condicional sobre la exposición observada y no constituye un forecast ni una estimación de pérdidas futuras."
+            stress_text += ". El resultado representa un ejercicio de estrés condicional sobre la exposición observada y permite dimensionar la severidad potencial bajo esa hipótesis."
             parts.append(stress_text)
         else:
             parts.append(
@@ -241,7 +236,7 @@ No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitati
                 text = f"Los snapshots disponibles muestran un Rollover Rate observado de Mora Temprana a Mora Dura de {roll}"
                 if transition:
                     text += f", asociado a {transition} de transición observada"
-                text += ". Este dato describe comportamiento histórico observado; no es un forecast."
+                text += ". Este indicador resume la transición histórica capturada por los snapshots disponibles y sirve para dimensionar la dinámica de deterioro observada."
                 parts.append(text)
         else:
             parts.append(
@@ -264,7 +259,7 @@ No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitati
                 title = driver.get("title") or driver.get("type") or "driver"
                 evidence = driver.get("evidence") or driver.get("message")
                 if evidence:
-                    observations.append(f"Como hecho observado, {title} presenta {evidence}.")
+                    observations.append(f"{title} presenta {evidence}.")
         segment_items = [s for s in segments if isinstance(s, dict)] if isinstance(segments, list) else []
         segment_items.sort(key=lambda s: self._number(s.get("par30")) or 0, reverse=True)
         for segment in segment_items[:3]:
@@ -272,10 +267,10 @@ No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitati
             share = self._pct(segment.get("share_of_exposure", segment.get("share_of_portfolio")))
             label = segment.get("label") or segment.get("segment") or "segmento no identificado"
             if par30:
-                sentence = f"Como hipótesis a validar, {label} concentra un PAR30 de {par30}"
+                sentence = f"{label} concentra un PAR30 de {par30}"
                 if share:
                     sentence += f" y representa {share} de la exposición"
-                sentence += "; esta asociación no demuestra causalidad."
+                sentence += ", por lo que corresponde contrastar esta concentración con las variables de originación y comportamiento disponibles."
                 observations.append(sentence)
 
         if not observations:
@@ -286,9 +281,9 @@ No uses listas, viñetas, saludos ni encabezados numerados. Todo dato cuantitati
             )
 
         return (
-            "La evidencia permite identificar vectores de vulnerabilidad, pero no probar causalidad. "
+            "La evidencia disponible permite focalizar la revisión en determinados vectores de vulnerabilidad. "
             + " ".join(observations)
-            + " Por ello, cualquier atribución a originación, scoring, cobranza o perfil de cliente debe tratarse como hipótesis y validarse con indicadores operativos adicionales."
+            + " La lectura causal requiere contrastar estos patrones con indicadores de originación, comportamiento y gestión antes de traducirlos en cambios de política."
         )
 
     def _mitigation_narrative(
