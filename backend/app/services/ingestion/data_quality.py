@@ -142,6 +142,30 @@ class DataQualityEngine:
             if customer_id in (None, ""):
                 add("MISSING_CUSTOMER_ID", "critical", "Falta customer_id.", field="customer_id", row_index=index)
 
+            # Interest-rate columns are optional source-specific fields. They are
+            # validated deterministically when their header clearly denotes a rate.
+            for source_field, source_value in row.items():
+                if normalize_name(source_field) not in {normalize_name(alias) for alias in self.RATE_ALIASES}:
+                    continue
+                rate = self._to_float(source_value)
+                if rate is None:
+                    invalid_cells += 1
+                    add(
+                        "INVALID_INTEREST_RATE",
+                        "high",
+                        "La tasa de interés no es numérica.",
+                        field=source_field,
+                        row_index=index,
+                    )
+                elif not 0 <= rate <= 100:
+                    add(
+                        "INTEREST_RATE_OUT_OF_RANGE",
+                        "high",
+                        "La tasa de interés debe estar entre 0% y 100% (o su equivalente decimal).",
+                        field=source_field,
+                        row_index=index,
+                    )
+
             scheduled = self._to_float(row.get("scheduled_amount"))
             paid = self._to_float(row.get("paid_amount"))
             if scheduled is not None and paid is not None and scheduled > 0 and paid > scheduled * 1.05:
