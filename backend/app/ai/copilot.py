@@ -253,26 +253,6 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
 
         return self._general_narrative(severity, total, par, impact, migration, segment_items, drivers)
 
-    def _segment_narrative
-        segment_items = [s for s in segments if isinstance(s, dict)] if isinstance(segments, list) else []
-
-        for segment in segment_items:
-            label = str(segment.get("label") or segment.get("segment") or "").strip()
-            key = str(segment.get("key") or "").strip()
-            if label and (label.lower() in q or key.lower() in q):
-                return self._segment_narrative(label, segment)
-
-        if any(term in q for term in ("migración", "migracion", "rollover", "roll rate", "roll-rate", "mora dura", "90+", "90 +")):
-            return self._migration_narrative(par, impact, migration)
-
-        if any(term in q for term in ("cobranzas", "collections", "cobranza", "acción", "accion", "prioridad", "qué debería revisar", "que deberia revisar", "revisar primero")):
-            return self._mitigation_narrative(migration, segment_items, drivers)
-
-        if any(term in q for term in ("resumen", "situación", "situacion", "estado", "cartera", "exposición", "exposicion", "riesgo general", "overview")) or not q:
-            return self._executive_narrative(severity, total, par, impact)
-
-        return self._general_narrative(severity, total, par, impact, migration, segment_items, drivers)
-
     def _segment_narrative(self, label: str, segment: dict[str, Any]) -> str:
         par30 = self._pct(segment.get("par30"))
         balance = self._money(segment.get("balance"))
