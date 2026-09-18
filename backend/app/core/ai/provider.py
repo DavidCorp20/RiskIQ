@@ -42,9 +42,9 @@ class GeminiProvider(AIProvider):
                 "parts": [
                     {
                         "text": (
-                            "You are RiskIQ's data-ingestion semantic mapper. "
-                            "Infer column equivalence only from the supplied metadata. "
-                            "Do not calculate financial risk metrics. Return JSON only."
+                            "You are an AI component inside RiskIQ. Follow the task-specific system instructions "
+                            "and context supplied by the caller. Return valid JSON only. "
+                            "Never invent financial facts or override deterministic calculations."
                         )
                     }
                 ]
