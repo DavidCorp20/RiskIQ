@@ -103,7 +103,7 @@ def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
 
 
 @router.post("/copilot")
-def copilot(payload: dict) -> dict:
+async def copilot(payload: dict) -> dict:
     """Answer using deterministic evidence tied to one persisted dataset."""
     dataset_id = _resolve_dataset_id(payload)
     if not dataset_id:
@@ -134,11 +134,13 @@ def copilot(payload: dict) -> dict:
         drivers = risk_facts.pop("drivers", [])
         decisions = risk_facts.pop("decisions", [])
 
-    answer = service.answer(
+    conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
+    answer = await service.answer(
         question=str(payload.get("question", "")),
         risk_facts=risk_facts,
         drivers=drivers,
         decisions=decisions,
+        conversation=conversation,
     )
     answer["dataset_id"] = dataset_id
     answer["grounding"] = {
