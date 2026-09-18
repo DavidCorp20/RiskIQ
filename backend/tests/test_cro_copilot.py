@@ -35,10 +35,21 @@ def test_cro_copilot_uses_mandatory_sections_and_does_not_claim_causality() -> N
         drivers=risk["drivers"],
     )
 
-    assert result["prompt_version"] == "cro-financial-data-scientist-v1"
+    assert result["prompt_version"] == "cro-financial-data-scientist-v2"
     assert result["grounded"] is True
-    assert "1. Executive Diagnosis" in result["answer"]
-    assert "2. Delinquency & Migration" in result["answer"]
-    assert "3. Root Causes" in result["answer"]
-    assert "4. Mitigation Strategy" in result["answer"]
+    assert "1. Resumen Ejecutivo (Visión Global)" in result["answer"]
+    assert "2. Diagnóstico de Deterioro y Migración (Análisis de Contención)" in result["answer"]
+    assert "3. Hipótesis Operativas (Causa Raíz)" in result["answer"]
+    assert "4. Plan de Acción y Mitigación" in result["answer"]
     assert "causality" not in result["answer"].lower()
+    assert "\n- " not in result["answer"]
+
+def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
+    risk = RiskAnalyticsService().analyze([
+        {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
+    ])
+    result = RiskCopilotService().answer("Analiza la migración", risk, drivers=risk["drivers"])
+    assert result["prompt_version"] == "cro-financial-data-scientist-v2"
+    assert "Evidencia es insuficiente" in result["answer"]
+    assert "snapshots longitudinales" in result["answer"]
+    assert "no es un forecast" in result["answer"].lower()
