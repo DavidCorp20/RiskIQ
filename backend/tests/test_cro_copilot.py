@@ -23,7 +23,7 @@ def test_cro_evidence_calculates_par_dollar_impact_and_migration_stress() -> Non
     assert evidence["migration"]["early_to_hard"]["roll_rate_by_balance"] == 1.0
 
 
-def test_cro_copilot_uses_mandatory_sections_and_does_not_claim_causality() -> None:
+def test_cro_copilot_adapts_to_question_and_does_not_claim_causality() -> None:
     risk = RiskAnalyticsService().analyze([
         {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
         {"loan_id": "L2", "snapshot_date": "2026-09-30", "dpd": 0, "outstanding_principal": 1000, "segment": "B"},
@@ -35,30 +35,31 @@ def test_cro_copilot_uses_mandatory_sections_and_does_not_claim_causality() -> N
         drivers=risk["drivers"],
     )
 
-    assert result["prompt_version"] == "cro-financial-data-scientist-v3"
+    assert result["prompt_version"] == "cro-interactive-risk-analyst-v4"
     assert result["grounded"] is True
-    assert "**Situación de la cartera**" in result["answer"]
-    assert "**Deterioro y migración**" in result["answer"]
-    assert "**Concentraciones e hipótesis de trabajo**" in result["answer"]
-    assert "**Prioridades de gestión**" in result["answer"]
     answer = result["answer"]
+    assert "**Situación de la cartera**" not in answer
+    assert "**Deterioro y migración**" not in answer
+    assert "**Concentraciones e hipótesis de trabajo**" not in answer
+    assert "**Prioridades de gestión**" not in answer
     assert "causality" not in answer.lower()
     assert "como hecho observado" not in answer.lower()
     assert "como hipótesis a validar" not in answer.lower()
     assert "no es un forecast" not in answer.lower()
     assert "\n- " not in answer
     assert "\n1. " not in answer
-    assert answer.count("**Situación de la cartera**") == 1
-    assert answer.count("**Deterioro y migración**") == 1
-    assert answer.count("**Concentraciones e hipótesis de trabajo**") == 1
-    assert answer.count("**Prioridades de gestión**") == 1
+
+    segment_result = RiskCopilotService().answer("Analiza el Segmento A", risk, drivers=risk["drivers"])
+    assert segment_result["prompt_version"] == "cro-interactive-risk-analyst-v4"
+    assert "Segmento A" in segment_result["answer"]
+    assert "PAR30" in segment_result["answer"]
 
 def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
     risk = RiskAnalyticsService().analyze([
         {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
     ])
     result = RiskCopilotService().answer("Analiza la migración", risk, drivers=risk["drivers"])
-    assert result["prompt_version"] == "cro-financial-data-scientist-v3"
+    assert result["prompt_version"] == "cro-interactive-risk-analyst-v4"
     assert "La evidencia es insuficiente" in result["answer"]
     assert "snapshots longitudinales" in result["answer"]
     assert "no es un forecast" not in result["answer"].lower()
