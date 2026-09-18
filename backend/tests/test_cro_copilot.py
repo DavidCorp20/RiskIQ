@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.ai.copilot import RiskCopilotService
+import pytest\n\nfrom app.ai.copilot import RiskCopilotService
 from app.analytics.risk_analytics import RiskAnalyticsService
 
 
@@ -23,7 +23,7 @@ def test_cro_evidence_calculates_par_dollar_impact_and_migration_stress() -> Non
     assert evidence["migration"]["early_to_hard"]["roll_rate_by_balance"] == 1.0
 
 
-async async def test_cro_copilot_adapts_to_question_and_does_not_claim_causality() -> None:
+async @pytest.mark.asyncio\nasync def test_cro_copilot_adapts_to_question_and_does_not_claim_causality() -> None:
     risk = RiskAnalyticsService().analyze([
         {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
         {"loan_id": "L2", "snapshot_date": "2026-09-30", "dpd": 0, "outstanding_principal": 1000, "segment": "B"},
@@ -54,7 +54,7 @@ async async def test_cro_copilot_adapts_to_question_and_does_not_claim_causality
     assert "Segmento A" in segment_result["answer"]
     assert "PAR30" in segment_result["answer"]
 
-async async def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
+async @pytest.mark.asyncio\nasync def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
     risk = RiskAnalyticsService().analyze([
         {"loan_id": "L1", "snapshot_date": "2026-09-30", "dpd": 35, "outstanding_principal": 1000, "segment": "A"},
     ])
