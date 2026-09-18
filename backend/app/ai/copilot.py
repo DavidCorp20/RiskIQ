@@ -4,7 +4,10 @@ from typing import Any
 
 
 class RiskCopilotService:
-    """Executive CRO interpretation layer grounded exclusively in deterministic evidence."""
+    """Conversational CRO layer grounded in deterministic evidence with optional Gemini generation."""
+
+    def __init__(self, provider: AIProvider | None = None) -> None:
+        self.provider = provider if provider is not None else get_ai_provider()
 
     CRO_SYSTEM_PROMPT = """Eres el Chief Risk Officer (CRO) y un analista financiero experto en riesgos de crédito. Conversas directamente con un analista o directivo a través de un chat interactivo.
 
@@ -26,6 +29,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         risk_facts: dict[str, Any],
         drivers: list[dict[str, Any]] | None = None,
         decisions: list[dict[str, Any]] | None = None,
+        conversation: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         raw_facts = risk_facts.get("facts", {})
         if isinstance(raw_facts, list):
@@ -66,7 +70,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         number = RiskCopilotService._number(value)
         return f"$ {number:,.2f}" if number is not None else None
 
-    def answer(
+    async def answer(
         self,
         question: str,
         risk_facts: dict[str, Any],
@@ -106,15 +110,20 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         root_causes = self._root_cause_narrative(segments, drivers_data)
         mitigation = self._mitigation_narrative(migration, segments, drivers_data)
 
-        answer_text = self._adaptive_narrative(
-            question,
-            severity,
-            total,
-            par,
-            impact,
-            migration,
-            segments,
-            drivers_data,
+        answer_text = await self._generate_conversational_answer(
+            question=question,
+            risk_facts=risk_facts,
+            conversation=conversation or [],
+            fallback=lambda: self._adaptive_narrative(
+                question,
+                severity,
+                total,
+                par,
+                impact,
+                migration,
+                segments,
+                drivers_data,
+            ),
         )
 
         return {
@@ -136,12 +145,49 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "grounded": True,
             "provider": "evidence_mode",
             "mode": "CRO Evidence Mode",
-            "prompt_version": "cro-interactive-risk-analyst-v4",
+            "prompt_version": "cro-interactive-risk-analyst-v5",
             "system_prompt": self.CRO_SYSTEM_PROMPT,
             "note": "El motor determinístico calcula la evidencia; esta capa adapta la interpretación a la pregunta del usuario sin inventar métricas ni causalidad.",
         }
 
-    def _adaptive_narrative(
+    async def _generate_conversational_answer(
+        self,
+        question: str,
+        risk_facts: dict[str, Any],
+        conversation: list[dict[str, Any]],
+        fallback: Any,
+    ) -> str:
+        context = {
+            "EVIDENCE_JSON": risk_facts.get("cro_evidence", {}),
+            "FACTS": risk_facts.get("facts", {}),
+            "CONCENTRATION": risk_facts.get("concentration", {}),
+            "VINTAGE": risk_facts.get("vintage", []),
+            "DRIVERS": risk_facts.get("drivers", []),
+            "DECISIONS": risk_facts.get("decisions", []),
+            "CONVERSATION": conversation[-12:],
+            "CURRENT_QUESTION": question,
+        }
+        prompt = (
+            "Responde al CURRENT_QUESTION como CRO de RiskIQ. Mantén continuidad con CONVERSATION y responde "
+            "solo lo que se pregunta. Si el usuario cambia de tema, cambia de foco sin repetir un informe general. "
+            "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
+            "Usa únicamente cifras presentes en EVIDENCE_JSON, FACTS, CONCENTRATION, VINTAGE, DRIVERS o DECISIONS. "
+            "Si una cifra o dimensión no está disponible, indícalo brevemente. "
+            "No calcules métricas nuevas. No inventes causalidad. El escenario de migración es condicional y el "
+            "Rollover Rate es histórico, no una predicción. Redacta en español natural, como una conversación entre "
+            "profesionales de riesgo, sin encabezados obligatorios, sin viñetas y sin listas salvo que el usuario las pida. "
+            "Devuelve exactamente JSON con esta forma {\"answer\":\"texto\"}."
+        )
+        try:
+            result = await self.provider.generate(prompt, context)
+            answer = result.get("answer")
+            if isinstance(answer, str) and answer.strip():
+                return answer.strip()
+        except (RuntimeError, ValueError, TypeError, KeyError, Exception):
+            pass
+        return fallback()
+
+
         self,
         question: str,
         severity: str,
