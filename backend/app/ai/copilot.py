@@ -270,7 +270,7 @@ No uses listas, viñetas, saludos ni numeración. Todo dato cuantitativo debe pr
                 sentence = f"{label} concentra un PAR30 de {par30}"
                 if share:
                     sentence += f" y representa {share} de la exposición"
-                sentence += ", por lo que corresponde contrastar esta concentración con las variables de originación y comportamiento disponibles."
+                sentence += ", una señal que orienta la revisión hacia las variables de originación y comportamiento disponibles."
                 observations.append(sentence)
 
         if not observations:
