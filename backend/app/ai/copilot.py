@@ -6,36 +6,19 @@ from typing import Any
 class RiskCopilotService:
     """Executive CRO interpretation layer grounded exclusively in deterministic evidence."""
 
-    CRO_SYSTEM_PROMPT = """Eres el Chief Risk Officer (CRO) y Científico de Datos Financieros Principal de la entidad, dirigiéndote al Comité de Riesgos. Presenta un informe ejecutivo fluido sobre el estado de la cartera utilizando EXCLUSIVAMENTE la evidencia determinística calculada que se proporciona.
+    CRO_SYSTEM_PROMPT = """Eres el Chief Risk Officer (CRO) y un analista financiero experto en riesgos de crédito. Conversas directamente con un analista o directivo a través de un chat interactivo.
 
-REGLAS DE SÍNTESIS Y ESTILO:
-- Escribe en prosa continua. No uses viñetas, listas numeradas, tablas ni encabezados numerados.
-- No utilices muletillas repetitivas como "Como hecho observado" o "Como hipótesis a validar".
-- No dupliques signos de puntuación.
-- Sintetiza, agrupa y compara segmentos en lugar de enumerarlos uno por uno.
-- Integra cifras en dólares ($), porcentajes y magnitudes de exposición de forma orgánica en lenguaje bancario.
-- Trata la distinción entre estrés y forecast con lenguaje natural: el escenario de migración es un ejercicio condicional sobre la exposición observada y no debe presentarse como predicción.
-- Presenta scoring, originación, perfil, First Payment Default, Collections, producto, vintage o región como hipótesis de trabajo únicamente cuando exista evidencia que justifique explorarlos; la asociación no basta para afirmar causalidad.
-- RiskIQ calcula los números. La narrativa interpreta su significado económico y estratégico. NUNCA inventes, aproximes o deduzcas cifras, tasas, porcentajes, umbrales o resultados.
-- Si no existen snapshots longitudinales suficientes, indica de forma natural que la evidencia disponible no permite concluir sobre Rollover Rate ni velocidad de deterioro.
-- Las recomendaciones deben ser concretas, condicionales, auditables y sujetas a revisión humana. No presentes acciones como ya ejecutadas.
+DIRECTRICES DE CONVERSACIÓN:
+1. ADAPTABILIDAD TOTAL: Responde de forma directa, natural y conversacional a lo que el usuario pregunte o solicite. Si pide un resumen, entrega un resumen. Si pregunta por un segmento, analiza únicamente ese segmento. Si pregunta por migración, explica la migración. No uses una plantilla estática ni una estructura obligatoria de cuatro partes salvo que el usuario la solicite expresamente.
+2. FLUIDEZ Y PROSA NATURAL: Escribe como un profesional humano de riesgo de crédito. Evita viñetas, listas numeradas, tablas y estructuras mecánicas salvo que el usuario las solicite. No uses dobles puntos ni puntuación duplicada. Agrupa, compara y sintetiza cuando la evidencia lo permita.
+3. RIGOR DETERMINÍSTICO: Utiliza exclusivamente la evidencia financiera calculada por RiskIQ. Exposición total, PAR30, PAR60, PAR90, brechas, estrés determinístico, Roll Rate, segmentos y cualquier otra cifra deben provenir de EVIDENCE_JSON. Nunca inventes, aproximes ni calcules por tu cuenta una cifra que no esté disponible en la evidencia.
+4. INTERPRETACIÓN, NO INVENCIÓN: RiskIQ calcula los indicadores y tú interpretas su significado económico y de riesgo. No atribuyas causalidad a scoring, originación, perfil, Collections, Underwriting, producto, vintage o región sin evidencia específica. Cuando falte evidencia, dilo de manera natural y breve.
+5. MIGRACIÓN Y ESTRÉS: El escenario 30–89 DPD hacia 90+ es un ejercicio condicional sobre la exposición observada. El Roll Rate disponible representa transición histórica observada en snapshots y no debe presentarse como predicción.
+6. CERO MULETILLAS: No repitas fórmulas como "Como hecho observado", "Como hipótesis a validar", "por lo que corresponde contrastar" o descargos equivalentes en cada oración. Formula las hipótesis de trabajo de manera orgánica y vinculada a la evidencia.
+7. TONO: Profesional, analítico, directo al grano y colaborativo. Habla con lenguaje de riesgo bancario cuando corresponda, pero prioriza claridad.
+8. ACCIONES: Cuando el usuario pida recomendaciones, prioriza acciones concretas y condicionadas a la evidencia. Para Collections, considera la Mora Temprana 30–89 DPD y la transición observada. Para Underwriting, considera validaciones de originación, FPD, vintage, scoring, elegibilidad y límites antes de proponer cambios de política.
 
-FORMATO OBLIGATORIO:
-La respuesta debe contener exactamente cuatro párrafos narrativos, cada uno precedido por uno de estos subtítulos breves en negrita:
-**Situación de la cartera**
-**Deterioro y migración**
-**Concentraciones e hipótesis de trabajo**
-**Prioridades de gestión**
-
-El primer párrafo debe diagnosticar la severidad general, el capital total expuesto y la concentración del riesgo en mora temprana mediante PAR30, estableciendo la prioridad estratégica de contención.
-
-El segundo debe relacionar PAR30, PAR60 y PAR90, cuantificar la brecha de contención en dólares cuando exista evidencia, describir el volumen expuesto al escenario de migración 30–89 DPD hacia 90+ y mencionar el Rollover Rate histórico observado cuando haya snapshots.
-
-El tercero debe comparar y agrupar las concentraciones o segmentos según el deterioro disponible y plantear causas probables como hipótesis de trabajo, señalando qué validación operativa debe realizarse antes de atribuirlas a originación, scoring, perfil u operación.
-
-El cuarto debe establecer prioridades tácticas para Collections con foco en 30–89 DPD y los análisis preventivos que Originations/Underwriting debe ejecutar antes de modificar políticas de crédito.
-
-No uses listas, viñetas, saludos ni numeración. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
+La respuesta debe adaptarse a la intención concreta del usuario. No añadas secciones que no aporten a la pregunta. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
 """
 
     def build_context(
@@ -123,15 +106,15 @@ No uses listas, viñetas, saludos ni numeración. Todo dato cuantitativo debe pr
         root_causes = self._root_cause_narrative(segments, drivers_data)
         mitigation = self._mitigation_narrative(migration, segments, drivers_data)
 
-        answer_text = (
-            "**Situación de la cartera**\n"
-            f"{executive}\n\n"
-            "**Deterioro y migración**\n"
-            f"{delinquency}\n\n"
-            "**Concentraciones e hipótesis de trabajo**\n"
-            f"{root_causes}\n\n"
-            "**Prioridades de gestión**\n"
-            f"{mitigation}"
+        answer_text = self._adaptive_narrative(
+            question,
+            severity,
+            total,
+            par,
+            impact,
+            migration,
+            segments,
+            drivers_data,
         )
 
         return {
@@ -153,10 +136,83 @@ No uses listas, viñetas, saludos ni numeración. Todo dato cuantitativo debe pr
             "grounded": True,
             "provider": "evidence_mode",
             "mode": "CRO Evidence Mode",
-            "prompt_version": "cro-financial-data-scientist-v3",
+            "prompt_version": "cro-interactive-risk-analyst-v4",
             "system_prompt": self.CRO_SYSTEM_PROMPT,
-            "note": "El motor determinístico calcula la evidencia; esta capa la interpreta en narrativa ejecutiva sin inventar métricas ni causalidad.",
+            "note": "El motor determinístico calcula la evidencia; esta capa adapta la interpretación a la pregunta del usuario sin inventar métricas ni causalidad.",
         }
+
+    def _adaptive_narrative(
+        self,
+        question: str,
+        severity: str,
+        total: Any,
+        par: dict[str, Any],
+        impact: dict[str, Any],
+        migration: dict[str, Any],
+        segments: Any,
+        drivers: list[dict[str, Any]],
+    ) -> str:
+        q = (question or "").strip().lower()
+        segment_items = [s for s in segments if isinstance(s, dict)] if isinstance(segments, list) else []
+
+        for segment in segment_items:
+            label = str(segment.get("label") or segment.get("segment") or "").strip()
+            key = str(segment.get("key") or "").strip()
+            if label and (label.lower() in q or key.lower() in q):
+                return self._segment_narrative(label, segment)
+
+        if any(term in q for term in ("migración", "migracion", "rollover", "roll rate", "roll-rate", "mora dura", "90+", "90 +")):
+            return self._migration_narrative(par, impact, migration)
+
+        if any(term in q for term in ("cobranzas", "collections", "cobranza", "acción", "accion", "prioridad", "qué debería revisar", "que deberia revisar", "revisar primero")):
+            return self._mitigation_narrative(migration, segment_items, drivers)
+
+        if any(term in q for term in ("resumen", "situación", "situacion", "estado", "cartera", "exposición", "exposicion", "riesgo general", "overview")) or not q:
+            return self._executive_narrative(severity, total, par, impact)
+
+        return self._general_narrative(severity, total, par, impact, migration, segment_items, drivers)
+
+    def _segment_narrative(self, label: str, segment: dict[str, Any]) -> str:
+        par30 = self._pct(segment.get("par30"))
+        balance = self._money(segment.get("balance"))
+        share = self._pct(segment.get("share_of_exposure", segment.get("share_of_portfolio")))
+        loans = segment.get("loans")
+        if not par30:
+            return f"La evidencia disponible para {label} no contiene un PAR30 calculado suficiente para caracterizar su deterioro."
+        text = f"{label} registra un PAR30 de {par30}"
+        if balance:
+            text += f", sobre una exposición de {balance}"
+        if share:
+            text += f", que representa {share} de la exposición total"
+        if isinstance(loans, int):
+            text += f", distribuida en {loans} créditos"
+        return text + ". Este nivel permite focalizar la revisión del segmento dentro de la cartera y contrastarlo con los demás grupos disponibles, sin atribuir por sí solo una causa al deterioro."
+
+    def _general_narrative(
+        self,
+        severity: str,
+        total: Any,
+        par: dict[str, Any],
+        impact: dict[str, Any],
+        migration: dict[str, Any],
+        segments: list[dict[str, Any]],
+        drivers: list[dict[str, Any]],
+    ) -> str:
+        parts = [self._executive_narrative(severity, total, par, impact)]
+        if migration.get("available"):
+            early_to_hard = migration.get("early_to_hard", {})
+            roll = self._pct(early_to_hard.get("roll_rate_by_balance"))
+            if roll:
+                parts.append(f"Los snapshots disponibles muestran un Rollover Rate observado de {roll} entre Mora Temprana y Mora Dura, lo que aporta contexto sobre la dinámica histórica de deterioro.")
+        if len(segments) >= 2:
+            ordered = sorted(segments, key=lambda s: self._number(s.get("par30")) or 0, reverse=True)
+            high = ordered[0]
+            low = ordered[-1]
+            high_pct = self._pct(high.get("par30"))
+            low_pct = self._pct(low.get("par30"))
+            if high_pct and low_pct:
+                parts.append(f"La mayor presión relativa se concentra en {high.get('label')}, con PAR30 de {high_pct}, mientras {low.get('label')} registra {low_pct}; esta diferencia orienta dónde profundizar la revisión de originación y comportamiento.")
+        return " ".join(parts)
 
     def _executive_narrative(
         self,
