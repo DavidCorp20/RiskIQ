@@ -41,9 +41,17 @@ def test_cro_copilot_uses_mandatory_sections_and_does_not_claim_causality() -> N
     assert "**Deterioro y migración**" in result["answer"]
     assert "**Concentraciones e hipótesis de trabajo**" in result["answer"]
     assert "**Prioridades de gestión**" in result["answer"]
-    assert "causality" not in result["answer"].lower()
-    assert "\n- " not in result["answer"]
-    assert "\n1. " not in result["answer"]
+    answer = result["answer"]
+    assert "causality" not in answer.lower()
+    assert "como hecho observado" not in answer.lower()
+    assert "como hipótesis a validar" not in answer.lower()
+    assert "no es un forecast" not in answer.lower()
+    assert "\n- " not in answer
+    assert "\n1. " not in answer
+    assert answer.count("**Situación de la cartera**") == 1
+    assert answer.count("**Deterioro y migración**") == 1
+    assert answer.count("**Concentraciones e hipótesis de trabajo**") == 1
+    assert answer.count("**Prioridades de gestión**") == 1
 
 def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() -> None:
     risk = RiskAnalyticsService().analyze([
@@ -53,4 +61,6 @@ def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() ->
     assert result["prompt_version"] == "cro-financial-data-scientist-v3"
     assert "La evidencia es insuficiente" in result["answer"]
     assert "snapshots longitudinales" in result["answer"]
-    assert "no es un forecast" in result["answer"].lower()
+    assert "no es un forecast" not in result["answer"].lower()
+    assert "como hecho observado" not in result["answer"].lower()
+    assert "como hipótesis a validar" not in result["answer"].lower()
