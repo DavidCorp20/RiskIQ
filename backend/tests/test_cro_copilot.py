@@ -50,6 +50,6 @@ def test_cro_copilot_explicitly_declares_insufficient_longitudinal_evidence() ->
     ])
     result = RiskCopilotService().answer("Analiza la migración", risk, drivers=risk["drivers"])
     assert result["prompt_version"] == "cro-financial-data-scientist-v2"
-    assert "Evidencia es insuficiente" in result["answer"]
+    assert "La evidencia es insuficiente" in result["answer"]
     assert "snapshots longitudinales" in result["answer"]
     assert "no es un forecast" in result["answer"].lower()
