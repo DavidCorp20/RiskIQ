@@ -96,6 +96,9 @@ def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
         "summary": {"status": status},
         "drivers": drivers,
         "decisions": priority_cards,
+        "cro_evidence": deterministic.get("cro_evidence", {}),
+        "concentration": deterministic.get("concentration", {}),
+        "vintage": deterministic.get("vintage", []),
     }
 
 
@@ -120,7 +123,12 @@ def copilot(payload: dict) -> dict:
     # The frontend may send decisions/drivers while still omitting the actual
     # calculated facts. Facts are the source of truth, so rebuild whenever they
     # are absent instead of allowing auxiliary payload fields to suppress grounding.
-    has_facts = isinstance(risk_facts.get("facts"), dict) and bool(risk_facts.get("facts"))
+    has_facts = (
+        isinstance(risk_facts.get("facts"), dict)
+        and bool(risk_facts.get("facts"))
+        and isinstance(risk_facts.get("cro_evidence"), dict)
+        and bool(risk_facts.get("cro_evidence"))
+    )
     if not has_facts:
         risk_facts = _build_grounded_context(dataset_id)
         drivers = risk_facts.pop("drivers", [])
