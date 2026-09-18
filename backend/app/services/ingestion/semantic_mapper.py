@@ -132,8 +132,8 @@ class SemanticColumnMapper:
             }
             prompt = (
                 "Map this source column to at most one RiskIQ canonical field. "
-                "Return JSON exactly as {"target": string|null, "confidence": number, "
-                ""reason": string}. Confidence must be 0-100. Do not invent a target "
+                "Return JSON exactly as {\"target\": string|null, \"confidence\": number, "
+                "\"reason\": string}. Confidence must be 0-100. Do not invent a target "
                 "when evidence is insufficient."
             )
             try:
