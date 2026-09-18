@@ -26,6 +26,18 @@ DIRECTRICES DE CONVERSACIÓN:
 La respuesta debe adaptarse a la intención concreta del usuario. No añadas secciones que no aporten a la pregunta. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
 """
 
+    @staticmethod
+    def _conversation_mode(question: str) -> str:
+        """Classify only enough to decide whether risk evidence should reach the LLM."""
+        q = " ".join(str(question or "").strip().lower().split())
+        analytical_terms = (
+            "par", "mora", "dpd", "exposicion", "exposición", "cartera", "credito", "crédito",
+            "riesgo", "roll rate", "rollover", "migracion", "migración", "vintage", "concentracion",
+            "concentración", "npl", "morosidad", "cobranzas", "collections", "segmento", "segment",
+            "underwriting", "originacion", "originación", "fpd", "comite", "comité", "decision", "decisión",
+        )
+        return "analytical" if any(term in q for term in analytical_terms) else "conversational"
+
     def build_context(
         self,
         risk_facts: dict[str, Any],
@@ -56,6 +68,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "summary": risk_facts.get("summary", {}),
             "drivers": drivers or [],
             "decisions": decisions or [],
+            "conversation": conversation or [],
         }
 
     @staticmethod
@@ -81,6 +94,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         conversation: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         context = self.build_context(risk_facts, drivers, decisions, conversation)
+        mode = self._conversation_mode(question)
         facts = context["facts"]
         evidence = context["cro_evidence"]
         summary = context["summary"]
@@ -115,6 +129,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
 
         answer_text = await self._generate_conversational_answer(
             question=question,
+            mode=mode,
             risk_facts=risk_facts,
             conversation=conversation or [],
             fallback=lambda: self._adaptive_narrative(
@@ -148,7 +163,8 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "grounded": True,
             "provider": "evidence_mode",
             "mode": "CRO Evidence Mode",
-            "prompt_version": "cro-interactive-risk-analyst-v6",
+            "prompt_version": "cro-dual-mode-v1",
+            "conversation_mode": mode,
             "system_prompt": self.CRO_SYSTEM_PROMPT,
             "note": "El motor determinístico establece los hechos; Gemini adapta la interpretación al contexto y a la intención de la conversación sin inventar métricas ni causalidad.",
         }
@@ -156,37 +172,50 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
     async def _generate_conversational_answer(
         self,
         question: str,
+        mode: str,
         risk_facts: dict[str, Any],
         conversation: list[dict[str, Any]],
         fallback: Any,
     ) -> str:
-        context = {
-            "EVIDENCE_JSON": risk_facts.get("cro_evidence", {}),
-            "FACTS": risk_facts.get("facts", {}),
-            "CONCENTRATION": risk_facts.get("concentration", {}),
-            "VINTAGE": risk_facts.get("vintage", []),
-            "DRIVERS": risk_facts.get("drivers", []),
-            "DECISIONS": risk_facts.get("decisions", []),
-            "CONVERSATION": conversation[-12:],
-            "CURRENT_QUESTION": question,
-        }
-        prompt = (
-            "Responde al CURRENT_QUESTION como CRO de RiskIQ. Mantén continuidad con CONVERSATION y responde "
-            "solo lo que se pregunta. Si el usuario cambia de tema, cambia de foco sin repetir un informe general. "
-            "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
-            "Usa únicamente cifras presentes en EVIDENCE_JSON, FACTS, CONCENTRATION, VINTAGE, DRIVERS o DECISIONS. "
-            "Si una cifra o dimensión no está disponible, indícalo brevemente. "
-            "No calcules métricas nuevas. No inventes causalidad. El escenario de migración es condicional y el "
-            "Rollover Rate es histórico, no una predicción. Redacta en español natural, como una conversación entre "
-            "profesionales de riesgo, sin encabezados obligatorios, sin viñetas y sin listas salvo que el usuario las pida. "
-            "Devuelve exactamente JSON con esta forma {\"answer\":\"texto\"}."
-        )
+        if mode == "conversational":
+            context = {
+                "MODE": "conversational",
+                "CONVERSATION": conversation[-12:],
+                "CURRENT_QUESTION": question,
+            }
+            prompt = (
+                f"{self.CRO_SYSTEM_PROMPT}\n\n"
+                "MODO ACTUAL: CONVERSACIONAL. No recibes evidencia de cartera porque la pregunta no requiere análisis financiero. "
+                "Responde de forma humana, breve y natural. Si corresponde, pregunta qué desea analizar el usuario. "
+                "No introduzcas PAR, exposición, mora ni otras métricas por iniciativa propia. "
+                'Devuelve exactamente JSON con esta forma {"answer":"texto"}.'
+            )
+        else:
+            context = {
+                "MODE": "analytical",
+                "EVIDENCE_JSON": risk_facts.get("cro_evidence", {}),
+                "FACTS": risk_facts.get("facts", {}),
+                "CONCENTRATION": risk_facts.get("concentration", {}),
+                "VINTAGE": risk_facts.get("vintage", []),
+                "DRIVERS": risk_facts.get("drivers", []),
+                "DECISIONS": risk_facts.get("decisions", []),
+                "CONVERSATION": conversation[-12:],
+                "CURRENT_QUESTION": question,
+            }
+            prompt = (
+                f"{self.CRO_SYSTEM_PROMPT}\n\n"
+                "MODO ACTUAL: ANALÍTICO. Responde como CRO de comité de riesgos. Usa únicamente la evidencia disponible y "
+                "las cifras estrictamente necesarias para responder. Mantén continuidad con CONVERSATION. "
+                "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
+                "No calcules métricas nuevas ni inventes causalidad. El estrés es condicional y el Rollover Rate es histórico. "
+                'Usa una estructura profesional solo cuando ayude a la consulta. Devuelve exactamente JSON con esta forma {"answer":"texto"}.'
+            )
         try:
             result = await self.provider.generate(prompt, context)
             answer = result.get("answer")
             if isinstance(answer, str) and answer.strip():
                 return answer.strip()
-        except (RuntimeError, ValueError, TypeError, KeyError, Exception):
+        except Exception:
             pass
         return fallback()
 
