@@ -1,4 +1,7 @@
+import pytest
+
 from app.ai.copilot import RiskCopilotService
+from app.core.ai.provider import AIProvider
 from app.analytics.risk_facts import RiskFactsService
 from app.analytics.portfolio_history import PortfolioHistoryService
 from app.analytics.vintage_rollrate import VintageRollRateService
@@ -52,8 +55,14 @@ def test_scenario_simulator_is_transparent_sensitivity():
     assert "no constituye una predicción ML" in result["interpretation"]
 
 
-def test_copilot_accepts_canonical_risk_facts_list():
-    result = RiskCopilotService().answer(
+class FakeProvider(AIProvider):
+    async def generate(self, prompt: str, context: dict) -> dict:
+        return {"answer": "Respuesta de prueba."}
+
+
+@pytest.mark.asyncio
+async def test_copilot_accepts_canonical_risk_facts_list():
+    result = await RiskCopilotService(FakeProvider()).answer(
         "¿Qué está pasando?",
         {
             "facts": [
