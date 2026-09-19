@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.ai_routes import router as ai_router
 from app.api.ews_routes import router as ews_router
 from app.predictive.routes import router as predictive_router
+from app.stress_testing.routes import router as stress_testing_router
 from app.api.audit_routes import router as audit_router
 from app.api.data_routes import router as data_router
 from app.api.dataset_intelligence_routes import router as dataset_intelligence_router
@@ -70,6 +71,7 @@ app.include_router(market_router,prefix="/api")
 app.include_router(ai_router,prefix="/api")
 app.include_router(ews_router,prefix="/api")
 app.include_router(predictive_router,prefix="/api")
+app.include_router(stress_testing_router,prefix="/api")
 app.include_router(workspace_router,prefix="/api")
 app.include_router(smart_ingest_router,prefix="/api")
 
