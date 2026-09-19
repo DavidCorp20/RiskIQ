@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ai_routes import router as ai_router
+from app.api.ews_routes import router as ews_router
 from app.api.audit_routes import router as audit_router
 from app.api.data_routes import router as data_router
 from app.api.dataset_intelligence_routes import router as dataset_intelligence_router
@@ -60,6 +61,7 @@ app.include_router(policy_metrics_router,prefix="/api")
 app.include_router(audit_router,prefix="/api")
 app.include_router(learning_router,prefix="/api")
 app.include_router(ai_router,prefix="/api")
+app.include_router(ews_router,prefix="/api")
 app.include_router(workspace_router,prefix="/api")
 app.include_router(smart_ingest_router,prefix="/api")
 
