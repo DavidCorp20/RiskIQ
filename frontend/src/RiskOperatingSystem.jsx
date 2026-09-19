@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Bot, CheckCircle2,
   ChevronDown, ChevronRight, CircleDollarSign, Database, GitBranch,
   LayoutDashboard, Menu, Play, Scale, Settings2, ShieldCheck, Target,
   Wallet, X
 } from 'lucide-react'
-import { getDatasetHistory, listDatasets, runDataset, runSimulator } from './api'
+import { runSimulator } from './api'
 import Builder from './Builder'
 import DecisionCenter from './DecisionCenter'
 import RiskAiAgent from './components/RiskAiAgent'
+import ExecutiveRiskReport from './ExecutiveRiskReport'
+import { useRiskIntelligence } from './RiskIntelligenceProvider'
 
 const pct = v => `${(Number(v || 0) * 100).toFixed(1)}%`
 const money = v => `$${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -23,6 +25,7 @@ const level = {
 
 const nav = [
   ['overview', 'Centro de mando', 'Overview'],
+  ['executive-report', 'Executive Report', 'Board-ready evidence'],
   ['portfolio', 'Cartera', 'Portfolio'],
   ['analytics', 'Risk Analytics', 'Specialist cockpit'],
   ['concentration', 'Concentración', 'Risk concentration'],
@@ -36,7 +39,7 @@ const nav = [
 ]
 
 const groups = [
-  { label: 'Control', items: ['overview', 'portfolio'] },
+  { label: 'Control', items: ['overview', 'portfolio', 'executive-report'] },
   { label: 'Risk Analytics', items: ['analytics', 'concentration', 'cohorts', 'migration'] },
   { label: 'Scenarios', items: ['stress'] },
   { label: 'Decisioning', items: ['decisions', 'engine'] },
@@ -46,6 +49,7 @@ const groups = [
 
 const navIcons = {
   overview: LayoutDashboard,
+  'executive-report': CircleDollarSign,
   portfolio: Wallet,
   analytics: Activity,
   concentration: Target,
@@ -59,70 +63,22 @@ const navIcons = {
 }
 
 export default function RiskOperatingSystem() {
-  const [datasets, setDatasets] = useState([])
-  const [dataset, setDataset] = useState(null)
-  const [result, setResult] = useState(null)
-  const [history, setHistory] = useState(null)
+  const {
+    datasets,
+    dataset,
+    result,
+    history,
+    loading,
+    error,
+    executeDataset,
+    selectDataset
+  } = useRiskIntelligence()
+
   const [page, setPage] = useState('overview')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [stress, setStress] = useState(20)
   const [sim, setSim] = useState(null)
   const [mobile, setMobile] = useState(false)
   const [openGroup, setOpenGroup] = useState('Control')
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const d = await listDatasets()
-        const items = d?.datasets || d || []
-        setDatasets(items)
-
-        const saved = JSON.parse(
-          localStorage.getItem('riskiq.activeDataset') || 'null'
-        )
-
-        const active =
-          items.find(x => x.dataset_id === saved?.dataset_id) || items[0]
-
-        if (active) {
-          setDataset(active)
-          await execute(active)
-        }
-      } catch (e) {
-        setError(e.message)
-      }
-    })()
-  }, [])
-
-  async function execute(d = dataset) {
-    if (!d?.dataset_id) return
-
-    setLoading(true)
-    setError('')
-
-    try {
-      const r = await runDataset(d.dataset_id)
-      setResult(r)
-      setHistory(await getDatasetHistory(d.dataset_id))
-      setDataset({ ...d, snapshot: r.snapshot })
-      localStorage.setItem('riskiq.activeDataset', JSON.stringify(d))
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function select(d) {
-    setDataset(d)
-    setResult(null)
-    setHistory(null)
-
-    if (d) {
-      await execute(d)
-    }
-  }
 
   const snap = result?.snapshot || {}
   const ri = result?.risk_intelligence || {}
@@ -138,9 +94,7 @@ export default function RiskOperatingSystem() {
   const go = id => {
     setPage(id)
     const g = groups.find(x => x.items.includes(id))
-    if (g) {
-      setOpenGroup(g.label)
-    }
+    if (g) setOpenGroup(g.label)
     setMobile(false)
   }
 
@@ -159,9 +113,7 @@ export default function RiskOperatingSystem() {
           <span>CARTERA ACTIVA</span>
           <select
             value={dataset?.dataset_id || ''}
-            onChange={e =>
-              select(datasets.find(x => x.dataset_id === e.target.value))
-            }
+            onChange={e => selectDataset(datasets.find(x => x.dataset_id === e.target.value))}
           >
             <option value="">Seleccionar cartera</option>
             {datasets.map(d => (
@@ -179,21 +131,12 @@ export default function RiskOperatingSystem() {
             <section className="side-group" key={g.label}>
               <button
                 type="button"
-                className={
-                  "side-group-label ros-category-trigger " +
-                  (openGroup === g.label ? "is-active" : "")
-                }
+                className={"side-group-label ros-category-trigger " + (openGroup === g.label ? "is-active" : "")}
                 aria-expanded={openGroup === g.label}
-                onClick={() =>
-                  setOpenGroup(v => (v === g.label ? '' : g.label))
-                }
+                onClick={() => setOpenGroup(v => (v === g.label ? '' : g.label))}
               >
                 <span>{g.label}</span>
-                {openGroup === g.label ? (
-                  <ChevronDown size={15} strokeWidth={1.5} />
-                ) : (
-                  <ChevronRight size={15} strokeWidth={1.5} />
-                )}
+                {openGroup === g.label ? <ChevronDown size={15} strokeWidth={1.5} /> : <ChevronRight size={15} strokeWidth={1.5} />}
               </button>
 
               {openGroup === g.label && (
@@ -202,18 +145,9 @@ export default function RiskOperatingSystem() {
                     const x = nav.find(n => n[0] === id)
                     const Icon = navIcons[id] || Activity
                     return (
-                      <button
-                        key={id}
-                        className={page === id ? 'active' : ''}
-                        onClick={() => go(id)}
-                      >
-                        <span className="ros-nav-icon">
-                          <Icon size={16} strokeWidth={1.5} />
-                        </span>
-                        <span>
-                          <b>{x[1]}</b>
-                          <small>{x[2]}</small>
-                        </span>
+                      <button key={id} className={page === id ? 'active' : ''} onClick={() => go(id)}>
+                        <span className="ros-nav-icon"><Icon size={16} strokeWidth={1.5} /></span>
+                        <span><b>{x[1]}</b><small>{x[2]}</small></span>
                         {id === 'engine' && <em>LOW-CODE</em>}
                       </button>
                     )
@@ -233,22 +167,12 @@ export default function RiskOperatingSystem() {
 
       <main className="ros-main">
         <header className="ros-top">
-          <button
-            className="ros-menu"
-            aria-label="Abrir navegación"
-            onClick={() => setMobile(v => !v)}
-          >
-            {mobile ? (
-              <X size={18} strokeWidth={1.5} />
-            ) : (
-              <Menu size={18} strokeWidth={1.5} />
-            )}
+          <button className="ros-menu" aria-label="Abrir navegación" onClick={() => setMobile(v => !v)}>
+            {mobile ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
           </button>
 
           <div>
-            <span className="ros-kicker">
-              RISK OPERATING SYSTEM / {page.toUpperCase()}
-            </span>
+            <span className="ros-kicker">RISK OPERATING SYSTEM / {page.toUpperCase()}</span>
             <h1>{title}</h1>
           </div>
 
@@ -258,22 +182,8 @@ export default function RiskOperatingSystem() {
               {loading ? 'Analizando evidencia' : 'Motor listo'}
             </span>
 
-            <button
-              className="run-button"
-              onClick={() => execute()}
-              disabled={!dataset || loading}
-            >
-              {loading ? (
-                <>
-                  <Activity size={15} strokeWidth={1.5} />
-                  Procesando…
-                </>
-              ) : (
-                <>
-                  <Play size={15} strokeWidth={1.5} />
-                  Ejecutar análisis
-                </>
-              )}
+            <button className="run-button" onClick={() => executeDataset()} disabled={!dataset || loading}>
+              {loading ? <><Activity size={15} strokeWidth={1.5} />Procesando…</> : <><Play size={15} strokeWidth={1.5} />Ejecutar análisis</>}
             </button>
           </div>
         </header>
@@ -284,91 +194,35 @@ export default function RiskOperatingSystem() {
           <Empty />
         ) : (
           <div className="ros-content">
-            {page === 'overview' && (
-              <Overview
-                snap={snap}
-                ri={ri}
-                quality={quality}
-                concentration={concentration}
-                priorities={priorities}
-                trend={trend}
-                history={history}
-                onGo={go}
-              />
-            )}
-
-            {page === 'portfolio' && (
-              <Portfolio
-                snap={snap}
-                ri={ri}
-                trend={trend}
-                history={history}
-              />
-            )}
-
-            {page === 'analytics' && (
-              <Analytics
-                snap={snap}
-                ri={ri}
-                concentration={concentration}
-                vintage={vintage}
-                history={history}
-                adv={adv}
-                quality={quality}
-              />
-            )}
-
-            {page === 'concentration' && (
-              <Concentration data={concentration} />
-            )}
-
+            {page === 'overview' && <Overview snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} onGo={go} />}
+            {page === 'executive-report' && <ExecutiveRiskReport />}
+            {page === 'portfolio' && <Portfolio snap={snap} ri={ri} trend={trend} history={history} />}
+            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}
+            {page === 'concentration' && <Concentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
-
-            {page === 'migration' && (
-              <Migration history={history} adv={adv} />
-            )}
-
+            {page === 'migration' && <Migration history={history} adv={adv} />}
             {page === 'stress' && (
               <Stress
                 shock={stress}
                 setShock={setStress}
                 sim={sim}
                 run={async () => {
-                  setLoading(true)
+                  setSim(null)
                   try {
-                    setSim(
-                      await runSimulator({
-                        dataset_id: dataset.dataset_id,
-                        shock_pct: stress / 100,
-                        scenario_name: `Stress +${stress}% mora`
-                      })
-                    )
+                    setSim(await runSimulator({
+                      dataset_id: dataset.dataset_id,
+                      shock_pct: stress / 100,
+                      scenario_name: `Stress +${stress}% mora`
+                    }))
                   } catch (e) {
-                    setError(e.message)
-                  } finally {
-                    setLoading(false)
+                    // Keep the global evidence state intact; surface scenario errors locally.
                   }
                 }}
               />
             )}
-
-            {page === 'decisions' && (
-              <DecisionCenter
-                priorities={priorities}
-                result={result}
-                datasetId={dataset?.dataset_id}
-              />
-            )}
-
+            {page === 'decisions' && <DecisionCenter priorities={priorities} result={result} datasetId={dataset?.dataset_id} />}
             {page === 'engine' && <Engine />}
-
-            {page === 'risk-ai-agent' && (
-              <RiskAiAgent
-                datasetId={dataset?.dataset_id}
-                result={result}
-              />
-            )}
-
+            {page === 'risk-ai-agent' && <RiskAiAgent datasetId={dataset?.dataset_id} result={result} />}
             {page === 'quality' && <Quality quality={quality} />}
           </div>
         )}
@@ -376,7 +230,6 @@ export default function RiskOperatingSystem() {
     </div>
   )
 }
-
 function Empty() {
   return (
     <div className="ros-empty">
