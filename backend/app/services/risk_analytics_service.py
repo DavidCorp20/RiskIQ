@@ -261,7 +261,7 @@ class RiskAnalyticsDashboardService:
                 "message": (
                     f"PAR30 {par30.get('formatted', '—')} · "
                     f"PAR60 {par60.get('formatted', '—')} · "
-                    f"PAR90 {par90.get('formatted', '—')}.",
+                    f"PAR90 {par90.get('formatted', '—')}."
                 ),
             },
             {
