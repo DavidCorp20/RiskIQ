@@ -10,8 +10,8 @@ async def test_market_context_disabled_does_not_call_external(monkeypatch):
     result = await provider.get_context()
 
     assert result["status"] == "disabled"
-    assert result["data"] == {}
-    assert result["source"] == "Macro/NQ Futures"
+    assert result["market_indicators"] == {}\n    assert result["macro_events"] == []
+    assert result["source"] == "RiskIQ Market Intelligence Layer"
 
 
 @pytest.mark.asyncio
@@ -46,5 +46,5 @@ async def test_market_context_nq_parser():
 
     assert quote is not None
     assert quote["symbol"] == "NQ=F"
-    assert quote["price"] == 24000.0
+    assert quote["value"] == 24000.0
     assert quote["change_pct"] == pytest.approx(0.8403, rel=1e-3)
