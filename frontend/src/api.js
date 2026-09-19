@@ -116,3 +116,5 @@ export const listRiskActions=(eventId='',status='')=>{const p=new URLSearchParam
 export const getRiskEvent=eventId=>request('/api/v1/risk-events/'+encodeURIComponent(eventId))
 
 export const getRiskIntelligence=datasetId=>request('/api/v1/risk-intelligence/'+encodeURIComponent(datasetId))
+
+export const runStressScenario=(baseline,scenario,sensitivities={})=>request('/api/v1/stress-testing/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseline,scenario,sensitivities})})
