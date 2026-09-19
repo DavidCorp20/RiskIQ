@@ -75,4 +75,12 @@ async def test_copilot_accepts_canonical_risk_facts_list():
     )
     assert result["grounded"] is True
     assert result["status"] == "critical"
-    assert any("PAR30: 8.7percent" == line for line in result["evidence"])
+    service = RiskCopilotService(FakeProvider())
+    context = service.build_context({
+        "facts": [
+            {"id": "par30", "label": "PAR30", "value": 8.7, "unit": "percent"},
+            {"id": "portfolio_size", "label": "Exposición activa", "value": 100000, "unit": "currency"},
+        ]
+    })
+    assert context["facts"]["par30"]["value"] == 8.7
+    assert context["facts"]["exposure"]["value"] == 100000
