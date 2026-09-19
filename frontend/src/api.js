@@ -114,3 +114,5 @@ export const getPortfolioEWS=(datasetId,options={})=>request('/api/v1/ews/portfo
 export const listRiskEvents=(datasetId='')=>request('/api/v1/risk-events'+(datasetId?'?dataset_id='+encodeURIComponent(datasetId):''))
 export const listRiskActions=(eventId='',status='')=>{const p=new URLSearchParams();if(eventId)p.set('event_id',eventId);if(status)p.set('status',status);return request('/api/v1/risk-events/actions/list'+(p.toString()?'?'+p.toString():''))}
 export const getRiskEvent=eventId=>request('/api/v1/risk-events/'+encodeURIComponent(eventId))
+
+export const getRiskIntelligence=datasetId=>request('/api/v1/risk-intelligence/'+encodeURIComponent(datasetId))
