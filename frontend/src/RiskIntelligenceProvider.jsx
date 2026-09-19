@@ -51,7 +51,7 @@ export function RiskIntelligenceProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [dataset])
+  }, [])
 
   const selectDataset = useCallback(async (next) => {
     setDataset(next || null)
