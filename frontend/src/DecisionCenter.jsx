@@ -1,55 +1,289 @@
 import React,{useEffect,useMemo,useState} from 'react'
-import {ChevronRight} from 'lucide-react'
-import {listAuditDecisions} from './api'
+import {CheckCircle2,ChevronRight,RefreshCw,ShieldAlert,XCircle} from 'lucide-react'
+import {
+  approveDecision,
+  createDecisionRecommendation,
+  getDecisionLedger,
+  rejectDecision
+} from './api'
+import {useRiskIntelligence} from './RiskIntelligenceProvider'
 import './decision-center.css'
 import './step7-governance.css'
 
-const tone={critical:'CRÍTICA',high:'ALTA',medium:'MEDIA',low:'BAJA'}
-const label=v=>String(v??'—').replaceAll('_',' ')
-const fmt=v=>{if(v&&typeof v==='object')return JSON.stringify(v);return typeof v==='number'?v.toLocaleString(undefined,{maximumFractionDigits:4}):label(v)}
-const versionLabel=v=>{if(v==null||v==='')return '';const text=String(v);return /^v/i.test(text)?text:`v${text}`}
-function evidenceText(e){if(Array.isArray(e))return e.map(label).join(' · ');return Object.entries(e||{}).map(([k,v])=>`${k}: ${typeof v==='object'?JSON.stringify(v):v}`).join(' · ')}
-function Panel({title,children}){return <div className="dc-panel"><div className="dc-panel-title">{title}</div>{children}</div>}
+const levelLabel={high:'ALTA',medium:'MEDIA',low:'BAJA'}
+const levelTone={high:'critical',medium:'high',low:'low'}
 
-export default function DecisionCenter({decisionEngine,result,priorities=[],datasetId}){
- const source=result?.decision_engine||result?.decision||{}
- const engine=decisionEngine||source||{}
- const engineCards=Array.isArray(engine.cards)?engine.cards:Array.isArray(engine.priority_cards)?engine.priority_cards:[]
- const cards=engineCards.length?engineCards:(Array.isArray(priorities)?priorities:[])
- const evidence=engine.decision_evidence||source.decision_evidence||result?.decision_evidence||{}
- const [selected,setSelected]=useState(cards[0]||null)
- const [audit,setAudit]=useState([])
- const [auditLoading,setAuditLoading]=useState(false)
- const [auditError,setAuditError]=useState('')
- useEffect(()=>{if(!cards.length){setSelected(null);return}setSelected(prev=>prev&&cards.some(card=>card===prev||card.id===prev.id)?prev:cards[0])},[cards.length])
- useEffect(()=>{let live=true;(async()=>{if(!datasetId){setAudit([]);return}setAuditLoading(true);setAuditError('');try{const data=await listAuditDecisions(datasetId);if(live)setAudit(data?.entries||[])}catch(e){if(live)setAuditError(e.message||'No se pudo cargar el ledger')}finally{if(live)setAuditLoading(false)}})();return()=>{live=false}},[datasetId])
- const selectedEvidence=selected?.evidence??{}
- const facts=selected?.facts||evidence.facts||{}
- const score=selected?.scorecard?.score??evidence.scorecard?.score
- const selectedRuleId=selected?.id||selected?.decision_id||''
- const triggeredRules=Array.isArray(selected?.triggered_rules)?selected.triggered_rules:(selectedRuleId?[{rule_id:selectedRuleId,severity:selected?.severity||selected?.priority||'watch',condition:selected?.trigger||selected?.reason||'',matched:true}]:Array.isArray(evidence.triggered_rules)?evidence.triggered_rules:engine.triggered_rules||[])
- const reasonCodes=Array.isArray(selected?.reason_codes)?selected.reason_codes:(selectedRuleId?[selectedRuleId]:Array.isArray(evidence.reason_codes)?evidence.reason_codes:engine.reason_codes||[])
- const decision=selected?.title||selected?.recommended_action||selected?.recommendation||evidence.decision||'REVIEW'
- const impact=selected?.impact??selected?.impact_score??selected?.estimated_impact??selected?.exposure_impact
- const drivers=engine.top_drivers||source.top_drivers||result?.analysis?.drivers||[]
- const basePath=engine.decision_path||source.decision_path||[]
- const path=selected?[{stage:'FACTS',label:'Facts',evidence:facts},{stage:'RULE',label:'Rule',evidence:selectedRuleId||selected.trigger||selected.reason},{stage:'DECISION',label:'Decision',evidence:selected.title||selected.recommended_action},{stage:'IMPACT',label:'Impact',evidence:impact??'—'},{stage:'HUMAN_REVIEW',label:'Human review',evidence:selected.requires_human_review===false?'Not required':'Required'},{stage:'AUDIT',label:'Audit',evidence:'Ledger persisted by dataset intelligence'}]:basePath
- const stats=useMemo(()=>engine.counts||source.counts||{critical:cards.filter(x=>x.severity==='critical'||x.priority==='critical').length,high:cards.filter(x=>x.severity==='high'||x.priority==='high').length,watch:cards.filter(x=>!['critical','high'].includes(x.severity||x.priority)).length,total_cards:cards.length},[engine,source,cards.length])
- const policy=evidence.policy||engine.policy||{}
- return <section className="dc-shell">
-  <header className="dc-header"><div><div className="dc-kicker">DECISION CENTER · MESA DE DECISIÓN</div><h2>Revisión institucional de decisiones</h2><p>La evidencia calculada se presenta para revisión humana. RiskIQ actúa como capa técnica de soporte: datos, variables, score, reglas y trazabilidad.</p></div><div className="dc-header-status"><span>CASOS EN COLA</span><strong>{stats.total_cards||cards.length}</strong><small>requieren atención</small></div></header>
-  <div className="dc-kpis"><div><span>CRÍTICAS</span><strong>{stats.critical||0}</strong></div><div><span>ALTAS</span><strong>{stats.high||0}</strong></div><div><span>WATCH</span><strong>{stats.watch||0}</strong></div><div><span>HUMAN REVIEW</span><strong>ON</strong></div></div>
-  {!cards.length?<div className="dc-empty"><strong>No hay decisiones para escalar.</strong><span>Ejecuta el análisis o ajusta la política para generar casos revisables.</span></div>:<div className="dc-layout">
-   <div className="dc-list"><div className="dc-list-head"><span>DECISION QUEUE</span><b>{cards.length} casos</b></div><div className="dc-table-head"><span>Prioridad</span><span>Decisión / evidencia</span><span>Impacto</span><span>Estado</span><span>Acciones</span></div>{cards.map((card,i)=>{const priority=card.severity||card.priority||'watch';const cardImpact=card.impact_score??card.estimated_impact??card.exposure_impact??card.impact;const status=card.status||'PENDIENTE';return <button key={card.id||card.decision_id||i} className={`dc-case ${selected===card?'selected':''}`} onClick={()=>setSelected(card)}><div className="dc-case-priority"><span className={`dc-severity ${priority}`}>{tone[priority]||String(priority).toUpperCase()}</span><strong>#{card.rank??i+1}</strong></div><div className="dc-case-evidence"><strong>{card.title||card.name||card.decision_code||`Decisión ${i+1}`}</strong><small>{card.reason||card.rationale||card.recommended_action||card.recommendation||'Revisión requerida'}</small><em>{evidenceText(card.evidence||{})||'Evidencia calculada disponible'}</em></div><div className="dc-case-impact"><strong>{cardImpact==null?'—':typeof cardImpact==='string'?cardImpact:fmt(cardImpact)}</strong><small>impacto / exposición afectada</small></div><div className="dc-case-status"><span>{label(status).toUpperCase()}</span></div><div className="dc-case-actions"><span onClick={e=>{e.stopPropagation();setSelected(card)}}>Revisar</span><span className="disabled" title="Workflow de aprobación no ejecuta acciones externas">Aprobar</span><span className="disabled" title="Workflow de escalamiento no ejecuta acciones externas">Escalar</span></div><ChevronRight className="dc-case-chevron" size={15} strokeWidth={1.5}/></button>})}</div>
-   <div className="dc-detail"><div className="dc-decision-hero"><div><span>DECISIÓN RESULTANTE</span><strong>{decision}</strong><small>{selected?.reason||selected?.rationale||'Decisión derivada de evidencia calculada.'}</small></div>{score!=null&&<div className="dc-score"><span>RISK SCORE</span><strong>{fmt(score)}</strong></div>}</div>
-    <Panel title="DECISION PATH"><div className="dc-path">{path.length?path.map((step,i)=><React.Fragment key={`${step.stage||step.label}-${i}`}><div className="dc-step"><span>✓</span><b>{step.label}</b><small>{step.evidence==null?'Complete':fmt(step.evidence)}</small></div>{i<path.length-1&&<i className="dc-arrow">→</i>}</React.Fragment>):<div className="dc-muted">La ruta detallada estará disponible cuando el motor entregue el execution trace.</div>}</div></Panel>
-    <div className="dc-two"><Panel title="INPUT & FACTS"><div className="dc-facts">{Object.entries(facts).slice(0,16).map(([k,v])=><div key={k}><span>{k}</span><b>{fmt(v)}</b></div>)}</div>{!Object.keys(facts).length&&<div className="dc-muted">No se recibió un snapshot de facts para este caso.</div>}</Panel><Panel title="CASE EVIDENCE"><div className="dc-facts">{Array.isArray(selectedEvidence)?selectedEvidence.map((item,i)=><div key={i}><span>EVIDENCIA {i+1}</span><b>{label(item)}</b></div>):Object.entries(selectedEvidence||{}).map(([k,v])=><div key={k}><span>{label(k)}</span><b>{fmt(v)}</b></div>)}</div>{!Object.keys(selectedEvidence||{}).length&&<div className="dc-muted">No hay evidencia específica asociada a este caso.</div>}</Panel></div>
-    <Panel title="POLICY MATCH"><div className="dc-match"><div><span>TRIGGERED RULES</span><strong>{triggeredRules.length}</strong></div><div><span>REASON CODES</span><strong>{reasonCodes.length}</strong></div></div><p>{evidenceText(reasonCodes)||'La decisión no expone códigos de razón adicionales.'}</p></Panel>
-    <Panel title="TOP RISK DRIVERS"><div className="dc-drivers">{drivers.filter(d=>d.risk_status!=='healthy'&&Number(d.par30??1)>0).slice(0,5).map((d,i)=><div key={i}><span>{d.title||d.name||d.segment||`Driver ${i+1}`}</span><b>{d.impact_score!=null?fmt(d.impact_score):'Evidence'}</b><small>{d.evidence||d.rationale||'Señal calculada'}</small></div>)}{!drivers.filter(d=>d.risk_status!=='healthy'&&Number(d.par30??1)>0).length&&<div className="dc-muted">No hay drivers deteriorados adicionales para este corte.</div>}</div></Panel>
-    <Panel title="DECISION EVIDENCE LEDGER"><div className="dc-drivers">{audit.slice(0,5).map((entry,i)=><div key={entry.decision_id||i}><span>{entry.decision_code||entry.title||'Decision'}</span><b>{label(entry.status)}</b><small>{new Date(entry.created_at).toLocaleString()} · {entry.policy_id?`Policy ${entry.policy_id}`:'Policy no identificada'}{entry.policy_version?` ${versionLabel(entry.policy_version)}`:''}</small></div>)}{auditLoading&&<div className="dc-muted">Cargando evidencia persistida…</div>}{!auditLoading&&!audit.length&&!auditError&&<div className="dc-muted">No hay decisiones persistidas para esta cartera todavía.</div>}{auditError&&<div className="dc-muted">Ledger no disponible: {auditError}</div>}</div></Panel>
-    <div className="dc-governance"><div><span>GOVERNANCE</span><strong>HUMAN REVIEW REQUIRED</strong><small>Acciones de cliente ejecutadas: NO · Causalidad inferida: NO</small></div><div><span>POLICY</span><strong>{policy.name||'—'} {policy.version?versionLabel(policy.version):''}</strong><small>{policy.id||'Sin versión identificada'}</small></div></div>
-    <details className="dc-technical"><summary>Evidence trace · técnico</summary><pre>{JSON.stringify({selected_case:selected?.id||null,facts,case_evidence:selectedEvidence,triggered_rules:triggeredRules,reason_codes:reasonCodes,policy,ledger_count:audit.length},null,2)}</pre></details>
-   </div>
-  </div>}
- </section>
+const money=v=>typeof v==='number'
+  ? '$'+v.toLocaleString(undefined,{maximumFractionDigits:2})
+  : v == null || v === '' ? '—' : String(v)
+
+const formatValue=v=>{
+  if(v == null || v === '') return '—'
+  if(typeof v === 'number') return v.toLocaleString(undefined,{maximumFractionDigits:4})
+  if(typeof v === 'object') return JSON.stringify(v)
+  return String(v)
+}
+
+function evidenceEntries(value){
+  if(Array.isArray(value)) return value.map((item,i)=>[String(i+1),item])
+  return Object.entries(value || {})
+}
+
+function severityRank(item){
+  return item?.action_level==='high'?0:item?.action_level==='medium'?1:2
+}
+
+export default function DecisionCenter(){
+  const {
+    dataset,
+    result,
+    decisionRecommendations,
+    decisionLoading,
+    decisionError,
+    refreshDecisionRecommendations
+  }=useRiskIntelligence()
+
+  const [selectedId,setSelectedId]=useState('')
+  const [ledger,setLedger]=useState([])
+  const [ledgerLoading,setLedgerLoading]=useState(false)
+  const [ledgerError,setLedgerError]=useState('')
+  const [generating,setGenerating]=useState(false)
+  const [reviewing,setReviewing]=useState(false)
+  const [reviewComment,setReviewComment]=useState('')
+  const [reviewError,setReviewError]=useState('')
+  const [notice,setNotice]=useState('')
+
+  const cards=useMemo(
+    ()=>[...(decisionRecommendations||[])].sort((a,b)=>severityRank(a)-severityRank(b)||String(b.created_at||'').localeCompare(String(a.created_at||''))),
+    [decisionRecommendations]
+  )
+  const selected=cards.find(item=>item.recommendation_id===selectedId)||cards[0]||null
+
+  useEffect(()=>{
+    if(!selected){
+      setSelectedId('')
+      setLedger([])
+      return
+    }
+    if(selected.recommendation_id!==selectedId) setSelectedId(selected.recommendation_id)
+  },[selected,selectedId])
+
+  useEffect(()=>{
+    let live=true
+    ;(async()=>{
+      if(!selected?.recommendation_id){setLedger([]);return}
+      setLedgerLoading(true)
+      setLedgerError('')
+      try{
+        const response=await getDecisionLedger({
+          dataset_id:dataset?.dataset_id,
+          recommendation_id:selected.recommendation_id,
+          limit:50
+        })
+        if(live) setLedger(response?.items||[])
+      }catch(e){
+        if(live) setLedgerError(e.message||'No se pudo cargar el ledger')
+      }finally{
+        if(live) setLedgerLoading(false)
+      }
+    })()
+    return()=>{live=false}
+  },[selected?.recommendation_id,dataset?.dataset_id])
+
+  const generate=async()=>{
+    if(!dataset?.dataset_id) return
+    setGenerating(true);setNotice('');setReviewError('')
+    try{
+      await createDecisionRecommendation({
+        dataset_id:dataset.dataset_id,
+        risk_facts:result?.risk_facts||{},
+      })
+      await refreshDecisionRecommendations(dataset.dataset_id)
+      setNotice('Recomendaciones determinísticas actualizadas.')
+    }catch(e){
+      setNotice(e.message||'No se pudieron generar recomendaciones.')
+    }finally{setGenerating(false)}
+  }
+
+  const review=async status=>{
+    if(!selected?.recommendation_id) return
+    const comment=reviewComment.trim()
+    if(!comment){
+      setReviewError('La justificación es obligatoria para aprobar o rechazar.')
+      return
+    }
+    setReviewing(true);setReviewError('');setNotice('')
+    try{
+      if(status==='approved'){
+        await approveDecision(selected.recommendation_id,{comment,actor:'user'})
+      }else{
+        await rejectDecision(selected.recommendation_id,{comment,actor:'user'})
+      }
+      await refreshDecisionRecommendations(dataset?.dataset_id)
+      setReviewComment('')
+      setNotice(status==='approved'
+        ? 'Recomendación aprobada y registrada en el ledger.'
+        : 'Recomendación rechazada y registrada en el ledger.')
+    }catch(e){
+      setReviewError(e.message||'No se pudo actualizar la recomendación.')
+    }finally{setReviewing(false)}
+  }
+
+  const counts={
+    high:cards.filter(x=>x.action_level==='high').length,
+    medium:cards.filter(x=>x.action_level==='medium').length,
+    low:cards.filter(x=>x.action_level==='low').length,
+    pending:cards.filter(x=>['pending_approval','proposed'].includes(x.status)).length
+  }
+
+  return <section className="dc-shell">
+    <header className="dc-header">
+      <div>
+        <div className="dc-kicker">DECISION CENTER · HUMAN GOVERNANCE</div>
+        <h2>Recomendaciones de riesgo</h2>
+        <p>
+          La bandeja se alimenta de políticas determinísticas. Cada recomendación conserva
+          su evidencia congelada y ninguna acción sobre clientes se ejecuta automáticamente.
+        </p>
+      </div>
+      <div className="dc-header-status">
+        <span>REVISIÓN PENDIENTE</span>
+        <strong>{counts.pending}</strong>
+        <small>{dataset?.source_name||'Cartera activa'}</small>
+      </div>
+    </header>
+
+    <div className="dc-kpis">
+      <div><span>HIGH</span><strong>{counts.high}</strong></div>
+      <div><span>MEDIUM</span><strong>{counts.medium}</strong></div>
+      <div><span>LOW</span><strong>{counts.low}</strong></div>
+      <div><span>HUMAN REVIEW</span><strong>ON</strong></div>
+    </div>
+
+    <div className="dc-toolbar">
+      <div>
+        <span className="dc-method-badge"><ShieldAlert size={13}/> DETERMINISTIC POLICY</span>
+        <span className="dc-toolbar-copy">EWS → política v{selected?.policy_version||1} → recomendación → revisión humana</span>
+      </div>
+      <button className="dc-refresh" onClick={generate} disabled={!dataset||generating}>
+        <RefreshCw size={14} className={generating?'dc-spin':''}/>
+        {generating?'Generando…':'Generar / actualizar recomendaciones'}
+      </button>
+    </div>
+
+    {notice&&<div className="dc-notice">{notice}</div>}
+    {decisionError&&<div className="dc-notice error">{decisionError}</div>}
+
+    {decisionLoading?<div className="dc-empty"><strong>Cargando recomendaciones…</strong></div>:
+      !cards.length?<div className="dc-empty">
+        <strong>No hay recomendaciones persistidas para esta cartera.</strong>
+        <span>Ejecuta el generador determinístico para crear la bandeja de revisión.</span>
+      </div>:
+      <div className="dc-layout">
+        <div className="dc-list">
+          <div className="dc-list-head"><span>RECOMMENDATION QUEUE</span><b>{cards.length} casos</b></div>
+          {cards.map((card,i)=>{
+            const selectedRow=selected?.recommendation_id===card.recommendation_id
+            const requiresReview=card.requires_human_approval
+            return <button
+              key={card.recommendation_id}
+              className={'dc-case '+(selectedRow?'selected':'')}
+              onClick={()=>setSelectedId(card.recommendation_id)}
+            >
+              <div className="dc-case-priority">
+                <span className={'dc-severity '+levelTone[card.action_level]}>{levelLabel[card.action_level]||card.action_level}</span>
+                <strong>#{i+1}</strong>
+              </div>
+              <div className="dc-case-evidence">
+                <strong>{card.action?.replaceAll('_',' ')||'REVIEW'}</strong>
+                <small>{card.rationale||'Recomendación basada en evidencia EWS.'}</small>
+                <em>{(card.trigger_codes||[]).join(' · ')||'Evidencia determinística disponible'}</em>
+              </div>
+              <div className="dc-case-impact">
+                <strong>{card.loan_id||'Cartera'}</strong>
+                <small>{requiresReview?'Aprobación requerida':'Solo revisión'}</small>
+              </div>
+              <div className="dc-case-status"><span>{String(card.status||'proposed').replaceAll('_',' ').toUpperCase()}</span></div>
+              <div className="dc-case-actions">
+                <span>Revisar</span>
+              </div>
+              <ChevronRight className="dc-case-chevron" size={15}/>
+            </button>
+          })}
+        </div>
+
+        <div className="dc-detail">
+          <div className="dc-decision-hero">
+            <div>
+              <span>RECOMENDACIÓN</span>
+              <strong>{selected.action?.replaceAll('_',' ').toUpperCase()}</strong>
+              <small>{selected.rationale}</small>
+            </div>
+            <div className="dc-score">
+              <span>POLICY</span>
+              <strong>v{selected.policy_version}</strong>
+            </div>
+          </div>
+
+          <Panel title="EVIDENCIA CONGELADA">
+            <div className="dc-facts">
+              {evidenceEntries(selected.evidence).map(([key,value])=>
+                <div key={key}><span>{key.replaceAll('_',' ')}</span><b>{formatValue(value)}</b></div>
+              )}
+            </div>
+            <div className="dc-ledger-meta">
+              <span>HASH</span>
+              <code>{selected.evidence_hash||'—'}</code>
+              <span>AS OF</span>
+              <code>{selected.evidence?.portfolio_as_of||selected.created_at||'—'}</code>
+            </div>
+          </Panel>
+
+          <Panel title="IMMUTABLE DECISION LEDGER">
+            {ledgerLoading?<div className="dc-muted">Cargando snapshots…</div>:
+              ledgerError?<div className="dc-muted">Ledger no disponible: {ledgerError}</div>:
+              ledger.length?ledger.map(entry=><div className="dc-ledger-row" key={entry.ledger_id}>
+                <div><b>{entry.event}</b><span>{entry.state}</span></div>
+                <small>{new Date(entry.created_at).toLocaleString()} · {entry.actor}</small>
+                <code>{entry.evidence_hash}</code>
+              </div>):
+              <div className="dc-muted">No hay eventos de ledger para esta recomendación.</div>}
+          </Panel>
+
+          <Panel title="GUARDRAILS">
+            <div className="dc-governance">
+              <div><span>METHOD</span><strong>DETERMINISTIC EWS</strong><small>La política calcula; la IA no ejecuta.</small></div>
+              <div><span>CAUSALITY</span><strong>NOT INFERRED</strong><small>La evidencia no demuestra causalidad por sí sola.</small></div>
+              <div><span>ACTIONS</span><strong>NO CUSTOMER ACTIONS</strong><small>Aprobar no ejecuta acciones externas.</small></div>
+              <div><span>APPROVAL</span><strong>{selected.requires_human_approval?'REQUIRED':'NOT REQUIRED'}</strong><small>Medium/High requieren revisión humana.</small></div>
+            </div>
+          </Panel>
+
+          {selected.requires_human_approval&&['pending_approval','proposed'].includes(selected.status)&&
+            <Panel title="HUMAN REVIEW">
+              <textarea
+                className="dc-review-input"
+                value={reviewComment}
+                onChange={e=>setReviewComment(e.target.value)}
+                placeholder="Justificación obligatoria para aprobar o rechazar esta recomendación…"
+                rows={4}
+              />
+              {reviewError&&<div className="dc-review-error">{reviewError}</div>}
+              <div className="dc-review-actions">
+                <button className="dc-reject" onClick={()=>review('rejected')} disabled={reviewing}>
+                  <XCircle size={15}/> Rechazar
+                </button>
+                <button className="dc-approve" onClick={()=>review('approved')} disabled={reviewing}>
+                  <CheckCircle2 size={15}/> Aprobar
+                </button>
+              </div>
+            </Panel>
+          }
+        </div>
+      </div>}
+  </section>
+}
+
+function Panel({title,children}){
+  return <div className="dc-panel"><div className="dc-panel-title">{title}</div>{children}</div>
 }
