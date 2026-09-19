@@ -8,6 +8,33 @@ import pytest
 from app.integrations.freshservice import ComplianceAutomationService, FreshserviceClient
 
 
+class FakeRepo:
+    def __init__(self):
+        self.rows = []
+
+    def ensure_indexes(self):
+        return None
+
+    def ensure_unique_index(self, fields, *, name=None):
+        return None
+
+    def find(self, filters=None, limit=100):
+        filters = filters or {}
+        return [dict(row) for row in self.rows if all(row.get(k) == v for k, v in filters.items())][:limit]
+
+    def insert(self, document):
+        self.rows.append(dict(document))
+        return str(len(self.rows))
+
+    def update(self, filters, update):
+        matched = False
+        for row in self.rows:
+            if all(row.get(k) == v for k, v in filters.items()):
+                row.update((update.get("$set") or {}))
+                matched = True
+        return matched
+
+
 @pytest.mark.asyncio
 async def test_freshservice_client_retries_transient_503(monkeypatch):
     client = FreshserviceClient()
@@ -46,17 +73,10 @@ async def test_freshservice_client_retries_transient_503(monkeypatch):
 
 
 def test_compliance_event_is_idempotent(monkeypatch):
-    service = ComplianceAutomationService()
-    service.outbox = type(
-        "Repo",
-        (),
-        {
-            "find": lambda self, filters, limit=1: [{"event_key": filters["event_key"]}],
-            "insert": lambda self, document: None,
-            "ensure_indexes": lambda self: None,
-            "_collection": type("Collection", (), {"create_index": lambda *args, **kwargs: None})(),
-        },
-    )()
+    outbox = FakeRepo()
+    service = ComplianceAutomationService(outbox=outbox, sync=FakeRepo())
+    event = {"policy_id": "policy-1", "version": 2, "to": "DEPLOYED"}
+    service.enqueue(event_type="policy_transition", event=event)
 
     event = {"policy_id": "policy-1", "version": 2, "to": "DEPLOYED"}
     first = service.enqueue(event_type="policy_transition", event=event)
