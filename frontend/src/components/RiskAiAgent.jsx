@@ -1,5 +1,5 @@
 import { Activity, Bot, Send, Sparkles } from 'lucide-react'
-import useRiskCopilot from '../hooks/useRiskCopilot'
+import { useRiskIntelligence } from '../context/RiskIntelligenceContext'
 
 const pct = (value) => `${(Number(value || 0) * 100).toFixed(1)}%`
 
@@ -22,7 +22,7 @@ function Evidence({ items }) {
   )
 }
 
-export default function RiskAiAgent({ result, datasetId, onClose }) {
+export default function RiskAiAgent({ onClose }) {
   const {
     context,
     input,
@@ -32,7 +32,7 @@ export default function RiskAiAgent({ result, datasetId, onClose }) {
     send,
     onKeyDown,
     prompts,
-  } = useRiskCopilot({ result, datasetId })
+  } = useRiskIntelligence()
 
   return (
     <div className="min-h-[calc(100vh-145px)] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">

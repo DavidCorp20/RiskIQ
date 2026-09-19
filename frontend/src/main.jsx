@@ -6,6 +6,7 @@ import RiskLucideBridge from './RiskLucideBridge'
 import './riskiq-tailwind.css'
 import './riskiq-portfolio-concentration.css'
 import './enterprise-ui-overrides.css'
+import RiskIntelligenceProvider from './context/RiskIntelligenceContext'
 
 function LanguageLayer(){
   useEffect(()=>import('./riskiq-spanish-ui.js').then(({installRiskIQLanguage})=>installRiskIQLanguage()),[])
@@ -15,9 +16,11 @@ function LanguageLayer(){
 // Single production entrypoint. Navigation state is owned by React.
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <LanguageLayer />
-    <RiskLucideBridge />
-    <App />
-    <DataUpload />
+    <RiskIntelligenceProvider>
+      <LanguageLayer />
+      <RiskLucideBridge />
+      <App />
+      <DataUpload />
+    </RiskIntelligenceProvider>
   </React.StrictMode>
 )
