@@ -9,6 +9,7 @@ import { getDatasetHistory, listDatasets, runDataset, runSimulator } from './api
 import Builder from './Builder'
 import DecisionCenter from './DecisionCenter'
 import RiskAiAgent from './components/RiskAiAgent'
+import { useRiskIntelligence } from './context/RiskIntelligenceContext'
 
 const pct = v => `${(Number(v || 0) * 100).toFixed(1)}%`
 const money = v => `$${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -70,6 +71,7 @@ export default function RiskOperatingSystem() {
   const [sim, setSim] = useState(null)
   const [mobile, setMobile] = useState(false)
   const [openGroup, setOpenGroup] = useState('Control')
+  const { setRiskContext, clearRiskContext } = useRiskIntelligence()
 
   useEffect(() => {
     ;(async () => {
@@ -104,6 +106,7 @@ export default function RiskOperatingSystem() {
     try {
       const r = await runDataset(d.dataset_id)
       setResult(r)
+      setRiskContext(r, d.dataset_id)
       setHistory(await getDatasetHistory(d.dataset_id))
       setDataset({ ...d, snapshot: r.snapshot })
       localStorage.setItem('riskiq.activeDataset', JSON.stringify(d))
@@ -118,6 +121,7 @@ export default function RiskOperatingSystem() {
     setDataset(d)
     setResult(null)
     setHistory(null)
+    clearRiskContext()
 
     if (d) {
       await execute(d)
