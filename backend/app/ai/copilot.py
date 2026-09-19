@@ -31,10 +31,11 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         """Classify only enough to decide whether risk evidence should reach the LLM."""
         q = " ".join(str(question or "").strip().lower().split())
         analytical_terms = (
-            "par", "mora", "dpd", "exposicion", "exposición", "cartera", "credito", "crédito",
+            "par30", "par60", "par90", "dpd", "exposicion", "exposición", "cartera", "credito", "crédito",
             "riesgo", "roll rate", "rollover", "migracion", "migración", "vintage", "concentracion",
             "concentración", "npl", "morosidad", "cobranzas", "collections", "segmento", "segment",
             "underwriting", "originacion", "originación", "fpd", "comite", "comité", "decision", "decisión",
+            "mora", "90+", "90 +", "30-89", "30 – 89",
         )
         return "analytical" if any(term in q for term in analytical_terms) else "conversational"
 
@@ -242,6 +243,26 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             if normalized_label and normalized_label in normalized_q or normalized_key and normalized_key in normalized_q:
                 return self._segment_narrative(label, segment)
 
+        if any(term in q for term in ("par90", "par 90")):
+            return self._metric_narrative("PAR90", par.get("par90", {}), impact.get("par90_balance"))
+
+        if any(term in q for term in ("par60", "par 60")):
+            return self._metric_narrative("PAR60", par.get("par60", {}), impact.get("par60_balance"))
+
+        if any(term in q for term in ("par30", "par 30")):
+            return self._metric_narrative("PAR30", par.get("par30", {}), impact.get("par30_balance"))
+
+        if any(term in q for term in ("exposición", "exposicion", "capital expuesto", "saldo total")):
+            money = self._money(total)
+            loans = sum(int(s.get("loans") or 0) for s in segment_items)
+            text = f"La exposición total calculada es {money}." if money else "La evidencia no contiene una exposición total calculada."
+            if loans:
+                text += f" La segmentación disponible representa {loans} créditos."
+            return text
+
+        if any(term in q for term in ("por qué", "porque", "causa", "causas", "motivo", "motivos", "deterioro")):
+            return self._root_cause_narrative(segments, drivers)
+
         if any(term in q for term in ("migración", "migracion", "rollover", "roll rate", "roll-rate", "mora dura", "90+", "90 +")):
             return self._migration_narrative(par, impact, migration)
 
@@ -252,6 +273,24 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             return self._executive_narrative(severity, total, par, impact)
 
         return self._general_narrative(severity, total, par, impact, migration, segment_items, drivers)
+
+    def _metric_narrative(self, label: str, metric: dict[str, Any], impact_balance: Any) -> str:
+        if not isinstance(metric, dict):
+            return f"La evidencia disponible no contiene un {label} calculado."
+
+        ratio = self._pct(metric.get("ratio"))
+        balance = self._money(impact_balance if impact_balance is not None else metric.get("balance"))
+        loans = metric.get("loans")
+
+        if ratio is None:
+            return f"La evidencia disponible no contiene un {label} calculado suficiente para responder con una cifra."
+
+        text = f"El {label} calculado es {ratio}"
+        if balance:
+            text += f", equivalente a {balance} de exposición"
+        if isinstance(loans, int):
+            text += f", distribuida en {loans} créditos"
+        return text + ". La cifra proviene directamente del motor determinístico de RiskIQ."
 
     def _segment_narrative(self, label: str, segment: dict[str, Any]) -> str:
         par30 = self._pct(segment.get("par30"))
