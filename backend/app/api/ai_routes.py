@@ -184,7 +184,8 @@ async def copilot(payload: dict) -> dict:
         else:
             risk_facts["market_correlation"] = []
 
-    risk_intelligence = await risk_intelligence_provider.build(dataset_id)
+    intelligence_rows = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    risk_intelligence = await risk_intelligence_provider.build(dataset_id, rows=intelligence_rows)
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
         question=str(payload.get("question", "")),
