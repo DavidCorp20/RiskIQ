@@ -17,6 +17,7 @@ from app.api.history_routes import router as history_router
 from app.api.indicator_routes import router as indicator_router
 from app.api.intelligence_routes import router as intelligence_router
 from app.api.learning_routes import router as learning_router
+from app.api.market_routes import router as market_router
 from app.api.npl_routes import router as npl_router
 from app.api.pipeline_routes import router as pipeline_router
 from app.api.policy_metrics_routes import router as policy_metrics_router
@@ -62,6 +63,7 @@ app.include_router(governance_router,prefix="/api")
 app.include_router(policy_metrics_router,prefix="/api")
 app.include_router(audit_router,prefix="/api")
 app.include_router(learning_router,prefix="/api")
+app.include_router(market_router,prefix="/api")
 app.include_router(ai_router,prefix="/api")
 app.include_router(ews_router,prefix="/api")
 app.include_router(workspace_router,prefix="/api")
