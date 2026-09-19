@@ -219,7 +219,20 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         except Exception as exc:
             # Never expose secrets or provider payloads, but keep the failure visible in Railway logs.
             print(f"RiskIQ Gemini provider failed: {type(exc).__name__}: {exc}")
+        if mode == "conversational":
+            return self._conversational_fallback(question), "conversational_fallback"
         return fallback(), "evidence_mode"
+
+    @staticmethod
+    def _conversational_fallback(question: str) -> str:
+        q = " ".join(str(question or "").strip().split())
+        if not q:
+            return "Hola. Soy el copiloto de RiskIQ. Puedo conversar contigo y, cuando quieras analizar la cartera, revisar PAR, morosidad, exposición, migración y otros indicadores calculados."
+        greetings = ("hola", "holi", "hello", "buenas", "buenos dias", "buenas tardes", "buenas noches")
+        if q.lower().rstrip("!?.,") in greetings:
+            return "Hola. Soy el copiloto de RiskIQ. ¿Qué quieres revisar o hacer?"
+        return "Claro. Puedo ayudarte con eso. Si quieres pasar al análisis de cartera, dime qué aspecto quieres revisar y utilizaré la evidencia calculada de RiskIQ."
+
 
     def _adaptive_narrative(
         self,
