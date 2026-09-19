@@ -24,6 +24,7 @@ from app.api.policy_metrics_routes import router as policy_metrics_router
 from app.api.projection_routes import router as projection_router
 from app.api.quality_routes import router as quality_router
 from app.api.risk_routes import router as risk_router
+from app.api.risk_event_routes import router as risk_event_router
 from app.api.routes import router
 from app.api.rule_builder_routes import router as rule_builder_router
 from app.api.segment_routes import router as segment_router
@@ -47,6 +48,7 @@ app.include_router(quality_router,prefix="/api")
 app.include_router(diagnosis_router,prefix="/api")
 app.include_router(indicator_router,prefix="/api")
 app.include_router(risk_router,prefix="/api")
+app.include_router(risk_event_router,prefix="/api")
 app.include_router(npl_router,prefix="/api")
 app.include_router(intelligence_router,prefix="/api")
 app.include_router(vintage_router,prefix="/api")
