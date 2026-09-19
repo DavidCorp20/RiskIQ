@@ -1,3 +1,0 @@
-RiskIQ Vercel deployment trigger.
-
-This file intentionally contains no application logic. It exists to trigger the first Git-based Vercel deployment after connecting the repository.

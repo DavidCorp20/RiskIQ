@@ -110,7 +110,7 @@ export default function RiskOperatingSystem() {
         </div>
 
         <div className="ros-portfolio">
-          <span>CARTERA ACTIVA</span>
+          <span className="text-xs text-slate-400 font-medium">CARTERA ACTIVA</span>
           <select
             value={dataset?.dataset_id || ''}
             onChange={e => selectDataset(datasets.find(x => x.dataset_id === e.target.value))}
@@ -124,7 +124,7 @@ export default function RiskOperatingSystem() {
           </select>
         </div>
 
-        <div className="ros-nav-label">WORKSPACE</div>
+        <div className="ros-nav-label text-xs text-slate-400 font-medium">WORKSPACE</div>
 
         <nav className="ros-command-menu" aria-label="Workspace navigation">
           {groups.map(g => (
@@ -145,9 +145,9 @@ export default function RiskOperatingSystem() {
                     const x = nav.find(n => n[0] === id)
                     const Icon = navIcons[id] || Activity
                     return (
-                      <button key={id} className={page === id ? 'active' : ''} onClick={() => go(id)}>
+                      <button key={id} className={page === id ? 'active !bg-slate-800 !text-white border-l-4 border-blue-500' : 'border-l-4 border-transparent hover:!bg-slate-800'} onClick={() => go(id)}>
                         <span className="ros-nav-icon"><Icon size={16} strokeWidth={1.5} /></span>
-                        <span><b>{x[1]}</b><small>{x[2]}</small></span>
+                        <span><b className="text-sm font-semibold text-slate-100">{x[1]}</b><small className="text-xs text-slate-400 font-medium">{x[2]}</small></span>
                         {id === 'engine' && <em>LOW-CODE</em>}
                       </button>
                     )
