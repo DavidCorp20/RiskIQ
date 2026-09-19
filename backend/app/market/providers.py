@@ -14,6 +14,10 @@ class MarketDataProvider(ABC):
     async def fetch_indicators(self) -> list[MarketIndicator]:
         """Return normalized market indicators. Provider-specific payloads stay inside the adapter."""
 
+    async def fetch_historical_series(self, *, range: str = "2y", interval: str = "1mo") -> list[dict[str, Any]]:
+        """Return normalized historical points when the provider supports history."""
+        return []
+
 
 class MacroEventProvider(ABC):
     @abstractmethod
@@ -59,6 +63,34 @@ class YahooNQMarketDataProvider(MarketDataProvider):
 
         quote = self._parse(payload)
         return [quote] if quote else []
+
+    async def fetch_historical_series(self, *, range: str = "2y", interval: str = "1mo") -> list[dict[str, Any]]:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{self.symbol}?range={range}&interval={interval}"
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            response = await client.get(url, headers={"User-Agent": "RiskIQ/1.0"})
+            response.raise_for_status()
+            payload = response.json()
+
+        chart = payload.get("chart") if isinstance(payload, dict) else None
+        results = chart.get("result") if isinstance(chart, dict) else None
+        if not isinstance(results, list) or not results:
+            return []
+        result = results[0]
+        timestamps = result.get("timestamp") or []
+        quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+        closes = quote.get("close") or []
+        points: list[dict[str, Any]] = []
+        from datetime import datetime, timezone
+        for timestamp, close in zip(timestamps, closes):
+            if close is None:
+                continue
+            try:
+                numeric = float(close)
+                observed = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).date().isoformat()
+            except (TypeError, ValueError, OverflowError):
+                continue
+            points.append({"date": observed, "value": numeric})
+        return points
 
     def _parse(self, payload: dict[str, Any]) -> MarketIndicator | None:
         chart = payload.get("chart") if isinstance(payload, dict) else None
