@@ -144,4 +144,6 @@ class RiskMarketCorrelationEngine:
             return False
         if not (-1.0 <= evidence.coefficient <= 1.0):
             return False
+        if abs(evidence.coefficient) < 0.50:
+            return False
         return 0.0 <= evidence.p_value <= self.alpha
