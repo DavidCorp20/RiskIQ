@@ -65,6 +65,8 @@ def test_dashboard_builds_contract_and_clamps_intensity():
     assert all(0 <= item["risk_intensity"] <= 1 for item in result["heatmap"])
     assert all(0 <= item["risk_intensity"] <= 1 for item in result["vintage"])
     assert result["vintage_view"]["rows"]
+    assert len(result["insights"]) == 4
+    assert all(set(item) == {"type", "title", "message"} for item in result["insights"])
 
 
 def test_dashboard_respects_segment_and_cutoff():
