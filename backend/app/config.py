@@ -81,6 +81,8 @@ class Settings:
     smtp_starttls: bool = os.getenv("RISKIQ_SMTP_STARTTLS", "true").lower() == "true"
     alert_email: str = os.getenv("RISKIQ_ALERT_EMAIL", "")
 
+    dsi_audit_signing_secret: str = os.getenv("DSI_AUDIT_SIGNING_SECRET", "")
+
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")
     sentry_traces_sample_rate: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.05"))
     performance_warning_ms: float = float(os.getenv("RISKIQ_PERFORMANCE_WARNING_MS", "3000"))
