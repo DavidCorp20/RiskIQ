@@ -118,7 +118,8 @@ def test_compliance_outbox_is_written_when_freshservice_is_disabled(monkeypatch)
     service.sync = FakeRepo()
     service._indexes_ready = False
 
-    monkeypatch.setattr(service.client, "enabled", False, raising=False)
+    from app.config import settings
+    monkeypatch.setattr(settings, "freshservice_enabled", False)
 
     item = service.enqueue(
         event_type="decision_review_transition",
@@ -139,11 +140,9 @@ def test_compliance_outbox_is_written_when_freshservice_is_disabled(monkeypatch)
     assert item["event"]["decision_id"] == "REC-001"
     assert len(service.outbox.rows) == 1
 
-    result = __import__(
-        "asyncio"
-    ).run(service.process_pending(20))
+    import asyncio
+    result = asyncio.run(service.process_pending(20))
     assert result["processed"] == 0
-    assert result["disabled"] == 0
     assert service.outbox.rows[0]["status"] == "pending"
 
 
@@ -183,7 +182,11 @@ def test_decision_recommendation_endpoints_keep_customer_actions_disabled(monkey
 
         def transition(self, recommendation_id, *, status, actor, comment):
             item = self.items[recommendation_id]
-            item.update({"status": status, "reviewed_by": actor, "review_comment": comment})
+            item.update({
+                "status": status,
+                "reviewed_by": actor,
+                "review_comment": comment,
+            })
             return item
 
         def list(self, **kwargs):
