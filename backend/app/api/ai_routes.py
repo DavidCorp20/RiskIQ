@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from app.ai.copilot import RiskCopilotService
 from app.analytics.decision_engine import DecisionEngineService
 from app.analytics.npl import NPLAnalyticsService
+from app.analytics.portfolio_ews import PortfolioEWSService
 from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.risk_analytics import RiskAnalyticsService
 from app.analytics.snapshot_engine import SnapshotEngine
@@ -20,6 +21,7 @@ intelligence = PortfolioIntelligenceService()
 risk_analytics = RiskAnalyticsService()
 decision_engine = DecisionEngineService()
 npl = NPLAnalyticsService()
+portfolio_ews = PortfolioEWSService()
 snapshot_engine = SnapshotEngine()
 
 
@@ -53,6 +55,7 @@ def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
     analysis = intelligence.analyze(records)
     risk = risk_analytics.analyze(records)
     npl_analysis = npl.analyze(records)
+    ews_summary = portfolio_ews.summarize(records)
     decisions = decision_engine.build(risk, npl_analysis)
 
     loans = persistence.loans.find({"dataset_id": dataset_id}, limit=100000)
@@ -99,6 +102,7 @@ def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
         "cro_evidence": deterministic.get("cro_evidence", {}),
         "concentration": deterministic.get("concentration", {}),
         "vintage": deterministic.get("vintage", []),
+        "ews": ews_summary,
     }
 
 
@@ -133,6 +137,12 @@ async def copilot(payload: dict) -> dict:
         risk_facts = _build_grounded_context(dataset_id)
         drivers = risk_facts.pop("drivers", [])
         decisions = risk_facts.pop("decisions", [])
+    else:
+        # EWS is always rebuilt server-side from the active dataset so the Copilot
+        # cannot trust stale or client-supplied early-warning evidence.
+        records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+        if records:
+            risk_facts["ews"] = portfolio_ews.summarize(records)
 
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
