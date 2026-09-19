@@ -199,6 +199,53 @@ class DecisionRecommendationRepository:
         self.ledger.insert(document)
         return document
 
+    def transition(
+        self,
+        recommendation_id: str,
+        *,
+        status: str,
+        actor: str = "user",
+        comment: str = "",
+    ) -> dict[str, Any]:
+        """Transition a recommendation while preserving an immutable evidence ledger."""
+        if status not in {"approved", "rejected"}:
+            raise ValueError("status must be approved or rejected")
+        self._ensure_indexes()
+        rows = self.collection.find({"recommendation_id": recommendation_id}, limit=1)
+        if not rows:
+            raise KeyError(recommendation_id)
+        current = rows[0]
+        current_status = str(current.get("status") or "")
+        if current_status not in {"pending_approval", "proposed"}:
+            raise ValueError(f"recommendation is not reviewable from status {current_status}")
+        if bool(current.get("requires_human_approval")) is False and status == "approved":
+            raise ValueError("low-level recommendations do not require approval")
+
+        metadata = {
+            "comment": comment.strip(),
+            "previous_status": current_status,
+        }
+        self.collection.update(
+            {"recommendation_id": recommendation_id},
+            {"$set": {
+                "status": status,
+                "reviewed_by": actor,
+                "reviewed_at": _now(),
+                "review_comment": comment.strip(),
+            }},
+        )
+        self._append_ledger(
+            recommendation_id=recommendation_id,
+            dataset_id=str(current.get("dataset_id") or ""),
+            event=f"recommendation_{status}",
+            actor=actor,
+            evidence=dict(current.get("evidence") or {}),
+            state=status,
+            metadata=metadata,
+        )
+        updated = self.collection.find({"recommendation_id": recommendation_id}, limit=1)
+        return updated[0] if updated else {**current, "status": status, **metadata}
+
     def ledger_entries(
         self,
         *,
