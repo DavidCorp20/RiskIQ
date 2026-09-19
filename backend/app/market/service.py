@@ -76,7 +76,7 @@ class MarketContextService:
         }
         if not enabled:
             return MarketContext(
-                as_of=datetime.now(timezone.utc).isoformat(),
+                as_of=datetime.now(timezone.utc).date().isoformat(),
                 status="disabled",
                 cache="miss",
                 ttl_seconds=self.cache_ttl_seconds,
