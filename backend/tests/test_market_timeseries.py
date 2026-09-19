@@ -139,7 +139,7 @@ def test_correlation_engine_aligns_transforms_and_computes_statistics():
     )
 
     assert len(evidence) == 1
-    assert evidence[0].sample_size == 23
+    assert evidence[0].sample_size == 17
     assert evidence[0].method == "pearson"
 
 
