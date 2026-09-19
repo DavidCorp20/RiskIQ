@@ -1,4 +1,6 @@
 from typing import Any
+from uuid import uuid4
+from app.integrations.freshservice import compliance_service
 from app.api.schemas import DecisionRule
 from app.engine.formula_engine import FormulaEngine
 import ast
@@ -44,7 +46,7 @@ class SafeCodeRunner:
 class DecisionEngine:
     """Decision runtime for visual rules and sandboxed Risk DSL with a canonical explainable contract."""
     def __init__(self): self.code=SafeCodeRunner(); self.formulas=FormulaEngine()
-    def evaluate(self,facts:dict[str,Any],rules:list[DecisionRule],formulas:dict[str,str]|None=None)->dict[str,Any]:
+    def evaluate(self,facts:dict[str,Any],rules:list[DecisionRule],formulas:dict[str,str]|None=None,*,audit:bool=False,actor:str="system",dataset_id:str|None=None,snapshot_id:str|None=None,business_id:str|None=None)->dict[str,Any]:
         working=dict(facts); formula_trace=[]
         if formulas:
             calculated=self.formulas.evaluate(working,formulas); working=calculated["facts"]; formula_trace=calculated["trace"]
@@ -79,7 +81,36 @@ class DecisionEngine:
         for action in actions:
             params=action.get("parameters") or {}
             if params.get("outcome") is not None: decision=params["outcome"]; break
-        return {"decision":decision,"outcome":decision,"reason_codes":sorted(set(reason_codes)),"facts":working,"formula_trace":formula_trace,"triggered_rules":triggered_rules,"actions":actions,"evaluation_trace":trace}
+        decision_id = str(uuid4()) if audit and triggered_rules else None
+        result = {"decision":decision,"outcome":decision,"reason_codes":sorted(set(reason_codes)),"facts":working,"formula_trace":formula_trace,"triggered_rules":triggered_rules,"actions":actions,"evaluation_trace":trace}
+        if decision_id:
+            first_rule = next((rule for rule in rules if rule.id in triggered_rules), None)
+            compliance_service.enqueue(
+                event_type="decision_execution",
+                event={
+                    "decision_id": decision_id,
+                    "status": "executed",
+                    "actor": actor,
+                    "policy_id": first_rule.id if first_rule else None,
+                    "policy_version": first_rule.version if first_rule else None,
+                    "recommendation": decision,
+                    "evidence": {
+                        "dataset_id": dataset_id,
+                        "snapshot_id": snapshot_id,
+                        "business_id": business_id,
+                        "triggered_rules": triggered_rules,
+                        "reason_codes": sorted(set(reason_codes)),
+                        "facts": working,
+                    },
+                    "critical": True,
+                },
+                critical=True,
+            )
+            result["decision_id"] = decision_id
+            result["audit_enqueued"] = True
+        else:
+            result["audit_enqueued"] = False
+        return result
     def normalize_rows(self,rows:list[dict[str,Any]],code:str)->list[dict[str,Any]]:
         output=[]
         for index,row in enumerate(rows):
