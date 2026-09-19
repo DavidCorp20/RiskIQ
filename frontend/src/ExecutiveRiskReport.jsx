@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { getLatestBacktestEvidence, listDecisionRules, listPolicyVersions } from './api'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
+import EvidenceMethodology from './EvidenceMethodology'
 
 const pct = value => `${(Number(value || 0) * 100).toFixed(1)}%`
 const num = value => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
@@ -229,6 +230,7 @@ export default function ExecutiveRiskReport() {
         </article>
       </div>
 
+      <EvidenceMethodology compact/>
       <article className="ri-exec-panel"><div className="ri-exec-panel-head"><div><span>EARLY WARNING SYSTEM</span><h3>Portfolio deterioration signals</h3></div><b>{ewsLoading ? 'CALCULATING' : ewsError ? 'UNAVAILABLE' : 'DETERMINISTIC'}</b></div><div className="ri-exec-grid ri-exec-mini"><article><span>High EWS exposure</span><strong>{ewsPortfolio.high_ews_exposure == null ? '—' : num(ewsPortfolio.high_ews_exposure)}</strong></article><article><span>Exposure share</span><strong>{ewsPortfolio.high_ews_exposure_share == null ? '—' : pct(ewsPortfolio.high_ews_exposure_share)}</strong></article><article><span>PAR30 Δ</span><strong>{ewsTrend.ratio_delta == null ? '—' : pct(ewsTrend.ratio_delta)}</strong></article></div>{ewsError ? <p className="ri-exec-muted">{ewsError}</p> : <p className="ri-exec-muted">Signals are weighted by exposure and based on observed portfolio trajectories. They are not predictive probabilities.</p>}</article>
       <article className="ri-exec-panel ri-exec-backtest">
         <div className="ri-exec-panel-head">
