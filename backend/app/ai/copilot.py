@@ -85,6 +85,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
 5. Nunca inventes datos macroeconómicos o de mercado ausentes del contexto recibido.
 6. NQ Futures es una señal externa de mercado y no una predicción del desempeño crediticio.
 7. La evidencia determinística de RiskIQ siempre tiene precedencia sobre cualquier contexto externo.
+8. MARKET_CORRELATION solo puede usar hallazgos clasificados por el Risk-Market Correlation Engine. OBSERVED describe datos; CORRELATED exige validación estadística; POSSIBLE EXPLANATION es contexto; CAUSALITY CONFIRMED requiere evidencia causal formal validada. Nunca cambies una clasificación ni infieras causalidad.
 """
 
     @staticmethod
@@ -243,6 +244,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "CONVERSATION": conversation[-12:],
                 "CURRENT_QUESTION": question,
                 "MARKET_CONTEXT": market_context,
+                "MARKET_CORRELATION": risk_facts.get("market_correlation", []),
             }
             prompt = (
                 f"{self.CRO_SYSTEM_PROMPT}\n\n{self.MARKET_CONTEXT_SYSTEM_RULES}\n\n"
@@ -252,6 +254,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "No calcules métricas nuevas ni inventes causalidad. El estrés es condicional y el Rollover Rate es histórico. "
                 "Si la consulta usa EWS, trata EWS_JSON como la única fuente válida para alertas tempranas y priorización. "
                 "Explica que su score es una priorización determinística de trayectoria observada y exposición, no una probabilidad predictiva. "
+                "Si MARKET_CORRELATION está disponible, respeta literalmente sus clasificaciones y su evidencia estadística; no conviertas correlación en causalidad. "
                 'Usa una estructura profesional solo cuando ayude a la consulta. Devuelve exactamente JSON con esta forma {"answer":"texto"}.'
             )
         try:
