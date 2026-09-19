@@ -1,9 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 from app.core.ai.provider import AIProvider, get_ai_provider
 from app.services.market_context import MarketContextProvider
+
+
+class MarketCorrelationEvidence(TypedDict, total=False):
+    portfolio_metric: str
+    market_metric: str
+    segment: str | None
+    transformation: str
+    method: str
+    sample_size: int
+    coefficient: float
+    p_value: float
+    classification: str
+    direction: str
+    evidence_rule: str
 
 
 class RiskCopilotService:
@@ -66,6 +80,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             facts["exposure"] = facts["portfolio_size"]
 
         cro_evidence = risk_facts.get("cro_evidence")
+        market_correlation = self._normalize_market_correlation(risk_facts.get("market_correlation"))
         return {
             "facts": facts,
             "cro_evidence": cro_evidence if isinstance(cro_evidence, dict) else {},
@@ -74,6 +89,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "drivers": drivers or [],
             "decisions": decisions or [],
             "ews": risk_facts.get("ews", {}),
+            "market_correlation": market_correlation,
             "conversation": conversation or [],
         }
 
@@ -87,6 +103,124 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
 7. La evidencia determinística de RiskIQ siempre tiene precedencia sobre cualquier contexto externo.
 8. MARKET_CORRELATION solo puede usar hallazgos clasificados por el Risk-Market Correlation Engine. OBSERVED describe datos; CORRELATED exige validación estadística; POSSIBLE EXPLANATION es contexto; CAUSALITY CONFIRMED requiere evidencia causal formal validada. Nunca cambies una clasificación ni infieras causalidad.
 """
+
+    @staticmethod
+    def _normalize_market_correlation(value: Any) -> list[MarketCorrelationEvidence]:
+        """Accept only the quantitative contract produced by the correlation engine."""
+        if isinstance(value, dict):
+            candidates = value.get("findings") or value.get("items") or value.get("evidence") or []
+        elif isinstance(value, list):
+            candidates = value
+        else:
+            return []
+
+        allowed = {
+            "OBSERVED",
+            "POSSIBLE_EXPLANATION",
+            "CORRELATED",
+            "CAUSALITY_CONFIRMED",
+        }
+        normalized: list[MarketCorrelationEvidence] = []
+
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+
+            try:
+                sample_size = int(item.get("sample_size"))
+                coefficient = float(item.get("coefficient"))
+                p_value = float(item.get("p_value"))
+            except (TypeError, ValueError):
+                continue
+
+            classification = str(item.get("classification") or "").strip().upper()
+            method = str(item.get("method") or "").strip().lower()
+
+            if sample_size < 1 or method not in {"pearson", "spearman"}:
+                continue
+            if not -1.0 <= coefficient <= 1.0:
+                continue
+            if not 0.0 <= p_value <= 1.0:
+                continue
+            if classification not in allowed:
+                continue
+
+            normalized.append(
+                {
+                    "portfolio_metric": str(item.get("portfolio_metric") or ""),
+                    "market_metric": str(item.get("market_metric") or ""),
+                    "segment": item.get("segment"),
+                    "transformation": str(item.get("transformation") or ""),
+                    "method": method,
+                    "sample_size": sample_size,
+                    "coefficient": coefficient,
+                    "p_value": p_value,
+                    "classification": classification,
+                    "direction": str(item.get("direction") or ""),
+                    "evidence_rule": str(
+                        item.get("evidence_rule")
+                        or "n >= 12 AND |r| >= 0.50 AND p < 0.05"
+                    ),
+                }
+            )
+
+        return normalized
+
+    @staticmethod
+    def _market_correlation_fallback(
+        findings: list[MarketCorrelationEvidence],
+    ) -> str:
+        if not findings:
+            return (
+                "Hechos Observados y Estadísticos\n"
+                "No hay evidencia estadística de mercado disponible para esta consulta.\n\n"
+                "Interpretación Contextual\n"
+                "El análisis debe limitarse a la evidencia determinística de la cartera.\n\n"
+                "Limitaciones Metodológicas\n"
+                "Sin un hallazgo estadístico precalculado no corresponde inferir una relación entre mercado y cartera."
+            )
+
+        facts: list[str] = []
+        interpretations: list[str] = []
+        limitations: list[str] = []
+
+        for finding in findings[:5]:
+            facts.append(
+                f"{finding.get('portfolio_metric', 'métrica de cartera')} vs "
+                f"{finding.get('market_metric', 'métrica de mercado')}: "
+                f"{finding.get('method')} r={finding.get('coefficient')}, "
+                f"p={finding.get('p_value')}, n={finding.get('sample_size')}, "
+                f"clasificación {finding.get('classification')}."
+            )
+
+            classification = finding.get("classification")
+            if classification == "CORRELATED":
+                interpretations.append(
+                    "El motor identifica una asociación estadísticamente significativa bajo la regla "
+                    "reportada; debe interpretarse como relación estadística y no como mecanismo causal."
+                )
+            elif classification == "CAUSALITY_CONFIRMED":
+                interpretations.append(
+                    "El motor reporta causalidad confirmada; el Copilot no añade una inferencia causal adicional."
+                )
+            else:
+                interpretations.append(
+                    f"La clasificación {classification} limita la interpretación a la evidencia que el motor ha validado."
+                )
+
+            limitations.append(
+                "La correlación no implica causalidad. Los valores de n, coeficiente, p-value y clasificación "
+                "son los calculados por el motor y no se recalculan en esta capa."
+            )
+
+        return (
+            "Hechos Observados y Estadísticos\n"
+            + " ".join(facts)
+            + "\n\nInterpretación Contextual\n"
+            + " ".join(interpretations)
+            + "\n\nLimitaciones Metodológicas\n"
+            + " ".join(dict.fromkeys(limitations))
+        )
 
     @staticmethod
     def _number(value: Any) -> float | None:
@@ -119,6 +253,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         concentration = risk_facts.get("concentration", {})
         segments = facts.get("segments") or concentration.get("segments", [])
         drivers_data = context["drivers"]
+        market_correlation = context["market_correlation"]
 
         market_context = (
             await self.market_context.get_context()
@@ -203,10 +338,11 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "grounded": True,
             "provider": provider_used,
             "mode": "CRO Evidence Mode",
-            "prompt_version": "cro-dual-mode-ews-v1",
+            "prompt_version": "cro-dual-mode-market-correlation-v2",
             "conversation_mode": mode,
             "system_prompt": self.CRO_SYSTEM_PROMPT,
-            "note": "El motor determinístico establece los hechos; Gemini adapta la interpretación al contexto y a la intención de la conversación sin inventar métricas ni causalidad.",
+            "market_correlation_evidence": market_correlation if mode == "analytical" else [],
+            "note": "El motor cuantitativo establece los hechos estadísticos; Gemini solo interpreta la evidencia precalculada y no puede recalcularla ni elevar una correlación a causalidad.",
         }
 
     async def _generate_conversational_answer(
@@ -244,7 +380,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "CONVERSATION": conversation[-12:],
                 "CURRENT_QUESTION": question,
                 "MARKET_CONTEXT": market_context,
-                "MARKET_CORRELATION": risk_facts.get("market_correlation", []),
+                "MARKET_CORRELATION_EVIDENCE": market_correlation,
             }
             prompt = (
                 f"{self.CRO_SYSTEM_PROMPT}\n\n{self.MARKET_CONTEXT_SYSTEM_RULES}\n\n"
@@ -254,8 +390,14 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "No calcules métricas nuevas ni inventes causalidad. El estrés es condicional y el Rollover Rate es histórico. "
                 "Si la consulta usa EWS, trata EWS_JSON como la única fuente válida para alertas tempranas y priorización. "
                 "Explica que su score es una priorización determinística de trayectoria observada y exposición, no una probabilidad predictiva. "
-                "Si MARKET_CORRELATION está disponible, respeta literalmente sus clasificaciones y su evidencia estadística; no conviertas correlación en causalidad. "
-                'Usa una estructura profesional solo cuando ayude a la consulta. Devuelve exactamente JSON con esta forma {"answer":"texto"}.'
+                "Si MARKET_CORRELATION_EVIDENCE está disponible, úsalo exclusivamente como evidencia estadística precalculada. "
+                "No recalcules coeficientes, p-values ni tamaños de muestra. No modifiques sus valores. "
+                "Para consultas que involucren esta evidencia, responde obligatoriamente en tres secciones: "
+                "1) Hechos Observados y Estadísticos, 2) Interpretación Contextual, 3) Limitaciones Metodológicas. "
+                "En la primera sección reproduce los valores relevantes tal como fueron calculados. "
+                "En la segunda explica el significado económico sin afirmar causalidad salvo CAUSALITY_CONFIRMED. "
+                "En la tercera aclara las limitaciones estadísticas y que correlación no implica causalidad. "
+                'Usa JSON con esta forma {"answer":"texto"}.'
             )
         try:
             result = await self.provider.generate(prompt, context)
@@ -267,6 +409,8 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             print(f"RiskIQ Gemini provider failed: {type(exc).__name__}: {exc}")
         if mode == "conversational":
             return self._conversational_fallback(question), "conversational_fallback"
+        if market_correlation:
+            return self._market_correlation_fallback(market_correlation), "market_correlation_evidence_mode"
         return fallback(), "evidence_mode"
 
     @staticmethod
