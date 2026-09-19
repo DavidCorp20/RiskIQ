@@ -48,4 +48,16 @@ app.add_middleware(CORSMiddleware,allow_origins=cors_origins,allow_credentials=T
 for r in [router,data_router,dataset_router,segment_router,dataset_intelligence_router,projection_router,quality_router,diagnosis_router,indicator_router,risk_router,risk_intelligence_router,risk_event_router,npl_router,intelligence_router,vintage_router,snapshot_router,history_router,pipeline_router,decision_router,decision_card_router,decision_center_router,decision_recommendation_router,simulation_router,rule_builder_router,governance_router,policy_metrics_router,audit_router,learning_router,market_router,ai_router,ews_router,predictive_router,stress_testing_router,workspace_router,smart_ingest_router,reports_router]:
     app.include_router(r,prefix="/api")
 
-@app.get("/health",tags=["system"])\ndef health()->dict[str,str]:\n    return liveness()\n\n\n@app.get("/ready",tags=["system"])\ndef ready()->dict:\n    return readiness()\n\n\n@app.get("/version",tags=["system"])\ndef api_version()->dict[str,str]:\n    return version()\n
+@app.get("/health",tags=["system"])
+def health()->dict[str,str]:
+    return liveness()
+
+
+@app.get("/ready",tags=["system"])
+def ready()->dict:
+    return readiness()
+
+
+@app.get("/version",tags=["system"])
+def api_version()->dict[str,str]:
+    return version()
