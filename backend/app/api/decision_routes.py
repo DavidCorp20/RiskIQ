@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.decision.decision_intelligence import DecisionIntelligenceService
 
-router = APIRouter(prefix="/v1/decisions", tags=["decision-intelligence"])
+router = APIRouter(prefix="/v1/decision-intelligence", tags=["decision-intelligence"])
 service = DecisionIntelligenceService()
 
 
