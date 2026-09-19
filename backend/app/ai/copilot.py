@@ -243,6 +243,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         drivers: list[dict[str, Any]] | None = None,
         decisions: list[dict[str, Any]] | None = None,
         conversation: list[dict[str, Any]] | None = None,
+        risk_intelligence: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         context = self.build_context(risk_facts, drivers, decisions, conversation)
         mode = self._conversation_mode(question)
@@ -300,6 +301,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             market_context=market_context,
             market_correlation=market_correlation,
             conversation=conversation or [],
+            risk_intelligence=risk_intelligence or {},
             fallback=lambda: self._adaptive_narrative(
                 question,
                 severity,
@@ -341,6 +343,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "mode": "CRO Evidence Mode",
             "prompt_version": "cro-dual-mode-market-correlation-v2",
             "conversation_mode": mode,
+            "risk_intelligence_hash": (risk_intelligence or {}).get("evidence_hash"),
             "system_prompt": self.CRO_SYSTEM_PROMPT,
             "market_correlation_evidence": market_correlation if mode == "analytical" else [],
             "note": "El motor cuantitativo establece los hechos estadísticos; Gemini solo interpreta la evidencia precalculada y no puede recalcularla ni elevar una correlación a causalidad.",
@@ -354,6 +357,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         market_context: dict[str, Any],
         market_correlation: list[MarketCorrelationEvidence],
         conversation: list[dict[str, Any]],
+        risk_intelligence: dict[str, Any],
         fallback: Any,
     ) -> tuple[str, str]:
         if mode == "conversational":
@@ -386,7 +390,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             }
             prompt = (
                 f"{self.CRO_SYSTEM_PROMPT}\n\n{self.MARKET_CONTEXT_SYSTEM_RULES}\n\n"
-                "MODO ACTUAL: ANALÍTICO. Responde como CRO de comité de riesgos. Usa únicamente la evidencia disponible y "
+                "MODO ACTUAL: ANALÍTICO. Responde como CRO de comité de riesgos. RISK_INTELLIGENCE_JSON es el contrato ejecutivo unificado y es inmutable. Puedes sintetizarlo, pero jamás modificar cifras, severidades, PD, escenarios, eventos, hashes o clasificaciones. `ai_mutable_fields` debe permanecer vacío. Usa únicamente la evidencia disponible y "
                 "las cifras estrictamente necesarias para responder. Mantén continuidad con CONVERSATION. "
                 "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
                 "No calcules métricas nuevas ni inventes causalidad. El estrés es condicional y el Rollover Rate es histórico. "
