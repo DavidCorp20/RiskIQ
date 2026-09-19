@@ -16,7 +16,7 @@ install_observability(app)
 
 @app.get("/health", tags=["system"])
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "service": "riskiq-api"}
 
 
 from app.api.ai_routes import router as ai_router
