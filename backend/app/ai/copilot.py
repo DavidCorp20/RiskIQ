@@ -3,13 +3,15 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.ai.provider import AIProvider, get_ai_provider
+from app.services.market_context import MarketContextProvider
 
 
 class RiskCopilotService:
     """Conversational CRO layer grounded in deterministic evidence with optional Gemini generation."""
 
-    def __init__(self, provider: AIProvider | None = None) -> None:
+    def __init__(self, provider: AIProvider | None = None, market_context: MarketContextProvider | None = None) -> None:
         self.provider = provider if provider is not None else get_ai_provider()
+        self.market_context = market_context if market_context is not None else MarketContextProvider()
 
     CRO_SYSTEM_PROMPT = """Eres el Chief Risk Officer (CRO) y un analista financiero experto en riesgos de crédito. Conversas directamente con un analista o directivo a través de un chat interactivo.
 
@@ -72,6 +74,16 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "conversation": conversation or [],
         }
 
+    MARKET_CONTEXT_SYSTEM_RULES = """REGLAS INQUEBRANTABLES SOBRE MARKET CONTEXT:
+1. MARKET_CONTEXT es exclusivamente contexto externo para la interpretación cualitativa del CRO.
+2. Nunca uses MARKET_CONTEXT para recalcular, corregir, sustituir o modificar PAR30, PAR60, PAR90, NPL, exposición, Roll Rate, severity ni ningún indicador determinístico de RiskIQ.
+3. Nunca establezcas causalidad directa entre un movimiento de mercado y el deterioro de la cartera. Correlación temporal no demuestra causalidad.
+4. Si MARKET_CONTEXT está unavailable, partial, disabled o stale, continúa funcionando con RiskIQ evidence.
+5. Nunca inventes datos macroeconómicos o de mercado ausentes del contexto recibido.
+6. NQ Futures es una señal externa de mercado y no una predicción del desempeño crediticio.
+7. La evidencia determinística de RiskIQ siempre tiene precedencia sobre cualquier contexto externo.
+"""
+
     @staticmethod
     def _number(value: Any) -> float | None:
         return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
@@ -104,6 +116,20 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         segments = facts.get("segments") or concentration.get("segments", [])
         drivers_data = context["drivers"]
 
+        market_context = (
+            await self.market_context.get_context()
+            if mode == "analytical"
+            else {
+                "status": "not_requested",
+                "source": "RiskIQ MarketContextProvider",
+                "as_of": None,
+                "ttl_seconds": self.market_context.cache_ttl_seconds,
+                "cache": "not_requested",
+                "data": {},
+                "errors": [],
+            }
+        )
+
         exposure = evidence.get("exposure", {}) if isinstance(evidence, dict) else {}
         par = evidence.get("par", {}) if isinstance(evidence, dict) else {}
         impact = evidence.get("exposure_impact", {}) if isinstance(evidence, dict) else {}
@@ -132,6 +158,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             question=question,
             mode=mode,
             risk_facts=risk_facts,
+            market_context=market_context,
             conversation=conversation or [],
             fallback=lambda: self._adaptive_narrative(
                 question,
@@ -148,6 +175,8 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         return {
             "question": question,
             "answer": answer_text,
+            "market_context": market_context,
+            "market_context_used": mode == "analytical" and market_context.get("status") in {"available", "partial"},
             "status": summary.get("status", "unknown"),
             "severity": severity,
             "evidence": evidence_lines,
@@ -175,6 +204,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         question: str,
         mode: str,
         risk_facts: dict[str, Any],
+        market_context: dict[str, Any],
         conversation: list[dict[str, Any]],
         fallback: Any,
     ) -> tuple[str, str]:
@@ -202,9 +232,10 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "DECISIONS": risk_facts.get("decisions", []),
                 "CONVERSATION": conversation[-12:],
                 "CURRENT_QUESTION": question,
+                "MARKET_CONTEXT": market_context,
             }
             prompt = (
-                f"{self.CRO_SYSTEM_PROMPT}\n\n"
+                f"{self.CRO_SYSTEM_PROMPT}\n\n{self.MARKET_CONTEXT_SYSTEM_RULES}\n\n"
                 "MODO ACTUAL: ANALÍTICO. Responde como CRO de comité de riesgos. Usa únicamente la evidencia disponible y "
                 "las cifras estrictamente necesarias para responder. Mantén continuidad con CONVERSATION. "
                 "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
