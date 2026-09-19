@@ -1,6 +1,9 @@
+from fastapi.testclient import TestClient
+
 from __future__ import annotations
 
 from app.services.risk_analytics_service import RiskAnalyticsDashboardService
+import app.api.portfolio_routes as portfolio_routes
 
 
 class FakeRepository:
@@ -82,3 +85,18 @@ def test_dashboard_respects_segment_and_cutoff():
     assert result["kpis"]["exposure"]["formatted"] == "$ 1,000"
     assert result["kpis"]["active_loans"]["formatted"] == "1"
     assert result["snapshot_date"] == "2026-01-31"
+
+
+def test_dashboard_endpoint_exposes_exact_contract(monkeypatch):
+    rows = [
+        {"dataset_id": "d1", "loan_id": "L1", "snapshot_date": "2026-01-31", "segment": "A", "outstanding_principal": 1000, "dpd": 0, "origination_date": "2025-01-01"},
+        {"dataset_id": "d1", "loan_id": "L2", "snapshot_date": "2026-01-31", "segment": "A", "outstanding_principal": 2000, "dpd": 45, "origination_date": "2025-01-01"},
+    ]
+    monkeypatch.setattr(portfolio_routes, "service", RiskAnalyticsDashboardService(persistence=FakePersistence(rows)))
+    response = TestClient(portfolio_routes.router).get("/v1/portfolio/d1/dashboard")
+    assert response.status_code == 200
+    body = response.json()
+    assert {"contract_version", "dataset_id", "snapshot_date", "kpis", "rating_distribution", "heatmap", "vintage", "risk_drivers", "filters", "structure", "concentration", "vintage_view", "insights"} <= set(body)
+    assert {"exposure", "active_loans", "par30", "par60", "par90", "npl"} <= set(body["kpis"])
+    assert len(body["insights"]) == 4
+    assert all(isinstance(item["message"], str) for item in body["insights"])
