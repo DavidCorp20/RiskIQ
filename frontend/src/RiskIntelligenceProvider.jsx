@@ -14,7 +14,7 @@ export function RiskIntelligenceProvider({ children }) {
 
   useEffect(() => {
     datasetRef.current = dataset
-  }, [dataset]
+  }, [dataset])
 
   const refreshDatasets = useCallback(async () => {
     const response = await listDatasets()
