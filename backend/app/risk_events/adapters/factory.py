@@ -34,6 +34,8 @@ class ActionAdapterFactory:
         if selected == "INTERNAL":
             return InternalTaskAdapter()
         if selected == "FRESHSERVICE":
+            if not settings.freshservice_enabled:
+                return InternalTaskAdapter()
             return _FreshserviceAdapter()
         raise ValueError(f"Unsupported RiskIQ action adapter: {selected}")
 
