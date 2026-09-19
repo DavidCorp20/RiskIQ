@@ -1,50 +1,110 @@
 from __future__ import annotations
-from collections import defaultdict
+
 from typing import Any
+
+import numpy as np
+import pandas as pd
+
 from .models import TransitionMatrix
 
-STATES=("current","early_1_29","early_30_59","late_60_89","hard_90_plus")
+STATES = ("current", "early_1_29", "early_30_59", "late_60_89", "hard_90_plus")
+
 
 def bucket(dpd: float) -> str:
-    if dpd < 1:return "current"
-    if dpd < 30:return "early_1_29"
-    if dpd < 60:return "early_30_59"
-    if dpd < 90:return "late_60_89"
+    if dpd < 1:
+        return "current"
+    if dpd < 30:
+        return "early_1_29"
+    if dpd < 60:
+        return "early_30_59"
+    if dpd < 90:
+        return "late_60_89"
     return "hard_90_plus"
 
-class TransitionEngine:
-    def build_matrix(self, rows:list[dict[str,Any]])->TransitionMatrix:
-        histories=defaultdict(list)
-        for row in rows:
-            loan=str(row.get("loan_id") or row.get("customer_id") or "")
-            if loan: histories[loan].append(row)
-        counts={s:{t:0 for t in STATES} for s in STATES}
-        sample=0
-        for history in histories.values():
-            ordered=sorted(history,key=lambda x:str(x.get("snapshot_date") or ""))
-            for prev,curr in zip(ordered,ordered[1:]):
-                s=bucket(float(prev.get("dpd",0) or 0)); t=bucket(float(curr.get("dpd",0) or 0))
-                counts[s][t]+=1; sample+=1
-        probabilities={}
-        for s in STATES:
-            total=sum(counts[s].values())
-            probabilities[s]={t:(counts[s][t]/total if total else (1.0 if s==t else 0.0)) for t in STATES}
-        return TransitionMatrix(states=list(STATES),probabilities=probabilities,counts=counts,sample_size=sample,methodology="observed-roll-rate-transition-matrix-v1")
 
-    def project_pd(self,matrix:TransitionMatrix,horizon_periods:int=1)->dict[str,float]:
-        if horizon_periods<1: raise ValueError("horizon_periods must be >= 1")
-        m=[[matrix.probabilities[s][t] for t in matrix.states] for s in matrix.states]
-        p=self._power(m,horizon_periods)
-        hard=matrix.states.index("hard_90_plus")
-        return {matrix.states[i]:round(p[i][hard],8) for i in range(len(matrix.states))}
+class TransitionEngine:
+    """Deterministic roll-rate transition engine.
+
+    The public contract remains list[dict] -> TransitionMatrix. Internally the
+    expensive grouping/sorting work is vectorized with pandas/numpy so large
+    portfolio snapshots do not spend most of their time in Python loops.
+    """
+
+    def build_matrix(self, rows: list[dict[str, Any]]) -> TransitionMatrix:
+        if not rows:
+            return self._empty_matrix()
+
+        frame = pd.DataFrame(rows)
+        loan_col = frame.get("loan_id")
+        if loan_col is None:
+            loan_col = frame.get("customer_id")
+        if loan_col is None or "dpd" not in frame.columns:
+            return self._empty_matrix()
+
+        frame = frame.assign(
+            _loan=loan_col.astype("string").fillna(""),
+            _dpd=pd.to_numeric(frame["dpd"], errors="coerce").fillna(0.0),
+            _snapshot=frame.get("snapshot_date", pd.Series(index=frame.index, dtype="string")).astype("string").fillna(""),
+        )
+        frame = frame.loc[frame["_loan"].ne("")].sort_values(["_loan", "_snapshot"], kind="mergesort")
+        if frame.empty:
+            return self._empty_matrix()
+
+        dpd = frame["_dpd"].to_numpy(dtype=float, copy=False)
+        states = np.select(
+            [dpd < 1, dpd < 30, dpd < 60, dpd < 90],
+            [STATES[0], STATES[1], STATES[2], STATES[3]],
+            default=STATES[4],
+        )
+        frame["_state"] = states
+        frame["_next_state"] = frame.groupby("_loan", sort=False)["_state"].shift(-1)
+        transitions = frame.dropna(subset=["_next_state"])[["_state", "_next_state"]]
+
+        counts = {state: {target: 0 for target in STATES} for state in STATES}
+        if not transitions.empty:
+            grouped = transitions.groupby(["_state", "_next_state"], sort=False).size()
+            for (source, target), value in grouped.items():
+                if source in counts and target in counts[source]:
+                    counts[source][target] = int(value)
+
+        probabilities: dict[str, dict[str, float]] = {}
+        for source in STATES:
+            total = sum(counts[source].values())
+            probabilities[source] = {
+                target: (counts[source][target] / total if total else (1.0 if source == target else 0.0))
+                for target in STATES
+            }
+
+        return TransitionMatrix(
+            states=list(STATES),
+            probabilities=probabilities,
+            counts=counts,
+            sample_size=int(len(transitions)),
+            methodology="observed-roll-rate-transition-matrix-v2-vectorized",
+        )
+
+    def project_pd(self, matrix: TransitionMatrix, horizon_periods: int = 1) -> dict[str, float]:
+        if horizon_periods < 1:
+            raise ValueError("horizon_periods must be >= 1")
+        m = np.asarray(
+            [[matrix.probabilities[s][t] for t in matrix.states] for s in matrix.states],
+            dtype=float,
+        )
+        p = np.linalg.matrix_power(m, horizon_periods)
+        hard = matrix.states.index("hard_90_plus")
+        return {matrix.states[i]: round(float(p[i, hard]), 8) for i in range(len(matrix.states))}
 
     @staticmethod
-    def _multiply(a,b):
-        n=len(a); return [[sum(a[i][k]*b[k][j] for k in range(n)) for j in range(n)] for i in range(n)]
-    def _power(self,m,n):
-        size=len(m); result=[[1.0 if i==j else 0.0 for j in range(size)] for i in range(size)]
-        base=m
-        while n:
-            if n%2: result=self._multiply(result,base)
-            base=self._multiply(base,base); n//=2
-        return result
+    def _empty_matrix() -> TransitionMatrix:
+        probabilities = {
+            state: {target: (1.0 if state == target else 0.0) for target in STATES}
+            for state in STATES
+        }
+        counts = {state: {target: 0 for target in STATES} for state in STATES}
+        return TransitionMatrix(
+            states=list(STATES),
+            probabilities=probabilities,
+            counts=counts,
+            sample_size=0,
+            methodology="observed-roll-rate-transition-matrix-v2-vectorized",
+        )
