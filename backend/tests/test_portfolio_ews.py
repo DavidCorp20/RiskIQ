@@ -42,11 +42,15 @@ def test_segment_roll_rate_uses_previous_balance_as_denominator():
     assert transition["roll_rate_by_balance"] == 1.0
 
 
-def test_high_ews_exposure_is_aggregated_by_segment():
+def test_high_ews_exposure_respects_high_score_threshold():
     result = PortfolioEWSService().summarize(ROWS)
     micro = next(item for item in result["ews_exposure_by_segment"] if item["segment"] == "Micro")
 
     assert micro["exposure"] == 1000
-    assert micro["high_ews_exposure"] >= 100
-    assert micro["high_ews_exposure_share"] >= 0.1
+
+    # Contract: high_ews_score defaults to 50. The current Micro loans score
+    # below 50, so their exposure remains outside the high-EWS bucket.
+    assert micro["high_ews_exposure"] == 0
+    assert micro["high_ews_exposure_share"] == 0
+    assert micro["high_ews_loans"] == 0
     assert result["predictive_probability"] is False
