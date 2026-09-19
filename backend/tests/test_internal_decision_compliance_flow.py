@@ -19,6 +19,9 @@ class FakeRepo:
     def ensure_indexes(self):
         return None
 
+    def ensure_unique_index(self, fields, *, name=None):
+        return None
+
     def find(self, filters=None, limit=100):
         filters = filters or {}
         rows = []
