@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.decision.rule_repository import DecisionRuleRepository
 from app.data.mongo import MongoRepository
+from app.integrations.freshservice import CRITICAL_POLICY_STATUSES, compliance_service
 
 router = APIRouter(prefix="/v1/decision-builder", tags=["decision-governance"])
 rules_repo = DecisionRuleRepository()
@@ -56,7 +57,7 @@ def policy_versions(policy_id: str, dataset_id: str | None = None) -> dict:
     return {"policy_id": policy_id, "count": len(versions), "versions": [{"id": r.get("id"), "name": r.get("name"), "version": _version(r), "status": _effective_status(r), "governance": _governance(r), "dataset_id": r.get("dataset_id"), "saved_at": r.get("saved_at")} for r in versions]}
 
 @router.post("/policies/{policy_id}/transition")
-def transition_policy(policy_id: str, payload: dict) -> dict:
+def transition_policy(policy_id: str, payload: dict, background_tasks: BackgroundTasks) -> dict:
     dataset_id = payload.get("dataset_id")
     versions = _find_versions(policy_id, dataset_id)
     if not versions: raise HTTPException(status_code=404, detail="Policy not found")
