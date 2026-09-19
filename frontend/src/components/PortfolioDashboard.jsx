@@ -25,21 +25,19 @@ export default function PortfolioDashboard({
 }) {
   const [segment, setSegment] = useState(initialSegment)
   const [cutoffDate, setCutoffDate] = useState(initialCutoffDate)
-  const { data, loading, error, refresh } = usePortfolioDashboard(datasetId, { segment, cutoffDate })
+  const { data: dashboard, loading, error, refresh } = usePortfolioDashboard(datasetId, {
+    segment,
+    cutoffDate
+  })
 
-  const toolbar = data?.filters || {}
-  const kpis = data?.kpis || {}
-  const structure = data?.structure || {}
-  const concentration = data?.concentration || {}
-  const vintage = data?.vintage || {}
-  const drivers = data?.riskDrivers || data?.risk_drivers || []
+  const filters = dashboard?.filters ?? {}
 
   const exportPayload = useMemo(() => ({
-    contract_version: data?.contract_version || 'portfolio-dashboard-v1',
+    contract_version: dashboard?.contract_version ?? 'portfolio-dashboard-v1',
     dataset_id: datasetId,
     filters: { segment, cutoffDate },
-    evidence: data || null
-  }), [data, datasetId, segment, cutoffDate])
+    evidence: dashboard ?? null
+  }), [dashboard, datasetId, segment, cutoffDate])
 
   if (!datasetId) {
     return (
@@ -57,14 +55,14 @@ export default function PortfolioDashboard({
     <section className="portfolio-dashboard">
       <PortfolioToolbar
         segment={segment}
-        segments={toolbar.segments || []}
+        segments={filters.segments}
         cutoffDate={cutoffDate}
-        cutoffDates={toolbar.cutoffDates || []}
+        cutoffDates={filters.cutoff_dates}
         onSegmentChange={setSegment}
         onCutoffDateChange={setCutoffDate}
         onRefresh={refresh}
         onExport={() => downloadJson(exportPayload, datasetId)}
-        onRiskAnalysis={() => onRiskAnalysis?.(data)}
+        onRiskAnalysis={() => onRiskAnalysis?.(dashboard)}
         loading={loading}
         disabled={!datasetId}
       />
@@ -85,36 +83,33 @@ export default function PortfolioDashboard({
         </div>
       )}
 
-      {!loading && !error && data && (
+      {!loading && !error && dashboard && (
         <>
-          <PortfolioKpiGrid kpis={kpis} />
+          <PortfolioKpiGrid kpis={dashboard.kpis} />
 
           <div className="portfolio-dashboard-grid">
-            <RatingDistribution data={structure.ratingDistribution || []} />
-            <ExposureHeatmap data={concentration.heatmap || concentration.items || []} />
+            <RatingDistribution data={dashboard.rating_distribution} />
+            <ExposureHeatmap data={dashboard.heatmap} />
           </div>
 
-          <VintageMatrix
-            rows={vintage.rows || []}
-            columns={vintage.columns || []}
-          />
+          <VintageMatrix vintage={dashboard.vintage} />
 
           <section className="portfolio-panel">
             <div className="portfolio-panel-heading">
               <div><span>RISK DRIVERS</span><h3>Recorded drivers</h3></div>
-              <small>{drivers.length} drivers</small>
+              <small>{dashboard.risk_drivers.length} drivers</small>
             </div>
-            {!drivers.length ? (
+            {!dashboard.risk_drivers.length ? (
               <div className="portfolio-empty">No deterministic risk drivers available.</div>
             ) : (
               <div className="portfolio-drivers">
-                {drivers.map((driver, index) => (
-                  <article key={driver.id ?? driver.code ?? index}>
+                {dashboard.risk_drivers.map((driver) => (
+                  <article key={driver.id}>
                     <div>
-                      <strong>{driver.label ?? driver.name ?? driver.code ?? `Driver ${index + 1}`}</strong>
-                      <span>{driver.description ?? driver.rationale ?? 'Recorded deterministic evidence.'}</span>
+                      <strong>{driver.name}</strong>
+                      <span>{driver.description}</span>
                     </div>
-                    <b>{driver.displayValue ?? driver.value ?? '—'}</b>
+                    <b>{driver.value}</b>
                   </article>
                 ))}
               </div>
