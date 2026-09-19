@@ -27,7 +27,7 @@ class GeminiProvider(AIProvider):
     ) -> None:
         self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
         self.model = model or os.getenv("AI_MODEL", "gemini-3.8-flash")
-        self.timeout = timeout or float(os.getenv("AI_TIMEOUT_SECONDS", "20"))
+        self.timeout = timeout or float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
         self.base_url = os.getenv(
             "GEMINI_API_BASE_URL",
             "https://generativelanguage.googleapis.com/v1beta",
@@ -63,8 +63,8 @@ class GeminiProvider(AIProvider):
                 }
             ],
             "generationConfig": {
-                "temperature": 0,
                 "responseMimeType": "application/json",
+                "thinkingConfig": {"thinkingLevel": "low"},
             },
         }
 
