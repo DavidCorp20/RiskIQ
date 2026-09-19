@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from 'react'
 import {getDatasetHistory,listDatasets,runDataset,runSimulator} from './api'
-import {useRiskIntelligence} from './RiskIntelligenceProvider'
+import {useRiskIntelligence} from './hooks/useRiskIntelligence'
 import EvidenceMethodology from './EvidenceMethodology'
 import RiskEventsTable from './components/RiskEventsTable'
 import ExecutiveIntelligencePanel from './ExecutiveIntelligencePanel'
