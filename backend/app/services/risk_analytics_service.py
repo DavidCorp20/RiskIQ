@@ -109,6 +109,7 @@ class RiskAnalyticsDashboardService:
             structure=structure,
             concentration=concentration,
             vintage_view=vintage_view,
+            insights=insights,
         )
         return response.model_dump()
 
@@ -215,6 +216,68 @@ class RiskAnalyticsDashboardService:
                 {"key": "exposure", "label": "Exposure"},
             ],
         }
+
+    @staticmethod
+    def _parse_percent(formatted: str | None) -> float:
+        try:
+            return float(str(formatted or "0").replace("%", "").replace(",", ".")) / 100.0
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _parse_money(formatted: str | None) -> float:
+        try:
+            value = str(formatted or "0").replace("$", "").replace(" ", "").replace(",", "")
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @classmethod
+    def _executive_insights(cls, kpis: dict[str, dict[str, str | None]]) -> list[dict[str, str]]:
+        """Create deterministic, presentation-ready executive observations.
+
+        No thresholds are invented here. The function only restates the already
+        calculated KPI values and derives a simple PAR90/PAR30 containment ratio.
+        """
+        exposure = kpis.get("exposure", {})
+        par30 = kpis.get("par30", {})
+        par60 = kpis.get("par60", {})
+        par90 = kpis.get("par90", {})
+        npl = kpis.get("npl", {})
+
+        par30_ratio = cls._parse_percent(par30.get("formatted"))
+        par90_ratio = cls._parse_percent(par90.get("formatted"))
+        containment_ratio = (par90_ratio / par30_ratio) if par30_ratio else 0.0
+
+        return [
+            {
+                "type": "materiality",
+                "title": "Materialidad de cartera",
+                "message": f"La cartera registra {exposure.get('formatted', '—')} de outstanding exposure.",
+            },
+            {
+                "type": "delinquency",
+                "title": "Perfil de mora",
+                "message": (
+                    f"PAR30 {par30.get('formatted', '—')} · "
+                    f"PAR60 {par60.get('formatted', '—')} · "
+                    f"PAR90 {par90.get('formatted', '—')}.",
+                ),
+            },
+            {
+                "type": "containment",
+                "title": "Contención de mora dura",
+                "message": (
+                    f"PAR90 representa {containment_ratio * 100:.1f}% del PAR30 observado. "
+                    "La lectura es descriptiva y no constituye un forecast."
+                ),
+            },
+            {
+                "type": "npl",
+                "title": "Non-performing exposure",
+                "message": f"NPL {npl.get('formatted', '—')} sobre la exposición reportada.",
+            },
+        ]
 
     @staticmethod
     def _dpd_rating(dpd: float) -> str:
