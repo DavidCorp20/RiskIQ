@@ -13,6 +13,8 @@ from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
 from app.analytics.risk_analytics import RiskAnalyticsService
 from app.analytics.snapshot_engine import SnapshotEngine
 from app.data.persistence import PortfolioPersistenceService
+from app.market.models import HistoricalSeries, TimeSeriesPoint
+from app.market.service import MarketContextService
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
 service = RiskCopilotService()
@@ -23,6 +25,7 @@ decision_engine = DecisionEngineService()
 npl = NPLAnalyticsService()
 portfolio_ews = PortfolioEWSService()
 snapshot_engine = SnapshotEngine()
+market_context = MarketContextService()
 
 
 def _require_dataset(dataset_id: str) -> dict[str, Any]:
@@ -154,6 +157,30 @@ async def copilot(payload: dict) -> dict:
             risk_facts["market_correlation"] = (
                 server_correlation if isinstance(server_correlation, list) else []
             )
+
+    # Build quantitative market correlation server-side only for analytical grounding.
+    # The browser never supplies correlation coefficients as authoritative evidence.
+    records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    if records:
+        historical = await market_context.get_historical_series(symbol="NQ=F", range="2y", interval="1mo")
+        points = []
+        for item in historical.get("points", []):
+            try:
+                points.append(TimeSeriesPoint(date=str(item["date"]), value=float(item["value"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if points:
+            market_series = HistoricalSeries(
+                name=str(historical.get("symbol") or "NQ=F"),
+                source=str(historical.get("source") or "market-provider"),
+                frequency="monthly",
+                unit="index_points",
+                points=points,
+            )
+            quantitative = risk_analytics.analyze(records, market_series=market_series)
+            risk_facts["market_correlation"] = quantitative.get("market_correlation", [])
+        else:
+            risk_facts["market_correlation"] = []
 
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
