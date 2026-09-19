@@ -119,7 +119,7 @@ class DecisionRecommendationRepository:
         if self._indexes_ready:
             return
         self.collection.ensure_indexes()
-        self.collection.ensure_unique_index([("recommendation_id", 1)], name="uniq_recommendation_id")
+        self.collection.ensure_unique_index([("recommendation_id", 1)], name="recommendation_id_1")
         self.collection.ensure_unique_index([("dataset_id", 1), ("created_at", -1)], name="idx_recommendation_dataset_created")
         self.collection.ensure_unique_index([("status", 1), ("action_level", 1)], name="idx_recommendation_status_level")
         self.collection.ensure_unique_index([("loan_id", 1), ("created_at", -1)], name="idx_recommendation_loan_created")
