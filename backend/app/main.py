@@ -52,6 +52,7 @@ from app.api.segment_routes import router as segment_router
 from app.api.simulation_routes import router as simulation_router
 from app.api.snapshot_routes import router as snapshot_router
 from app.api.vintage_routes import router as vintage_router
+from app.api.portfolio_routes import router as portfolio_router
 from app.api.workspace_routes import router as workspace_router
 from app.api.v1.endpoints.smart_ingest import router as smart_ingest_router
 from app.reports.routes import router as reports_router
@@ -91,6 +92,7 @@ for r in [
     npl_router,
     intelligence_router,
     vintage_router,
+    portfolio_router,
     snapshot_router,
     history_router,
     pipeline_router,
