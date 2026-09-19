@@ -97,7 +97,7 @@ class RiskIQObservabilityMiddleware(BaseHTTPMiddleware):
                 response.headers["X-Request-ID"] = request_id
                 response.headers["X-RiskIQ-Latency-MS"] = str(elapsed_ms)
                 response.headers["X-RiskIQ-Memory-Delta-KB"] = str(memory_delta_kb)
-                if elapsed_ms > settings.riskiq_performance_warning_ms:
+                if elapsed_ms > settings.performance_warning_ms:
                     response.headers["X-RiskIQ-Performance-Warning"] = f"latency_ms={elapsed_ms}"
             logger.info(
                 "request_complete",
