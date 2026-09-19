@@ -6,12 +6,14 @@ on:
       - 'backend/app/predictive/**'
       - 'backend/app/services/risk_intelligence_provider.py'
       - 'backend/tests/performance/**'
+      - 'backend/requirements.txt'
   pull_request:
     branches: [main]
     paths:
       - 'backend/app/predictive/**'
       - 'backend/app/services/risk_intelligence_provider.py'
       - 'backend/tests/performance/**'
+      - 'backend/requirements.txt'
 jobs:
   performance:
     runs-on: ubuntu-latest
