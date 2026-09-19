@@ -242,6 +242,8 @@ class ComplianceAutomationService:
             await self._sync_policy_transition(event)
         elif event_type == "decision_execution":
             await self._sync_decision_execution(event)
+        elif event_type == "decision_review_transition":
+            await self._sync_decision_review_transition(event)
         else:
             raise ValueError(f"Unsupported compliance event: {event_type}")
 
@@ -267,6 +269,30 @@ class ComplianceAutomationService:
                 "riskiq_policy_id": policy_id,
                 "riskiq_policy_version": version,
                 "riskiq_policy_status": target_status,
+            },
+        )
+
+    async def _sync_decision_review_transition(self, event: dict[str, Any]) -> None:
+        decision_id = str(event.get("decision_id") or "")
+        if not decision_id:
+            raise ValueError("decision_id is required")
+        status = str(event.get("review_state") or event.get("status") or "").upper()
+        action_level = str(event.get("action_level") or "").lower()
+        title = f"RiskIQ Compliance | Decision Review {decision_id} | {status}"
+        description = self._decision_review_description(event)
+        await self._upsert_ticket(
+            sync_key=f"decision-review:{decision_id}:{status}",
+            subject=title,
+            description=description,
+            priority=4 if action_level in {"medium", "high"} else 3,
+            tags=["riskiq", "riskiq-compliance", "decision-review"],
+            custom_fields={
+                "riskiq_event_type": "decision_review_transition",
+                "riskiq_decision_id": decision_id,
+                "riskiq_review_state": status,
+                "riskiq_evidence_hash": event.get("evidence_hash"),
+                "riskiq_policy_id": event.get("policy_id"),
+                "riskiq_policy_version": event.get("policy_version"),
             },
         )
 
@@ -361,6 +387,23 @@ class ComplianceAutomationService:
             f"<p>Actor: {event.get('actor')}</p>"
             f"<p>Reason: {event.get('reason') or 'Not specified'}</p>"
             f"<p>Occurred at: {event.get('at')}</p>"
+        )
+
+    @staticmethod
+    def _decision_review_description(event: dict[str, Any]) -> str:
+        evidence_hash = str(event.get("evidence_hash") or "")
+        justification = str(event.get("justification") or "Not specified")
+        evidence = json.dumps(event.get("evidence") or {}, sort_keys=True, default=str)
+        return (
+            "<p><strong>RiskIQ decision review transition</strong></p>"
+            f"<p>Decision: {event.get('decision_id')}</p>"
+            f"<p>Review state: {event.get('review_state') or event.get('status')}</p>"
+            f"<p>Action: {event.get('action')} ({event.get('action_level')})</p>"
+            f"<p>Policy: {event.get('policy_id')} v{event.get('policy_version')}</p>"
+            f"<p>Approver/reviewer: {event.get('actor')}</p>"
+            f"<p>Justification: {justification}</p>"
+            f"<p>Evidence hash: <code>{evidence_hash}</code></p>"
+            f"<p>Evidence snapshot: <code>{evidence[:6000]}</code></p>"
         )
 
     @staticmethod
