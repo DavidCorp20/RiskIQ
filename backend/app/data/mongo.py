@@ -10,10 +10,14 @@ from app.config import settings
 
 
 def _bson_safe(value: Any) -> Any:
-    if isinstance(value, Decimal): return float(value)
-    if isinstance(value, dict): return {key: _bson_safe(item) for key, item in value.items()}
-    if isinstance(value, list): return [_bson_safe(item) for item in value]
-    if isinstance(value, tuple): return tuple(_bson_safe(item) for item in value)
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {key: _bson_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_bson_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_bson_safe(item) for item in value)
     return value
 
 
@@ -43,13 +47,17 @@ class MongoRepository:
         """Expose index creation without leaking the Mongo collection to services/tests."""
         self._collection.create_index(fields, unique=True, name=name)
 
-    def ensure_unique_index(\n        self,\n        fields: list[tuple[str, int]],\n        *,\n        name: str | None = None,\n    ) -> None:\n        """Expose index creation without leaking the Mongo collection to services/tests."""\n        self._collection.create_index(fields, unique=True, name=name)\n\n    def insert(self, document: dict[str, Any]) -> str:
+    def insert(self, document: dict[str, Any]) -> str:
         payload = _bson_safe(dict(document))
         payload.setdefault("created_at", datetime.now(timezone.utc).isoformat())
         result = self._collection.insert_one(payload)
         return str(result.inserted_id)
 
-    def find(self, filters: dict[str, Any] | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    def find(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
         return list(self._collection.find(filters or {}, {"_id": 0}).limit(limit))
 
     def update(self, filters: dict[str, Any], update: dict[str, Any]) -> bool:
