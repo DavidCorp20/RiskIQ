@@ -44,7 +44,21 @@ class MongoRepository:
         *,
         name: str | None = None,
     ) -> None:
-        """Expose index creation without leaking the Mongo collection to services/tests."""
+        """Ensure a unique index without failing on an equivalent existing index."""
+        normalized_fields = dict(fields)
+        existing = None
+        for index in self._collection.list_indexes():
+            if dict(index.get("key", {})) == normalized_fields:
+                existing = index
+                break
+
+        if existing:
+            if existing.get("unique") is True:
+                return
+            existing_name = str(existing.get("name") or "")
+            if existing_name:
+                self._collection.drop_index(existing_name)
+
         self._collection.create_index(fields, unique=True, name=name)
 
     def insert(self, document: dict[str, Any]) -> str:
