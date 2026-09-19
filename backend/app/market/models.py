@@ -48,7 +48,38 @@ class MarketContext(BaseModel):
     ttl_seconds: int = 60
 
 
-class StatisticalEvidence(BaseModel):
+
+
+class TimeSeriesPoint(BaseModel):
+    date: date
+    value: float
+
+
+class HistoricalSeries(BaseModel):
+    name: str
+    source: str
+    frequency: str = "monthly"
+    unit: str | None = None
+    points: list[TimeSeriesPoint] = Field(default_factory=list)
+
+
+class PortfolioTimeSeriesPoint(TimeSeriesPoint):
+    metric: str
+
+
+class PortfolioTimeSeriesRequest(BaseModel):
+    portfolio_series: list[HistoricalSeries]
+    market_series: list[HistoricalSeries]
+    frequency: str = "monthly"
+    tolerance_days: int = Field(default=3, ge=0, le=31)
+    exclude_weekends: bool = True
+    prefer_previous: bool = True
+    portfolio_transformation: str = "level"
+    market_transformation: str = "level"
+    methods: list[str] = Field(default_factory=lambda: ["pearson", "spearman"])
+    min_sample_size: int = Field(default=12, ge=12)
+    alpha: float = Field(default=0.05, gt=0, lt=1)
+\n\nclass StatisticalEvidence(BaseModel):
     metric: str
     market_indicator: str
     coefficient: float | None = None
