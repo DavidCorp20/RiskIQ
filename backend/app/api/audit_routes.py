@@ -53,8 +53,8 @@ def resolve_decision(decision_id: str, payload: dict) -> dict:
 def freshservice_status() -> dict:
     compliance_service._ensure_indexes()
     pending = compliance_service.outbox.find({"status": {"$in": ["pending", "retry"]}}, limit=1000)
-    sent = compliance_service.outbox.find({"status": "sent"}, limit=1000)
-    return {"enabled": compliance_service.client.enabled, "pending": len(pending), "sent": len(sent), "integration": "freshservice"}
+    delivered = compliance_service.outbox.find({"status": "delivered"}, limit=1000)
+    return {"enabled": compliance_service.client.enabled, "pending": len(pending), "delivered": len(delivered), "integration": "freshservice"}
 
 
 @router.post("/freshservice/sync")
