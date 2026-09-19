@@ -26,6 +26,32 @@ class PDEngine:
         gini=None if auc is None else 2*auc-1
         return {"auc":auc,"gini":gini,"ks":ks,"sample_size":len(labels),"positive_rate":positives/len(labels)}
 
+    def feature_importance(self, rows:list[dict[str,Any]], target:str="default", features:list[str]|None=None)->list[dict[str,Any]]:
+        from .models import FeatureImportance
+        candidates=features or sorted({key for row in rows for key,value in row.items() if isinstance(value,(int,float)) and not isinstance(value,bool)})
+        labels=[]
+        for row in rows:
+            value=row.get(target)
+            if value is None: continue
+            labels.append(1 if str(value).lower() in {"1","true","yes","bad","default","defaulted"} else 0)
+        if not labels or len(set(labels))<2: return []
+        output=[]
+        for feature in candidates:
+            pairs=[]
+            for row in rows:
+                if row.get(target) is None or row.get(feature) is None: continue
+                try:pairs.append((float(row[feature]),1 if str(row[target]).lower() in {"1","true","yes","bad","default","defaulted"} else 0))
+                except (TypeError,ValueError): continue
+            if len(pairs)<2: continue
+            scores=[x for x,_ in pairs]; ys=[y for _,y in pairs]
+            metrics=self.validation_metrics(scores,ys)
+            auc=metrics.get("auc")
+            if auc is None: continue
+            value=abs(float(auc)-0.5)*2
+            direction="positive" if sum(s for s,y in pairs if y)/max(1,sum(y for _,y in pairs)) > sum(s for s,y in pairs if not y)/max(1,sum(1-y for _,y in pairs)) else "negative"
+            output.append(FeatureImportance(feature=feature,metric="univariate_auc_distance",value=round(value,8),direction=direction,sample_size=len(pairs)).model_dump())
+        return sorted(output,key=lambda x:x["value"],reverse=True)
+
     def empirical_pd(self, rows:list[dict[str,Any]], outcome_field:str="default")->float:
         labels=[]
         for row in rows:
