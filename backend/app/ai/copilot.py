@@ -298,6 +298,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             mode=mode,
             risk_facts=risk_facts,
             market_context=market_context,
+            market_correlation=market_correlation,
             conversation=conversation or [],
             fallback=lambda: self._adaptive_narrative(
                 question,
@@ -351,6 +352,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         mode: str,
         risk_facts: dict[str, Any],
         market_context: dict[str, Any],
+        market_correlation: list[MarketCorrelationEvidence],
         conversation: list[dict[str, Any]],
         fallback: Any,
     ) -> tuple[str, str]:
