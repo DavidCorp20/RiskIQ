@@ -40,6 +40,10 @@ async def test_freshservice_client_retries_transient_503(monkeypatch):
     client = FreshserviceClient()
     client.api_key = "test"
     client.base_url = "https://example.freshservice.com"
+    monkeypatch.setattr(client, "enabled", True, raising=False)
+    monkeypatch.setattr("app.integrations.freshservice.settings.freshservice_enabled", True)
+    monkeypatch.setattr("app.integrations.freshservice.settings.freshservice_api_key", "test")
+    monkeypatch.setattr("app.integrations.freshservice.settings.freshservice_base_url", "https://example.freshservice.com")
 
     class Response:
         status_code = 503
