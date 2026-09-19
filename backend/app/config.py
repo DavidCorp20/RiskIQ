@@ -3,6 +3,16 @@ from __future__ import annotations
 import os
 
 
+def _optional_int(name: str) -> int | None:
+    value = os.getenv(name, "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer when provided") from exc
+
+
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
     mongo_url: str = os.getenv("MONGO_URL", "mongodb://localhost:27017")
@@ -13,7 +23,7 @@ class Settings:
     freshservice_api_key: str = os.getenv("FRESHSERVICE_API_KEY", "")
     freshservice_webhook_secret: str = os.getenv("FRESHSERVICE_WEBHOOK_SECRET", "")
     freshservice_requester_email: str = os.getenv("FRESHSERVICE_REQUESTER_EMAIL", "")
-    freshservice_workspace_id: int | None = int(os.getenv("FRESHSERVICE_WORKSPACE_ID", "0")) or None
+    freshservice_workspace_id: int | None = _optional_int("FRESHSERVICE_WORKSPACE_ID")
     freshservice_critical_policy_statuses: str = os.getenv(
         "FRESHSERVICE_CRITICAL_POLICY_STATUSES",
         "APPROVED,DEPLOYED,RETIRED",
