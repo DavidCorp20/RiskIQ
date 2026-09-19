@@ -6,7 +6,7 @@ import hmac
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
@@ -39,6 +39,16 @@ def _retry_after(response: httpx.Response) -> float:
         return min(max(float(value), 0.0), settings.freshservice_max_retry_delay_seconds)
     except (TypeError, ValueError):
         return 0.0
+
+
+class ComplianceRepository(Protocol):
+    """Persistence contract used by compliance automation and unit tests."""
+
+    def ensure_indexes(self) -> None: ...
+    def ensure_unique_index(self, fields: list[tuple[str, int]], *, name: str | None = None) -> None: ...
+    def find(self, filters: dict[str, Any] | None = None, limit: int = 100) -> list[dict[str, Any]]: ...
+    def insert(self, document: dict[str, Any]) -> str: ...
+    def update(self, filters: dict[str, Any], update: dict[str, Any]) -> bool: ...
 
 
 class FreshserviceClient:
@@ -140,21 +150,27 @@ class ComplianceAutomationService:
     external ITSM provider. Failed records remain pending for a later retry.
     """
 
-    def __init__(self) -> None:
-        self.outbox = MongoRepository("compliance_outbox")
-        self.sync = MongoRepository("freshservice_compliance_sync")
-        self.client = FreshserviceClient()
+    def __init__(
+        self,
+        *,
+        outbox: ComplianceRepository | None = None,
+        sync: ComplianceRepository | None = None,
+        client: FreshserviceClient | None = None,
+    ) -> None:
+        self.outbox: ComplianceRepository = outbox or MongoRepository("compliance_outbox")
+        self.sync: ComplianceRepository = sync or MongoRepository("freshservice_compliance_sync")
+        self.client = client or FreshserviceClient()
         self._indexes_ready = False
 
     def _ensure_indexes(self) -> None:
         if self._indexes_ready:
             return
         self.outbox.ensure_indexes()
-        self.outbox._collection.create_index([("event_key", 1)], unique=True)
-        self.outbox._collection.create_index([("status", 1), ("created_at", 1)])
+        self.outbox.ensure_unique_index([("event_key", 1)], name="uniq_compliance_event_key")
+        self.outbox.ensure_unique_index([("status", 1), ("created_at", 1)], name="idx_compliance_outbox_status_created")
         self.sync.ensure_indexes()
-        self.sync._collection.create_index([("sync_key", 1)], unique=True)
-        self.sync._collection.create_index([("freshservice_ticket_id", 1)])
+        self.sync.ensure_unique_index([("sync_key", 1)], name="uniq_freshservice_sync_key")
+        self.sync.ensure_unique_index([("freshservice_ticket_id", 1)], name="idx_freshservice_ticket_id")
         self._indexes_ready = True
 
     def enqueue(
