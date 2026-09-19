@@ -51,6 +51,36 @@ class MarketContextService:
             providers.append(NullMarketDataProvider())
         return providers
 
+    async def get_historical_series(self, *, symbol: str = "NQ=F", range: str = "2y", interval: str = "1mo") -> dict[str, Any]:
+        """Fetch normalized historical market points without changing the live context contract."""
+        for provider in self.market_providers:
+            if getattr(provider, "symbol", None) != symbol:
+                continue
+            try:
+                points = await asyncio.wait_for(
+                    provider.fetch_historical_series(range=range, interval=interval),
+                    timeout=self.timeout_seconds,
+                )
+                return {
+                    "symbol": symbol,
+                    "source": type(provider).__name__,
+                    "status": "available" if points else "unavailable",
+                    "points": points,
+                    "range": range,
+                    "interval": interval,
+                }
+            except Exception as exc:
+                return {
+                    "symbol": symbol,
+                    "source": type(provider).__name__,
+                    "status": "unavailable",
+                    "points": [],
+                    "range": range,
+                    "interval": interval,
+                    "error": type(exc).__name__,
+                }
+        return {"symbol": symbol, "source": None, "status": "unavailable", "points": [], "range": range, "interval": interval}
+
     async def get_context(self) -> dict[str, Any]:
         now = asyncio.get_running_loop().time()
         if self._cache is not None and now - self._cache_at < self.cache_ttl_seconds:
