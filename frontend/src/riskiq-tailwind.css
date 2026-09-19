@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@theme {
+  --color-riskiq-bg: #F1F5F9;
+  --color-riskiq-surface: #FFFFFF;
+  --color-riskiq-border: #E2E8F0;
+  --color-riskiq-text: #0F172A;
+  --color-riskiq-muted: #64748B;
+  --color-riskiq-navy: #0F172A;
+  --color-riskiq-blue: #2563EB;
+  --color-riskiq-teal: #0F766E;
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { margin: 0; background: #F1F5F9; color: #0F172A; font-size: 14px; }
+  button, input, select { font: inherit; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
+}
+
+@layer components {
+  .ros-shell { @apply min-h-screen bg-slate-100 text-slate-900; }
+  .ros-sidebar { @apply fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col border-r border-slate-800 bg-slate-900 px-4 py-5 text-slate-200; }
+  .ros-brand { @apply flex items-center gap-3 px-2 pb-6; }
+  .ros-mark { @apply grid size-9 place-items-center rounded-md border border-slate-700 bg-white text-base font-semibold text-slate-900; }
+  .ros-brand strong { @apply block text-[17px] font-semibold tracking-tight text-white; }
+  .ros-brand span { @apply mt-0.5 block text-xs font-medium tracking-[0.08em] text-slate-400; }
+  .ros-portfolio { @apply mb-6 rounded-lg border border-slate-800 bg-slate-800/70 p-3; }
+  .ros-portfolio>span,.ros-nav-label { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-400; }
+  .ros-portfolio select { @apply mt-2 min-h-10 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 shadow-sm outline-none; }
+  .ros-portfolio select:focus { @apply border-blue-500 ring-2 ring-blue-500/20; }
+  .ros-nav-label { @apply mb-2 px-2; }
+  .ros-sidebar nav { @apply grid gap-1; }
+  .side-group-label { @apply flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2.5 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-white; }
+  .side-group-label.is-active { @apply text-slate-200; }
+  .side-group-items { @apply grid gap-0.5; }
+  .ros-sidebar nav .side-group-items button { @apply flex min-h-11 w-full items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-slate-400 hover:bg-slate-800 hover:text-white; }
+  .ros-sidebar nav .side-group-items button.active { @apply bg-slate-800 text-white ring-1 ring-inset ring-slate-700; }
+  .ros-nav-icon { @apply grid size-7 shrink-0 place-items-center text-slate-500; }
+  .ros-sidebar nav .side-group-items button.active .ros-nav-icon { @apply text-blue-400; }
+  .ros-sidebar nav b { @apply block text-sm font-medium; }
+  .ros-sidebar nav small { @apply mt-0.5 block text-xs text-slate-500; }
+  .ros-sidebar nav .side-group-items button.active small { @apply text-slate-400; }
+  .ros-sidebar nav em { @apply ml-auto rounded border border-blue-400/30 bg-blue-400/10 px-1.5 py-0.5 text-[10px] font-semibold not-italic tracking-wide text-blue-300; }
+  .ros-side-foot { @apply mt-auto border-t border-slate-800 px-2 pt-4 text-xs leading-6 text-slate-400; }
+  .ros-side-foot div { @apply ml-3.5 text-slate-500; }
+  .online-dot { @apply mr-2 inline-block size-1.5 rounded-full bg-emerald-400; }
+  .ros-main { @apply ml-[252px] min-h-screen bg-slate-100; }
+  .ros-top { @apply sticky top-0 z-30 flex min-h-[72px] items-center justify-between border-b border-slate-200 bg-white/95 px-6 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur; }
+  .ros-kicker { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
+  .ros-top h1 { @apply mt-1 text-2xl font-semibold tracking-tight text-slate-950; }
+  .ros-top-actions { @apply flex items-center gap-4; }
+  .engine-status { @apply inline-flex items-center gap-2 text-[13px] text-slate-500; }
+  .engine-status i { @apply size-2 rounded-full bg-emerald-500; }
+  .engine-status.busy i { @apply bg-amber-500; }
+  .run-button,.hero-actions button,.trend-empty button,.stress-control button { @apply inline-flex min-h-9 items-center justify-center rounded-md border border-slate-900 bg-slate-900 px-3.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50; }
+  .ros-menu { @apply hidden border-0 bg-transparent p-2 text-slate-700; }
+  .ros-error { @apply mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800; }
+  .ros-content { @apply mx-auto max-w-[1560px] px-6 py-6 pb-12; }
+  .ros-hero,.ros-section,.ros-metric,.analytics-command,.migration-hero { @apply border-slate-200 bg-white shadow-sm; }
+  .ros-hero { @apply grid grid-cols-[minmax(0,1fr)_220px] gap-6 rounded-xl border p-6; }
+  .hero-eyebrow,.ros-section .section-head span,.engine-intro>div>span,.formula-panel span,.decision-hero>div>span { @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500; }
+  .ros-hero h2 { @apply mt-2 text-2xl font-semibold tracking-tight text-slate-950; }
+  .hero-copy>p { @apply mt-2 max-w-4xl text-sm leading-6 text-slate-600; }
+  .hero-actions { @apply mt-5 flex flex-wrap gap-2; }
+  .hero-actions .secondary { @apply border border-slate-200 bg-white text-slate-800 hover:bg-slate-50; }
+  .posture-badge { @apply flex flex-col justify-center border-l border-slate-200 pl-6; }
+  .posture-badge span { @apply text-xs font-semibold text-slate-500; }
+  .posture-badge strong { @apply mt-1 text-xl font-semibold; }
+  .posture-badge small { @apply mt-1 text-xs text-slate-500; }
+  .posture-badge.critical strong { @apply text-red-700; }
+  .posture-badge.high strong { @apply text-amber-700; }
+  .posture-badge.watch strong { @apply text-amber-600; }
+  .posture-badge.control strong { @apply text-emerald-700; }
+  .metric-strip { @apply my-3 grid grid-cols-6 gap-3; }
+  .metric-strip.embedded { @apply m-0 grid-cols-4; }
+  .ros-metric { @apply min-h-[92px] rounded-xl border bg-white p-4 shadow-sm; }
+  .ros-metric>span { @apply block text-xs font-medium text-slate-500; }
+  .ros-metric strong { @apply mt-2 block text-xl font-semibold tracking-tight text-slate-950; }
+  .ros-metric small { @apply mt-1 block text-xs text-slate-500; }
+  .ros-metric.risk strong { @apply text-red-700; }
+  .ros-metric.severe strong { @apply text-red-800; }
+  .analysis-grid,.advanced-grid { @apply my-3 grid grid-cols-2 gap-3; }
+  .ros-section { @apply min-w-0 rounded-xl border p-5; }
+  .ros-section.wide { @apply col-span-full; }
+  .section-head { @apply mb-5 flex items-start justify-between gap-4; }
+  .ros-section h2 { @apply mt-1 text-base font-semibold text-slate-950; }
+  .text-button { @apply rounded-md border-0 bg-transparent px-2 py-1 text-sm font-medium text-blue-700 hover:bg-blue-50; }
+  .muted { @apply text-sm text-slate-500; }
+  .data-rows { @apply grid; }
+  .data-rows>div { @apply flex items-center justify-between gap-5 border-b border-slate-100 py-3 last:border-b-0; }
+  .data-rows span { @apply text-sm text-slate-500; }
+  .data-rows strong { @apply text-sm font-semibold text-slate-800; }
+  .focus-row { @apply flex items-center justify-between gap-5; }
+  .focus-row span { @apply text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .focus-row strong { @apply mt-1 block text-lg font-semibold text-slate-950; }
+  .focus-row p { @apply mt-1 text-sm text-slate-500; }
+  .focus-number { @apply border-l border-slate-200 pl-5 text-right; }
+  .focus-number strong { @apply text-xl font-semibold; }
+  .focus-number span { @apply text-xs text-slate-500; }
+  .priority-list { @apply grid; }
+  .priority-row { @apply grid grid-cols-[32px_minmax(0,1fr)] gap-3 border-b border-slate-100 py-3 last:border-b-0; }
+  .priority-row>span { @apply grid size-8 place-items-center rounded-md bg-slate-100 text-xs font-semibold text-slate-700; }
+  .priority-row strong { @apply text-sm font-semibold text-slate-900; }
+  .priority-row p { @apply mt-1 text-[13px] leading-5 text-slate-500; }
+  .priority-row small { @apply text-xs text-slate-400; }
+  .ros-next { @apply mt-3 flex items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900 px-5 py-4 text-white; }
+  .ros-next span { @apply block text-xs font-semibold uppercase tracking-[0.08em] text-slate-400; }
+  .ros-next strong { @apply mt-1 block text-sm font-medium; }
+  .ros-next button { @apply min-h-9 rounded-md border-0 bg-white px-3.5 text-sm font-medium text-slate-900 hover:bg-slate-100; }
+  .table-wrap { @apply overflow-x-auto; }
+  table { @apply w-full min-w-[720px] border-collapse; }
+  th { @apply border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.07em] text-slate-500; }
+  td { @apply border-b border-slate-100 px-3 py-3 text-sm text-slate-700; }
+  td b { @apply font-semibold text-slate-900; }
+  .priority-pill { @apply inline-flex min-w-8 items-center justify-center rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold; }
+  .trend-empty,.trend-panel { @apply flex min-h-[160px] items-center gap-4 rounded-md border border-slate-200 p-5 bg-white shadow-sm; }
+  .trend-panel { @apply justify-between; }
+  .trend-icon { @apply grid size-10 place-items-center rounded-md bg-slate-100 text-slate-600; }
+  .trend-empty strong,.trend-panel strong { @apply text-sm font-semibold; }
+  .trend-empty p,.trend-panel p { @apply mt-1 text-[13px] leading-5 text-slate-500; }
+  .sparkline { @apply flex h-12 max-w-[300px] flex-1 items-end gap-1.5; }
+  .sparkline span { @apply w-1/6 rounded-t bg-slate-300; }
+  .sparkline span:nth-child(1){height:35%}.sparkline span:nth-child(2){height:48%}.sparkline span:nth-child(3){height:42%}.sparkline span:nth-child(4){height:70%}.sparkline span:nth-child(5){height:90%}
+  .risk-svg { @apply mt-4 h-[180px] w-full; }
+  .risk-svg line { stroke:#E2E8F0; stroke-width:1; }
+  .risk-svg polyline { fill:none; stroke:#2563EB; stroke-width:2; }
+  .risk-svg circle { fill:#2563EB; }
+  .bar-chart { @apply grid gap-4; }
+  .bar-row>div:first-child { @apply mb-1 flex justify-between gap-3; }
+  .bar-row span { @apply truncate text-sm text-slate-600; }
+  .bar-row b { @apply text-sm font-semibold; }
+  .bar-track { @apply h-2 overflow-hidden rounded-full bg-slate-100; }
+  .bar-track i { @apply block h-full rounded-full bg-slate-800; }
+  .empty-analysis { @apply px-2 py-6 text-sm leading-6 text-slate-500; }
+  .ros-empty { @apply mx-auto flex min-h-[55vh] max-w-xl flex-col items-center justify-center text-center; }
+  .empty-mark { @apply grid size-12 place-items-center rounded-lg bg-slate-900 text-lg font-semibold text-white; }
+  .ros-empty h2 { @apply mt-4 text-xl font-semibold text-slate-950; }
+  .ros-empty p { @apply mt-2 text-sm leading-6 text-slate-500; }
+  .analytics-command { @apply flex items-center justify-between gap-6 rounded-xl border p-5; }
+  .analytics-command h2 { @apply mt-1 text-xl font-semibold; }
+  .analytics-command p { @apply mt-1 text-sm text-slate-500; }
+  .analytics-meta { @apply text-right; }
+  .analytics-meta strong { @apply mt-1 block text-xl font-semibold; }
+  .analytics-meta small { @apply text-xs text-slate-500; }
+  .stress-control { @apply grid grid-cols-[220px_minmax(0,1fr)_auto] items-center gap-5; }
+  .stress-control span { @apply block text-xs font-semibold uppercase tracking-wide text-slate-500; }
+  .stress-control strong { @apply mt-1 block text-2xl font-semibold; }
+  .stress-control p { @apply mt-1 text-xs text-slate-500; }
+  .stress-control input { @apply w-full; }
+  .scenario-result { @apply mt-5 overflow-auto rounded-md bg-slate-900 p-5 text-[13px] leading-5 text-slate-200; }
+  .formula-panel,.decision-hero,.engine-intro { @apply rounded-lg border border-slate-800 bg-slate-900 p-5 text-white; }
+  .formula-panel { @apply flex items-center justify-between gap-6; }
+  .formula-panel strong,.decision-hero h2,.engine-intro h2 { @apply mt-1 text-xl font-semibold; }
+  .formula-panel p,.decision-hero p,.engine-intro p { @apply mt-1 max-w-3xl text-sm leading-5 text-slate-300; }
+  .bucket-grid { @apply grid grid-cols-4 gap-3; }
+  .bucket-grid>div { @apply rounded-md border border-slate-200 bg-white p-4 shadow-sm; }
+  .bucket-grid span,.bucket-grid small { @apply text-xs text-slate-500; }
+  .bucket-grid strong { @apply my-1 block text-xl font-semibold; }
+  .migration-hero { @apply flex items-center justify-between gap-5 rounded-xl border p-5; }
+  .migration-hero strong { @apply mt-1 block text-lg font-semibold; }
+  .migration-hero p { @apply mt-1 text-sm text-slate-500; }
+  .direction { @apply rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide; }
+  .direction.worsening { @apply bg-red-50 text-red-700; }
+  .decision-hero { @apply mb-3 flex items-center justify-between gap-5; }
+  .decision-card { @apply mt-2 rounded-md border border-slate-200 bg-white p-4 shadow-sm; }
+  .decision-card span { @apply text-xs font-semibold uppercase tracking-wide text-amber-700; }
+  .decision-card strong { @apply mt-1 block text-base font-semibold; }
+  .decision-card p { @apply mt-1 text-sm text-slate-500; }
+  .engine-page { @apply -mt-1; }
+}
+
+@media (max-width: 1100px) {
+  .metric-strip { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .metric-strip.embedded,.bucket-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .ros-hero { grid-template-columns: 1fr; }
+  .posture-badge { border-left: 0; border-top: 1px solid #E2E8F0; padding: 16px 0 0; }
+}
+@media (max-width: 800px) {
+  .ros-sidebar { transform: translateX(-100%); transition: transform .2s ease; }
+  .ros-sidebar.open { transform: translateX(0); }
+  .ros-main { margin-left: 0; }
+  .ros-top { padding: 0 16px; }
+  .ros-menu { display: inline-flex; }
+  .ros-top-actions .engine-status { display:none; }
+  .ros-content { padding: 18px 16px 40px; }
+  .analysis-grid,.advanced-grid { grid-template-columns:1fr; }
+  .stress-control { grid-template-columns:1fr; }
+}
+@media (max-width: 560px) {
+  .ros-top h1 { font-size:20px; }
+  .run-button { padding-inline:10px; }
+  .metric-strip,.metric-strip.embedded,.bucket-grid { grid-template-columns:1fr 1fr; }
+  .ros-hero,.ros-section { padding:16px; }
+  .ros-next,.analytics-command,.migration-hero,.decision-hero,.engine-intro,.formula-panel { flex-direction:column; align-items:flex-start; }
+  .focus-row { flex-direction:column; align-items:flex-start; }
+  .focus-number { width:100%; border-left:0; border-top:1px solid #E2E8F0; padding:12px 0 0; text-align:left; }
+}

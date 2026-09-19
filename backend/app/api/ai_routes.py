@@ -1,0 +1,205 @@
+from __future__ import annotations
+
+from datetime import date
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+
+from app.ai.copilot import RiskCopilotService
+from app.analytics.decision_engine import DecisionEngineService
+from app.analytics.npl import NPLAnalyticsService
+from app.analytics.portfolio_ews import PortfolioEWSService
+from app.analytics.portfolio_intelligence import PortfolioIntelligenceService
+from app.analytics.risk_analytics import RiskAnalyticsService
+from app.analytics.snapshot_engine import SnapshotEngine
+from app.data.persistence import PortfolioPersistenceService
+from app.market.models import HistoricalSeries, TimeSeriesPoint
+from app.market.service import MarketContextService
+from app.services.risk_intelligence_provider import RiskIntelligenceProvider
+
+router = APIRouter(prefix="/v1/ai", tags=["ai"])
+service = RiskCopilotService()
+persistence = PortfolioPersistenceService()
+intelligence = PortfolioIntelligenceService()
+risk_analytics = RiskAnalyticsService()
+decision_engine = DecisionEngineService()
+npl = NPLAnalyticsService()
+portfolio_ews = PortfolioEWSService()
+snapshot_engine = SnapshotEngine()
+market_context = MarketContextService()
+risk_intelligence_provider = RiskIntelligenceProvider()
+
+
+def _require_dataset(dataset_id: str) -> dict[str, Any]:
+    rows = persistence.datasets.find({"dataset_id": dataset_id}, limit=1)
+    if not rows:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return rows[0]
+
+
+def _resolve_dataset_id(payload: dict) -> str:
+    """Resolve dataset lineage, with a safe legacy-client fallback."""
+    explicit = str(payload.get("dataset_id") or "").strip()
+    if explicit:
+        return explicit
+
+    candidates = persistence.datasets.find({}, limit=100)
+    if not candidates:
+        return ""
+
+    latest = max(candidates, key=lambda row: str(row.get("created_at") or ""))
+    return str(latest.get("dataset_id") or "").strip()
+
+
+def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
+    """Rebuild deterministic evidence when the client omits or sends incomplete facts."""
+    records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    if not records:
+        raise HTTPException(status_code=422, detail="Dataset has no portfolio records for Copilot grounding")
+
+    analysis = intelligence.analyze(records)
+    risk = risk_analytics.analyze(records)
+    npl_analysis = npl.analyze(records)
+    ews_summary = portfolio_ews.summarize(records)
+    decisions = decision_engine.build(risk, npl_analysis)
+
+    loans = persistence.loans.find({"dataset_id": dataset_id}, limit=100000)
+    installments = persistence.installments.find({"dataset_id": dataset_id}, limit=100000)
+    snapshot_date = date.today().isoformat()
+    snapshot = snapshot_engine.build(
+        loans=loans,
+        installments=installments,
+        snapshot_date=snapshot_date,
+        business_id=dataset_id,
+    ) if loans else {}
+
+    facts: dict[str, Any] = {}
+    deterministic = risk if isinstance(risk, dict) else {}
+    par = deterministic.get("par") or {}
+    for key in ("par7", "par30", "par60", "par90"):
+        value = par.get(key) or {}
+        if isinstance(value, dict) and "ratio" in value:
+            facts[key] = {"id": key, "label": key.upper(), "value": value.get("ratio"), "unit": ""}
+
+    exposure = deterministic.get("exposure", snapshot.get("outstanding_balance"))
+    if exposure is not None:
+        facts["exposure"] = {"id": "exposure", "label": "Exposure", "value": exposure, "unit": ""}
+
+    loan_count = deterministic.get("loan_count", snapshot.get("active_loans"))
+    if loan_count is not None:
+        facts["loan_count"] = {"id": "loan_count", "label": "Loans", "value": loan_count, "unit": ""}
+
+    drivers = deterministic.get("drivers") or analysis.get("drivers") or []
+    priority_cards = decisions.get("priority_cards") if isinstance(decisions, dict) else []
+    if not isinstance(priority_cards, list):
+        priority_cards = []
+
+    alerts = priority_cards or deterministic.get("alerts") or []
+    status = (decisions.get("status") if isinstance(decisions, dict) else None) or "observed"
+
+    return {
+        "dataset_id": dataset_id,
+        "facts": facts,
+        "alerts": alerts,
+        "summary": {"status": status},
+        "drivers": drivers,
+        "decisions": priority_cards,
+        "cro_evidence": deterministic.get("cro_evidence", {}),
+        "concentration": deterministic.get("concentration", {}),
+        "vintage": deterministic.get("vintage", []),
+        "ews": ews_summary,
+        # The quantitative correlation engine owns this field. Keep the bridge server-side;
+        # the Copilot must never manufacture correlation findings.
+        "market_correlation": deterministic.get("market_correlation", []),
+    }
+
+
+@router.post("/copilot")
+async def copilot(payload: dict) -> dict:
+    """Answer using deterministic evidence tied to one persisted dataset."""
+    dataset_id = _resolve_dataset_id(payload)
+    if not dataset_id:
+        raise HTTPException(status_code=400, detail="dataset_id is required for dataset-bound Copilot")
+
+    _require_dataset(dataset_id)
+    supplied = payload.get("risk_facts")
+    risk_facts = supplied if isinstance(supplied, dict) else {}
+
+    supplied_lineage = str(risk_facts.get("dataset_id") or "").strip()
+    if supplied_lineage and supplied_lineage != dataset_id:
+        raise HTTPException(status_code=409, detail="risk_facts dataset_id does not match requested dataset")
+
+    drivers = payload.get("drivers") if isinstance(payload.get("drivers"), list) else []
+    decisions = payload.get("decisions") if isinstance(payload.get("decisions"), list) else []
+
+    # The frontend may send decisions/drivers while still omitting the actual
+    # calculated facts. Facts are the source of truth, so rebuild whenever they
+    # are absent instead of allowing auxiliary payload fields to suppress grounding.
+    has_facts = (
+        isinstance(risk_facts.get("facts"), dict)
+        and bool(risk_facts.get("facts"))
+        and isinstance(risk_facts.get("cro_evidence"), dict)
+        and bool(risk_facts.get("cro_evidence"))
+    )
+    if not has_facts:
+        risk_facts = _build_grounded_context(dataset_id)
+        drivers = risk_facts.pop("drivers", [])
+        decisions = risk_facts.pop("decisions", [])
+    else:
+        # EWS is always rebuilt server-side from the active dataset so the Copilot
+        # cannot trust stale or client-supplied early-warning evidence.
+        records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+        if records:
+            risk_facts["ews"] = portfolio_ews.summarize(records)
+            # Never trust market-correlation evidence from the browser. When the
+            # quantitative correlation engine is exposed through RiskAnalyticsService,
+            # its server-side result becomes the sole source for the Copilot.
+            server_analysis = risk_analytics.analyze(records)
+            server_correlation = server_analysis.get("market_correlation", [])
+            risk_facts["market_correlation"] = (
+                server_correlation if isinstance(server_correlation, list) else []
+            )
+
+    # Build quantitative market correlation server-side only for analytical grounding.
+    # The browser never supplies correlation coefficients as authoritative evidence.
+    records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    if records:
+        historical = await market_context.get_historical_series(symbol="NQ=F", range="2y", interval="1mo")
+        points = []
+        for item in historical.get("points", []):
+            try:
+                points.append(TimeSeriesPoint(date=str(item["date"]), value=float(item["value"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if points:
+            market_series = HistoricalSeries(
+                name=str(historical.get("symbol") or "NQ=F"),
+                source=str(historical.get("source") or "market-provider"),
+                frequency="monthly",
+                unit="index_points",
+                points=points,
+            )
+            quantitative = risk_analytics.analyze(records, market_series=market_series)
+            risk_facts["market_correlation"] = quantitative.get("market_correlation", [])
+        else:
+            risk_facts["market_correlation"] = []
+
+    intelligence_rows = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
+    risk_intelligence = await risk_intelligence_provider.build(dataset_id, rows=intelligence_rows)
+    conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
+    answer = await service.answer(
+        question=str(payload.get("question", "")),
+        risk_facts=risk_facts,
+        drivers=drivers,
+        decisions=decisions,
+        conversation=conversation,
+        risk_intelligence=risk_intelligence,
+    )
+    answer["dataset_id"] = dataset_id
+    answer["grounding"] = {
+        "dataset_bound": True,
+        "evidence_rebuilt_server_side": bool(not has_facts),
+        "customer_actions_executed": False,
+        "causality_inferred": False,
+    }
+    return answer

@@ -1,0 +1,34 @@
+name: Quantitative Performance
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/app/predictive/**'
+      - 'backend/app/services/risk_intelligence_provider.py'
+      - 'backend/tests/performance/**'
+      - 'backend/requirements.txt'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/predictive/**'
+      - 'backend/app/services/risk_intelligence_provider.py'
+      - 'backend/tests/performance/**'
+      - 'backend/requirements.txt'
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      MONGO_DB: riskiq_perf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run 500k quantitative benchmarks
+        run: pytest -q tests/performance -s --durations=10
