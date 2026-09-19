@@ -56,7 +56,7 @@ async def test_analytical_mode_sends_deterministic_evidence_and_history() -> Non
     )
 
     assert result["conversation_mode"] == "analytical"
-    assert result["prompt_version"] == "cro-dual-mode-v1"
+    assert result["prompt_version"] == "cro-dual-mode-market-correlation-v2"
     _, context = provider.calls[0]
     assert context["EVIDENCE_JSON"]
     assert context["FACTS"]
