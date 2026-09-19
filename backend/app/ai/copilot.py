@@ -184,6 +184,12 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "severity": severity,
             "evidence": evidence_lines,
             "cro_evidence": evidence,
+            "ews": context["ews"],
+            "ews_guardrail": {
+                "deterministic": bool(isinstance(context["ews"], dict) and context["ews"].get("available")),
+                "predictive_probability": False,
+                "interpretation": "EWS is observed, exposure-weighted prioritization evidence; it is not a predictive default probability.",
+            },
             "drivers": drivers_data[:3],
             "decisions": context["decisions"][:3],
             "decision": {
