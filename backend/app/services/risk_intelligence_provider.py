@@ -29,8 +29,8 @@ class RiskIntelligenceProvider:
         self.survival=SurvivalEngine()
         self.stress=StressEngine()
 
-    async def build(self,dataset_id:str)->dict[str,Any]:
-        rows=self.persistence.portfolio_records.find({"dataset_id":dataset_id},limit=100000)
+    async def build(self,dataset_id:str, rows:list[dict[str,Any]]|None=None)->dict[str,Any]:
+        rows=rows if rows is not None else self.persistence.portfolio_records.find({"dataset_id":dataset_id},limit=100000)
         if not rows: raise ValueError("Dataset has no portfolio records")
         risk=self.analytics.analyze(rows)
         market=await self.market.get_context()
