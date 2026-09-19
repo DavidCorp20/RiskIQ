@@ -103,6 +103,9 @@ def _build_grounded_context(dataset_id: str) -> dict[str, Any]:
         "concentration": deterministic.get("concentration", {}),
         "vintage": deterministic.get("vintage", []),
         "ews": ews_summary,
+        # The quantitative correlation engine owns this field. Keep the bridge server-side;
+        # the Copilot must never manufacture correlation findings.
+        "market_correlation": deterministic.get("market_correlation", []),
     }
 
 
@@ -143,6 +146,11 @@ async def copilot(payload: dict) -> dict:
         records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
         if records:
             risk_facts["ews"] = portfolio_ews.summarize(records)
+            # Correlation evidence is accepted only from a server-side analytics result.
+            # If the correlation engine is wired into risk_analytics, its findings are
+            # propagated here; client-supplied correlation payloads are discarded.
+            server_correlation = risk_facts.get("market_correlation")
+            risk_facts["market_correlation"] = server_correlation if isinstance(server_correlation, list) else []
 
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
