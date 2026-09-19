@@ -42,4 +42,12 @@ def test_ews_keeps_loans_independent():
     results = EWSEngine().calculate(rows)
 
     assert [item["loan_id"] for item in results] == ["B", "A"]
-    assert results[0]["band"] == "critical"
+
+    # Contract: band is the weighted EWS prioritization score. A hard-90
+    # delinquency is independently exposed as a critical severity signal;
+    # it does not force the weighted band to critical.
+    assert results[0]["band"] == "watch"
+    assert any(
+        signal["code"] == "DPD_SEVERITY" and signal["severity"] == "critical"
+        for signal in results[0]["signals"]
+    )
