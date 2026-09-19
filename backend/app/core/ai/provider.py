@@ -70,13 +70,24 @@ class GeminiProvider(AIProvider):
 
         url = f"{self.base_url}/models/{self.model}:generateContent"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                url,
-                headers={"x-goog-api-key": self.api_key},
-                json=payload,
-            )
-            response.raise_for_status()
-            body = response.json()
+            last_error: Exception | None = None
+            for attempt in range(3):
+                try:
+                    response = await client.post(
+                        url,
+                        headers={"x-goog-api-key": self.api_key},
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    body = response.json()
+                    break
+                except httpx.HTTPStatusError as exc:
+                    last_error = exc
+                    if exc.response.status_code not in {429, 500, 502, 503, 504} or attempt == 2:
+                        raise
+                    await asyncio.sleep(0.8 * (2 ** attempt))
+            else:
+                raise last_error or RuntimeError("Gemini request failed")
 
         text = (
             body.get("candidates", [{}])[0]
