@@ -1,22 +1,65 @@
 from __future__ import annotations
-from collections import defaultdict
+
 from typing import Any
-from .models import SurvivalCurve,SurvivalPoint
+
+import numpy as np
+
+from .models import SurvivalCurve, SurvivalPoint
+
 
 class SurvivalEngine:
-    def kaplan_meier(self,rows:list[dict[str,Any]],event_field:str="default",duration_field:str="duration")->SurvivalCurve:
-        observations=[]
+    """Deterministic Kaplan-Meier estimator using vectorized numpy operations."""
+
+    def kaplan_meier(
+        self,
+        rows: list[dict[str, Any]],
+        event_field: str = "default",
+        duration_field: str = "duration",
+    ) -> SurvivalCurve:
+        durations: list[int] = []
+        events: list[int] = []
+        positive_events = {"1", "true", "yes", "bad", "default", "defaulted"}
+
         for row in rows:
-            if row.get(duration_field) is None: continue
-            duration=max(0,int(float(row[duration_field])))
-            raw=row.get(event_field,False)
-            event=1 if str(raw).lower() in {"1","true","yes","bad","default","defaulted"} else 0
-            observations.append((duration,event))
-        if not observations:return SurvivalCurve(points=[],methodology="kaplan-meier-v1",sample_size=0)
-        points=[]; survival=1.0
-        for period in sorted({x[0] for x in observations}):
-            at_risk=sum(1 for d,_ in observations if d>=period)
-            events=sum(1 for d,e in observations if d==period and e)
-            if at_risk: survival*=1-(events/at_risk)
-            points.append(SurvivalPoint(period=period,at_risk=at_risk,events=events,survival=round(survival,8)))
-        return SurvivalCurve(points=points,methodology="kaplan-meier-v1",sample_size=len(observations))
+            value = row.get(duration_field)
+            if value is None:
+                continue
+            try:
+                duration = max(0, int(float(value)))
+            except (TypeError, ValueError):
+                continue
+            raw = row.get(event_field, False)
+            event = 1 if str(raw).lower() in positive_events else 0
+            durations.append(duration)
+            events.append(event)
+
+        if not durations:
+            return SurvivalCurve(points=[], methodology="kaplan-meier-v2-vectorized", sample_size=0)
+
+        d = np.asarray(durations, dtype=np.int64)
+        e = np.asarray(events, dtype=np.int8)
+        periods, inverse = np.unique(d, return_inverse=True)
+        counts_at_period = np.bincount(inverse, minlength=len(periods))
+        events_at_period = np.bincount(inverse, weights=e, minlength=len(periods)).astype(np.int64)
+        at_risk = np.cumsum(counts_at_period[::-1])[::-1]
+        survival = np.cumprod(1.0 - np.divide(
+            events_at_period,
+            at_risk,
+            out=np.zeros_like(events_at_period, dtype=float),
+            where=at_risk > 0,
+        ))
+
+        points = [
+            SurvivalPoint(
+                period=int(period),
+                at_risk=int(risk),
+                events=int(event_count),
+                survival=round(float(surv), 8),
+            )
+            for period, risk, event_count, surv in zip(periods, at_risk, events_at_period, survival)
+        ]
+        return SurvivalCurve(
+            points=points,
+            methodology="kaplan-meier-v2-vectorized",
+            sample_size=len(durations),
+        )
