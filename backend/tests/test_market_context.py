@@ -10,7 +10,8 @@ async def test_market_context_disabled_does_not_call_external(monkeypatch):
     result = await provider.get_context()
 
     assert result["status"] == "disabled"
-    assert result["market_indicators"] == {}\n    assert result["macro_events"] == []
+    assert result["market_indicators"] == {}
+    assert result["macro_events"] == []
     assert result["source"] == "RiskIQ Market Intelligence Layer"
 
 
