@@ -23,7 +23,9 @@ DIRECTRICES DE CONVERSACIÓN:
 5. MIGRACIÓN Y ESTRÉS: El escenario 30–89 DPD hacia 90+ es un ejercicio condicional sobre la exposición observada. El Roll Rate disponible representa transición histórica observada en snapshots y no debe presentarse como predicción.
 6. CERO MULETILLAS: No repitas fórmulas como "Como hecho observado", "Como hipótesis a validar", "por lo que corresponde contrastar" o descargos equivalentes en cada oración. Formula las hipótesis de trabajo de manera orgánica y vinculada a la evidencia.
 7. TONO: Profesional, analítico, directo al grano y colaborativo. Habla con lenguaje de riesgo bancario cuando corresponda, pero prioriza claridad.
-8. ACCIONES: Cuando el usuario pida recomendaciones, prioriza acciones concretas y condicionadas a la evidencia. Para Collections, considera la Mora Temprana 30–89 DPD y la transición observada. Para Underwriting, considera validaciones de originación, FPD, vintage, scoring, elegibilidad y límites antes de proponer cambios de política.
+8. EWS DETERMINÍSTICO: Cuando la consulta trate sobre EWS, alertas tempranas, deterioro temprano o priorización de exposición, utiliza exclusivamente EWS_JSON. El EWS es un mecanismo determinístico de priorización construido con trayectoria observada, señales ponderadas y exposición; su score NO es una probabilidad de default ni un forecast.
+9. GUARDRAIL EWS: Cuando menciones EWS, deja claro de forma breve y natural que se trata de evidencia observada y ponderada por exposición. No conviertas score, banda, alertas, exposición bajo riesgo, concentración ni señales en probabilidades predictivas. No inventes umbrales, alertas o causas que no estén presentes en EWS_JSON.
+10. ACCIONES: Cuando el usuario pida recomendaciones, prioriza acciones concretas y condicionadas a la evidencia. Para Collections, considera la Mora Temprana 30–89 DPD, las alertas EWS de mayor exposición y la transición observada. Para Underwriting, considera validaciones de originación, FPD, vintage, scoring, elegibilidad y límites antes de proponer cambios de política.
 
 La respuesta debe adaptarse a la intención concreta del usuario. No añadas secciones que no aporten a la pregunta. Todo dato cuantitativo debe proceder de EVIDENCE_JSON.
 """
@@ -37,7 +39,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "riesgo", "roll rate", "rollover", "migracion", "migración", "vintage", "concentracion",
             "concentración", "npl", "morosidad", "cobranzas", "collections", "segmento", "segment",
             "underwriting", "originacion", "originación", "fpd", "comite", "comité", "decision", "decisión",
-            "mora", "90+", "90 +", "30-89", "30 – 89",
+            "mora", "90+", "90 +", "30-89", "30 – 89", "ews", "early warning", "alerta", "alertas", "alerta temprana", "alertas tempranas", "deterioro temprano",
         )
         return "analytical" if any(term in q for term in analytical_terms) else "conversational"
 
@@ -71,6 +73,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "summary": risk_facts.get("summary", {}),
             "drivers": drivers or [],
             "decisions": decisions or [],
+            "ews": risk_facts.get("ews", {}),
             "conversation": conversation or [],
         }
 
@@ -193,7 +196,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             "grounded": True,
             "provider": provider_used,
             "mode": "CRO Evidence Mode",
-            "prompt_version": "cro-dual-mode-v1",
+            "prompt_version": "cro-dual-mode-ews-v1",
             "conversation_mode": mode,
             "system_prompt": self.CRO_SYSTEM_PROMPT,
             "note": "El motor determinístico establece los hechos; Gemini adapta la interpretación al contexto y a la intención de la conversación sin inventar métricas ni causalidad.",
@@ -230,6 +233,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "VINTAGE": risk_facts.get("vintage", []),
                 "DRIVERS": risk_facts.get("drivers", []),
                 "DECISIONS": risk_facts.get("decisions", []),
+                "EWS_JSON": risk_facts.get("ews", {}),
                 "CONVERSATION": conversation[-12:],
                 "CURRENT_QUESTION": question,
                 "MARKET_CONTEXT": market_context,
@@ -240,6 +244,8 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "las cifras estrictamente necesarias para responder. Mantén continuidad con CONVERSATION. "
                 "Puedes explicar, comparar, resumir, profundizar o recomendar según la intención. "
                 "No calcules métricas nuevas ni inventes causalidad. El estrés es condicional y el Rollover Rate es histórico. "
+                "Si la consulta usa EWS, trata EWS_JSON como la única fuente válida para alertas tempranas y priorización. "
+                "Explica que su score es una priorización determinística de trayectoria observada y exposición, no una probabilidad predictiva. "
                 'Usa una estructura profesional solo cuando ayude a la consulta. Devuelve exactamente JSON con esta forma {"answer":"texto"}.'
             )
         try:
