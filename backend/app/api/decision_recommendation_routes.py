@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from app.analytics.ews_engine import EWSEngine
 from app.analytics.portfolio_ews import PortfolioEWSService
@@ -197,25 +197,27 @@ def reject_decision(recommendation_id: str, payload: dict, background_tasks: Bac
 
 @router.get("")
 def list_decisions(
-    dataset_id: str | None = None,
-    status: str | None = None,
-    action_level: str | None = None,
-    limit: int = 100,
+    dataset_id: str | None = Query(default=None, min_length=1, max_length=128),
+    status: str | None = Query(default=None, min_length=1, max_length=64),
+    action_level: str | None = Query(default=None, min_length=1, max_length=32),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> dict:
-    return {
-        "count": len(repository.list(
-            dataset_id=dataset_id,
-            status=status,
-            action_level=action_level,
+    """List recommendations safely; an empty dataset is a valid 200 response."""
+    try:
+        items = repository.list(
+            dataset_id=dataset_id.strip() if dataset_id else None,
+            status=status.strip() if status else None,
+            action_level=action_level.strip() if action_level else None,
             limit=limit,
-        )),
-        "items": repository.list(
-            dataset_id=dataset_id,
-            status=status,
-            action_level=action_level,
-            limit=limit,
-        ),
-    }
+        )
+    except Exception:
+        return {
+            "count": 0,
+            "items": [],
+            "degraded": True,
+            "error": "decision_repository_unavailable",
+        }
+    return {"count": len(items), "items": items, "degraded": False}
 
 
 @router.get("/ledger")
