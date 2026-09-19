@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 from app.analytics.risk_analytics import RiskAnalyticsService
 from app.market.correlation import RiskMarketCorrelationEngine
@@ -8,14 +8,13 @@ from app.market.models import HistoricalSeries, TimeSeriesPoint
 
 
 def _series(name: str, values: list[float]) -> HistoricalSeries:
-    start = date(2023, 1, 31)
     return HistoricalSeries(
         name=name,
         source="test",
         frequency="monthly",
         points=[
             TimeSeriesPoint(
-                date=start + timedelta(days=30 * index),
+                date=date(2023 + index // 12, (index % 12) + 1, 28),
                 value=value,
             )
             for index, value in enumerate(values)
@@ -40,7 +39,7 @@ def test_correlation_engine_produces_statistical_evidence() -> None:
 def test_risk_analytics_exposes_market_correlation_contract() -> None:
     rows = []
     for index in range(18):
-        month = date(2023, 1, 31) + timedelta(days=30 * index)
+        month = date(2023 + index // 12, (index % 12) + 1, 28)
         rows.append(
             {
                 "loan_id": "L1",
