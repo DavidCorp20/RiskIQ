@@ -1,9 +1,9 @@
-from fastapi.testclient import TestClient
-
 from __future__ import annotations
 
-from app.services.risk_analytics_service import RiskAnalyticsDashboardService
+from fastapi.testclient import TestClient
+
 import app.api.portfolio_routes as portfolio_routes
+from app.services.risk_analytics_service import RiskAnalyticsDashboardService
 
 
 class FakeRepository:
@@ -25,33 +25,9 @@ class FakePersistence:
 
 def test_dashboard_builds_contract_and_clamps_intensity():
     rows = [
-        {
-            "dataset_id": "d1",
-            "loan_id": "L1",
-            "snapshot_date": "2026-01-31",
-            "segment": "Microcredito",
-            "outstanding_principal": 1000,
-            "dpd": 0,
-            "origination_date": "2025-01-01",
-        },
-        {
-            "dataset_id": "d1",
-            "loan_id": "L2",
-            "snapshot_date": "2026-01-31",
-            "segment": "Microcredito",
-            "outstanding_principal": 2000,
-            "dpd": 45,
-            "origination_date": "2025-01-01",
-        },
-        {
-            "dataset_id": "d1",
-            "loan_id": "L3",
-            "snapshot_date": "2026-01-31",
-            "segment": "Pyme",
-            "outstanding_principal": 3000,
-            "dpd": 95,
-            "origination_date": "2024-06-01",
-        },
+        {"dataset_id": "d1", "loan_id": "L1", "snapshot_date": "2026-01-31", "segment": "Microcredito", "outstanding_principal": 1000, "dpd": 0, "origination_date": "2025-01-01"},
+        {"dataset_id": "d1", "loan_id": "L2", "snapshot_date": "2026-01-31", "segment": "Microcredito", "outstanding_principal": 2000, "dpd": 45, "origination_date": "2025-01-01"},
+        {"dataset_id": "d1", "loan_id": "L3", "snapshot_date": "2026-01-31", "segment": "Pyme", "outstanding_principal": 3000, "dpd": 95, "origination_date": "2024-06-01"},
     ]
 
     service = RiskAnalyticsDashboardService(persistence=FakePersistence(rows))
