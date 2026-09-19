@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import settings
-from app.integrations.freshservice import FreshserviceRiskActionAdapter
+from app.risk_events.repository import FreshserviceRiskActionAdapter
 from app.risk_events.models import RiskAction
 
 from .base import RiskActionAdapter
