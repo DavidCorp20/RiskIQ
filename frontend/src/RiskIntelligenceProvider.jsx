@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { getDatasetHistory, listDatasets, runDataset } from './api'
+import { getDatasetHistory, listDatasets, runDataset, getDecisionRecommendations, createDecisionRecommendation } from './api'
 import { usePortfolioEWS } from './hooks/usePortfolioEWS'
 
 const RiskIntelligenceContext = createContext(null)
@@ -11,6 +11,9 @@ export function RiskIntelligenceProvider({ children }) {
   const [history, setHistory] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [decisionRecommendations, setDecisionRecommendations] = useState([])
+  const [decisionLoading, setDecisionLoading] = useState(false)
+  const [decisionError, setDecisionError] = useState('')
   const datasetRef = useRef(null)
   const { data: ews, loading: ewsLoading, error: ewsError, refresh: refreshEWS } = usePortfolioEWS(dataset?.dataset_id || '')
 
@@ -23,6 +26,32 @@ export function RiskIntelligenceProvider({ children }) {
     const items = response?.datasets || response || []
     setDatasets(items)
     return items
+  }, [refreshDecisionRecommendations])
+
+  const refreshDecisionRecommendations = useCallback(async (targetId = '') => {
+    const id = targetId || datasetRef.current?.dataset_id || ''
+    if (!id) { setDecisionRecommendations([]); return { items: [] } }
+    setDecisionLoading(true)
+    setDecisionError('')
+    try {
+      const response = await getDecisionRecommendations({ dataset_id: id, limit: 200 })
+      const items = response?.items || []
+      setDecisionRecommendations(items)
+      return response
+    } catch (e) {
+      setDecisionError(e.message || 'Unable to load decision recommendations')
+      throw e
+    } finally {
+      setDecisionLoading(false)
+    }
+  }, [])
+
+  const createRecommendations = useCallback(async (payload = {}) => {
+    const id = payload.dataset_id || datasetRef.current?.dataset_id || ''
+    if (!id) return null
+    const response = await createDecisionRecommendation({ ...payload, dataset_id: id })
+    setDecisionRecommendations(response?.recommendations || [])
+    return response
   }, [])
 
   const executeDataset = useCallback(async (target = null) => {
@@ -37,6 +66,7 @@ export function RiskIntelligenceProvider({ children }) {
       const historyData = await getDatasetHistory(active.dataset_id)
       setResult(resultData)
       setHistory(historyData)
+      await refreshDecisionRecommendations(active.dataset_id)
       setDataset(current => ({
         ...(current || active),
         ...active,
@@ -114,7 +144,12 @@ export function RiskIntelligenceProvider({ children }) {
     ews,
     ewsLoading,
     ewsError,
-    refreshEWS
+    refreshEWS,
+    decisionRecommendations,
+    decisionLoading,
+    decisionError,
+    refreshDecisionRecommendations,
+    createRecommendations
   }), [
     datasets,
     dataset,
@@ -128,7 +163,12 @@ export function RiskIntelligenceProvider({ children }) {
     ews,
     ewsLoading,
     ewsError,
-    refreshEWS
+    refreshEWS,
+    decisionRecommendations,
+    decisionLoading,
+    decisionError,
+    refreshDecisionRecommendations,
+    createRecommendations
   ])
 
   return (
