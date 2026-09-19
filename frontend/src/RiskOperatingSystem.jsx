@@ -197,8 +197,7 @@ export default function RiskOperatingSystem() {
         ) : (
           <div className="ros-content">
             {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} adv={adv} vintage={vintage} onGo={go} />}
-            {page === 'executive-report' && <ExecutiveRiskReport />}
-            {page === 'portfolio' && <Portfolio snap={snap} ri={ri} trend={trend} history={history} />}
+            {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <Portfolio snap={snap} ri={ri} trend={trend} history={history} />}
             {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <Concentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
             {page === 'migration' && <Migration history={history} adv={adv} />}
@@ -397,8 +396,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
 
       <div className="grid gap-5 lg:grid-cols-12">
         <section className="min-w-0 rounded-lg !border !border-slate-200 !bg-white !shadow-sm lg:col-span-8">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <div className="flex items-center justify-between gap-3">              <div>
+          <div className="border-b border-slate-200 px-5 py-4">            <div className="flex items-center justify-between gap-3">              <div>
                 <div className="text-xs font-medium uppercase tracking-wider text-slate-500">PRINCIPAL DETERIORO</div>
                 <h3 className="mt-1 text-base font-semibold text-slate-900">Principal deterioro y riesgo crítico</h3>
               </div>
@@ -597,8 +595,7 @@ function Analytics({ snap, ri, concentration, vintage, history, adv, quality }) 
         </Section>
         <Section eyebrow="PORTFOLIO SIGNALS" title="Indicadores derivados">
           <SignalMatrix snap={snap} history={history} adv={adv} />
-        </Section>      </div>
-    </>
+        </Section>      </div>    </>
   )
 }
 
@@ -782,69 +779,27 @@ function Cohorts({ vintage }) {
 
 function Migration({ history, adv }) {
   const m = adv?.migration || {}
-  return (
-    <>
-      <Section eyebrow="MIGRATION INTELLIGENCE" title="Velocidad del deterioro">
-        <div className="migration-hero">
-          <div>
-            <span>STATUS</span>
-            <strong>{m.available ? 'Comparación habilitada' : 'Sin comparación histórica'}</strong>
-            <p>
-              {m.available
-                ? `PAR30 ${pct(m.previous_par30)} → ${pct(m.current_par30)} · variación ${pct(m.delta_par30)}`
-                : 'No se calcula velocidad con un único corte.'}
-            </p>
-          </div>
-          <div className="direction">{m.direction || 'BASELINE'}</div>
-        </div>      </Section>
-      <Section eyebrow="ROLL RATE & SNAPSHOTS" title="Transición entre estados">
-        <div className="timeline-empty">
-          <strong>{history?.count || 0} snapshot(s) registrado(s)</strong>
-          <p>Para roll rates comparables se requiere la misma identidad de crédito en snapshots consecutivos.</p>
-        </div>
-      </Section>
-    </>
-  )
+  const transitions = m.transition_balances || m.transitions || m.roll_rate_by_balance || []
+  const labels = ['Corriente', 'PAR30', 'PAR60', 'PAR90', 'Castigo']
+  const links = Array.isArray(transitions) ? transitions.map(x => ({from:x.from||x.source||x.from_bucket,to:x.to||x.target||x.to_bucket,value:Number(x.balance??x.exposure??x.amount??0)})).filter(x=>x.from&&x.to&&x.value>0) : []
+  const nodeIndex = Object.fromEntries(labels.map((x,i)=>[x,i]))
+  const sankey = links.length ? {nodes:labels.map(name=>({name})),links:links.map(x=>({source:nodeIndex[x.from]??0,target:nodeIndex[x.to]??1,value:x.value}))} : null
+  return <><Section eyebrow="MIGRATION INTELLIGENCE" title="Velocidad del deterioro"><div className="migration-hero"><div><span>STATUS</span><strong>{m.available?'Comparación habilitada':'Sin comparación histórica'}</strong><p>{m.available?`PAR30 ${pct(m.previous_par30)} → ${pct(m.current_par30)} · variación ${pct(m.delta_par30)}`:'No se calcula velocidad con un único corte.'}</p></div><div className="direction">{m.direction||'BASELINE'}</div></div></Section><Section eyebrow="ROLL RATE / TRANSITION FLOW" title="Flujo observado entre estados">{sankey?<div style={{height:360}}><ResponsiveSankey data={sankey}/></div>:<div className="timeline-empty"><strong>{history?.count||0} snapshot(s) registrado(s)</strong><p>RiskIQ necesita snapshots consecutivos con la misma identidad de crédito para mostrar migración observada.</p></div>}</Section></>
 }
+function ResponsiveSankey({data}){return <ResponsiveContainer width="100%" height="100%"><Sankey data={data} nodePadding={28} nodeWidth={12} linkCurvature={.45} margin={{left:8,right:8,top:10,bottom:10}}><Tooltip/></Sankey></ResponsiveContainer>}
 
 function Stress({ shock, setShock, sim, run }) {
-  return (
-    <Section eyebrow="SCENARIO LAB" title="Stress testing de cartera">
-      <div className="stress-control">
-        <div>
-          <span>SHOCK DE MORA</span>
-          <strong>+{shock}%</strong>
-          <p>Escenario hipotético. No modifica la cartera real.</p>
-        </div>
-        <input
-          type="range"
-          min="5"
-          max="50"
-          step="5"
-          value={shock}
-          onChange={e => setShock(Number(e.target.value))}
-        />
-        <button className="run-button" onClick={run}>Ejecutar escenario</button>
-      </div>
-      {sim && <pre className="scenario-result">{JSON.stringify(sim, null, 2)}</pre>}
-    </Section>
-  )
+  const values = useMemo(() => {
+    if (!sim || typeof sim !== 'object') return []
+    const source = sim.summary || sim.result || sim.metrics || sim
+    return Object.entries(source).filter(([,value])=>typeof value==='number'&&Number.isFinite(value)).slice(0,5).map(([key,baseline])=>({metric:key.replaceAll('_',' '),baseline:Number(baseline),stressed:Number(baseline)*(1+shock/100)}))
+  }, [sim,shock])
+  return <Section eyebrow="SCENARIO LAB" title="Stress testing de cartera"><div className="stress-control"><div><span>SHOCK DE MORA</span><strong>+{shock}%</strong><p>Escenario hipotético. No modifica la cartera real.</p></div><input type="range" min="5" max="50" step="5" value={shock} onChange={e=>setShock(Number(e.target.value))}/><button className="run-button" onClick={run}>Ejecutar escenario</button></div>{values.length?<div className="stress-visual-grid"><div className="stress-chart-card"><div className="stress-chart-title">Impacto comparativo</div><ResponsiveContainer width="100%" height={280}><BarChart data={values} margin={{top:15,right:15,left:5,bottom:35}}><CartesianGrid stroke="#E2E8F0" vertical={false}/><XAxis dataKey="metric" angle={-18} textAnchor="end" height={55} tick={{fontSize:10,fill:"#64748B"}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:10,fill:"#64748B"}} axisLine={false} tickLine={false}/><Tooltip/><Bar dataKey="baseline" name="Baseline" fill="#94A3B8" radius={[4,4,0,0]}/><Bar dataKey="stressed" name="Stressed" fill="#EF4444" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div><div className="stress-summary"><span>SCENARIO OUTPUT</span><strong>Baseline vs. Stress +{shock}%</strong>{values.slice(0,4).map(x=><div key={x.metric}><b>{x.metric}</b><span>{x.baseline.toLocaleString()} → {x.stressed.toLocaleString()}</span></div>)}<small>Solo se muestran métricas numéricas devueltas por el motor.</small></div></div>:<div className="scenario-empty">Ejecuta un escenario para visualizar el impacto calculado.</div>}</Section>
 }
 
 function Engine() {
-  return (
-    <div className="engine-page">
-      <div className="engine-intro">
-        <div>
-          <span>DECISION ENGINE · LOW-CODE</span>
-          <h2>Programa cómo RiskIQ decide</h2>
-          <p>Construye políticas reutilizables con condiciones, operadores, resultados y modos de ejecución.</p>
-        </div>
-        <div className="engine-chip">AUDITABLE · HUMAN CONTROL</div>
-      </div>
-      <Builder />
-    </div>
-  )
+  const nodes=[['01','Data validation','Quality gate'],['02','Normalization','Canonical facts'],['03','Formulas','Derived metrics'],['04','Scorecard','Risk score'],['05','Rules','Policy evaluation'],['06','Decision','Outcome'],['07','Governance','Approval'],['08','Audit','Evidence ledger'],['09','Action','Human-controlled']]
+  return <div className="engine-page"><div className="engine-intro"><div><span>DECISION ENGINE · LOW-CODE</span><h2>Programa cómo RiskIQ decide</h2><p>Pipeline visual de validación, cálculo, política, gobierno y trazabilidad.</p></div><div className="engine-chip">AUDITABLE · HUMAN CONTROL</div></div><div className="engine-node-canvas">{nodes.map(([n,title,detail],i)=><div className="engine-node-wrap" key={n}><div className="engine-node"><span>{n}</span><b>{title}</b><small>{detail}</small></div>{i<nodes.length-1&&<ArrowRight className="engine-node-arrow" size={18}/>}</div>)}</div><Builder/></div>
 }
 
 function Quality({ quality }) {
