@@ -128,7 +128,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         root_causes = self._root_cause_narrative(segments, drivers_data)
         mitigation = self._mitigation_narrative(migration, segments, drivers_data)
 
-        answer_text = await self._generate_conversational_answer(
+        answer_text, provider_used = await self._generate_conversational_answer(
             question=question,
             mode=mode,
             risk_facts=risk_facts,
@@ -162,7 +162,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
                 "human_review_required": True,
             },
             "grounded": True,
-            "provider": "evidence_mode",
+            "provider": provider_used,
             "mode": "CRO Evidence Mode",
             "prompt_version": "cro-dual-mode-v1",
             "conversation_mode": mode,
@@ -177,7 +177,7 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
         risk_facts: dict[str, Any],
         conversation: list[dict[str, Any]],
         fallback: Any,
-    ) -> str:
+    ) -> tuple[str, str]:
         if mode == "conversational":
             context = {
                 "MODE": "conversational",
@@ -215,10 +215,11 @@ La respuesta debe adaptarse a la intención concreta del usuario. No añadas sec
             result = await self.provider.generate(prompt, context)
             answer = result.get("answer")
             if isinstance(answer, str) and answer.strip():
-                return answer.strip()
-        except Exception:
-            pass
-        return fallback()
+                return answer.strip(), "gemini"
+        except Exception as exc:
+            # Never expose secrets or provider payloads, but keep the failure visible in Railway logs.
+            print(f"RiskIQ Gemini provider failed: {type(exc).__name__}: {exc}")
+        return fallback(), "evidence_mode"
 
     def _adaptive_narrative(
         self,
