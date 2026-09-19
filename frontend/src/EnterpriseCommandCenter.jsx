@@ -142,7 +142,7 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
       <Card eyebrow="TOP RISK SIGNALS" title="Priority review queue">
         <div className="enterprise-actions">{actions.length ? actions.map((x,i)=><div className="enterprise-action" key={i}>
           <span className={i===0?'critical':''}>{String(x.rank||i+1).padStart(2,'0')}</span><div><b>{x.title}</b><small>{x.why || 'Calculated evidence available for review.'}</small></div><ArrowUpRight size={15}/>
-        </div>) : <EmptyChart message="No priority signals calculated."/ >}</div>
+        </div>) : <EmptyChart message="No priority signals calculated." />}</div>
       </Card>
     </div>
 
