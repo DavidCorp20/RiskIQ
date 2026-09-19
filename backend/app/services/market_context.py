@@ -24,6 +24,16 @@ class MarketContextProvider:
             "MARKET_NQ_URL",
             "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=5m",
         )
+        self.fred_api_key = os.getenv("MARKET_FRED_API_KEY", "").strip()
+        self.fred_series = [
+            item.strip()
+            for item in os.getenv("MARKET_FRED_SERIES", "FEDFUNDS,CPIAUCSL,UNRATE").split(",")
+            if item.strip()
+        ]
+        self.fred_url = os.getenv(
+            "MARKET_FRED_URL",
+            "https://api.stlouisfed.org/fred/series/observations",
+        )
         self._cache: dict[str, Any] | None = None
         self._cache_at = 0.0
         self._lock = asyncio.Lock()
@@ -73,7 +83,56 @@ class MarketContextProvider:
                 result["errors"].append("NQ futures provider returned no usable quote")
         except Exception as exc:
             result["errors"].append(f"NQ provider unavailable: {type(exc).__name__}")
+
+        if self.fred_api_key:
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                    macro = await self._fetch_fred(client)
+                if macro:
+                    result["data"]["macro"] = macro
+                    result["status"] = "available" if result["status"] == "available" else "partial"
+            except Exception as exc:
+                result["errors"].append(f"Macro provider unavailable: {type(exc).__name__}")
+
+        if not result["data"]:
+            result["status"] = "unavailable"
+        elif "macro" not in result["data"]:
+            result["status"] = "partial"
+
         return result
+
+    async def _fetch_fred(self, client: httpx.AsyncClient) -> dict[str, Any]:
+        values: dict[str, Any] = {}
+        for series_id in self.fred_series:
+            response = await client.get(
+                self.fred_url,
+                params={
+                    "series_id": series_id,
+                    "api_key": self.fred_api_key,
+                    "file_type": "json",
+                    "sort_order": "desc",
+                    "limit": 1,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+            observations = payload.get("observations") if isinstance(payload, dict) else None
+            if not observations:
+                continue
+            observation = observations[0]
+            value = observation.get("value")
+            if value in (None, "."):
+                continue
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                continue
+            values[series_id] = {
+                "value": numeric,
+                "date": observation.get("date"),
+                "source": "FRED",
+            }
+        return values
 
     def _parse_yahoo(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         chart = payload.get("chart") if isinstance(payload, dict) else None
