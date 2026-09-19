@@ -43,7 +43,7 @@ class MongoRepository:
         """Expose index creation without leaking the Mongo collection to services/tests."""
         self._collection.create_index(fields, unique=True, name=name)
 
-    def insert(self, document: dict[str, Any]) -> str:
+    def ensure_unique_index(\n        self,\n        fields: list[tuple[str, int]],\n        *,\n        name: str | None = None,\n    ) -> None:\n        """Expose index creation without leaking the Mongo collection to services/tests."""\n        self._collection.create_index(fields, unique=True, name=name)\n\n    def insert(self, document: dict[str, Any]) -> str:
         payload = _bson_safe(dict(document))
         payload.setdefault("created_at", datetime.now(timezone.utc).isoformat())
         result = self._collection.insert_one(payload)
