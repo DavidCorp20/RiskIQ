@@ -79,7 +79,9 @@ class PortfolioTimeSeriesRequest(BaseModel):
     methods: list[str] = Field(default_factory=lambda: ["pearson", "spearman"])
     min_sample_size: int = Field(default=12, ge=12)
     alpha: float = Field(default=0.05, gt=0, lt=1)
-\n\nclass StatisticalEvidence(BaseModel):
+
+
+class StatisticalEvidence(BaseModel):
     metric: str
     market_indicator: str
     coefficient: float | None = None
