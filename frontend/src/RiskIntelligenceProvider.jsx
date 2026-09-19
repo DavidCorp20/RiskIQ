@@ -26,7 +26,7 @@ export function RiskIntelligenceProvider({ children }) {
     const items = response?.datasets || response || []
     setDatasets(items)
     return items
-  }, [refreshDecisionRecommendations])
+  }, [])
 
   const refreshDecisionRecommendations = useCallback(async (targetId = '') => {
     const id = targetId || datasetRef.current?.dataset_id || ''
@@ -83,7 +83,7 @@ export function RiskIntelligenceProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [refreshDecisionRecommendations])
 
   const selectDataset = useCallback(async (next) => {
     setDataset(next || null)
