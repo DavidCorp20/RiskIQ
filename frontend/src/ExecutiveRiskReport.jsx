@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { getLatestBacktestEvidence, listDecisionRules, listPolicyVersions } from './api'
-import { useRiskIntelligence } from './RiskIntelligenceProvider'
+import { useRiskIntelligence } from './hooks/useRiskIntelligence'
 import EvidenceMethodology from './EvidenceMethodology'
 import ExecutiveIntelligencePanel from './ExecutiveIntelligencePanel'
 
