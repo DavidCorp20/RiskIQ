@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections import defaultdict
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from app.api.schemas import DecisionRule
 from app.decision.rule_repository import DecisionRuleRepository
 from app.engine.decision_engine import DecisionEngine
@@ -8,6 +8,7 @@ from app.engine.formula_engine import FormulaEngine
 from app.engine.scorecard_engine import ScorecardEngine
 from app.decision.rule_builder import RuleBuilder
 from app.data.persistence import PortfolioPersistenceService
+from app.integrations.freshservice import compliance_service
 
 router=APIRouter(prefix="/v1/decision-builder",tags=["decision-builder"])
 service=RuleBuilder(); engine=DecisionEngine(); formula_engine=FormulaEngine(); scorecard_engine=ScorecardEngine(); rules_repo=DecisionRuleRepository(); persistence=PortfolioPersistenceService()
@@ -64,6 +65,36 @@ def evaluate_rule(payload:dict)->dict:
     try: facts,_,_=_prepare_facts(payload.get("facts",{}),None,compiled["compiled_rule"].get("formulas") or None); result,_=_decision_result(facts,rule,None)
     except (ValueError,TypeError) as exc: raise HTTPException(status_code=422,detail=[str(exc)])
     return {"compiled_rule":compiled["compiled_rule"],"result":result,"execution_mode":"test_only","customer_actions_executed":False}
+
+@router.post("/execute")
+def execute_rule(payload:dict, background_tasks:BackgroundTasks)->dict:
+    """Execute a decision rule in production mode and enqueue compliance evidence."""
+    rule=payload.get("rule")
+    if not isinstance(rule,dict): raise HTTPException(status_code=422,detail=["rule is required"])
+    compiled=compile_rule(rule)
+    if not compiled["valid"]: raise HTTPException(status_code=422,detail=compiled["errors"])
+    decision_rule=DecisionRule.model_validate(compiled["compiled_rule"])
+    try:
+        facts,stages,formula_trace=_prepare_facts(payload.get("facts",{}),payload.get("normalization_code"),payload.get("formulas") or None)
+        scorecard_result=None
+        if payload.get("scorecard"):
+            scorecard_result=scorecard_engine.evaluate(facts,payload["scorecard"]); facts=scorecard_result["facts"]; stages.append("scorecard")
+        result=engine.evaluate(
+            facts,
+            [decision_rule],
+            None,
+            audit=True,
+            actor=str(payload.get("actor") or "system"),
+            dataset_id=payload.get("dataset_id"),
+            snapshot_id=payload.get("snapshot_id"),
+            business_id=payload.get("business_id"),
+        )
+        result.update({"scorecard":scorecard_result,"formula_trace":formula_trace,"policy_id":decision_rule.id,"policy_version":decision_rule.version})
+        stages.extend(["rules","decision","compliance_outbox"])
+        background_tasks.add_task(compliance_service.process_pending, 20)
+        return {"stages":stages,"facts":facts,"scorecard":scorecard_result,"result":result,"execution_mode":"production","customer_actions_executed":False}
+    except (ValueError,TypeError) as exc:
+        raise HTTPException(status_code=422,detail=[str(exc)])
 
 @router.post("/formula")
 def evaluate_formulas(payload:dict)->dict:
