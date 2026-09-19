@@ -6,7 +6,7 @@ const pct = value => `${(Number(value || 0) * 100).toFixed(1)}%`
 const num = value => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
 
 export default function ExecutiveRiskReport() {
-  const { dataset, result, loading, error } = useRiskIntelligence()
+  const { dataset, result, loading, error, ews, ewsLoading, ewsError } = useRiskIntelligence()
   const datasetId = dataset?.dataset_id || ''
   const [rules, setRules] = useState([])
   const [policy, setPolicy] = useState(null)
@@ -84,6 +84,9 @@ export default function ExecutiveRiskReport() {
   const analysis = result?.analysis || result?.risk_analytics?.deterministic || {}
   const drivers = analysis.drivers || []
   const backtestRows = backtest?.summary || backtest?.metrics || backtest || {}
+  const ewsPortfolio = ews?.portfolio || {}
+  const ewsTrend = ews?.trends?.par30 || {}
+  const ewsAlerts = ews?.top_alerts || []
 
   const position = useMemo(
     () => [
@@ -115,6 +118,12 @@ export default function ExecutiveRiskReport() {
       `Version: ${policy?.version != null ? `v${policy.version}` : '—'}`,
       `Lifecycle: ${policy?.status || '—'}`,
       'Decision control: Human review required',
+      '',
+      'EARLY WARNING EVIDENCE',
+      `High EWS exposure: ${num(ewsPortfolio.high_ews_exposure)}`,
+      `High EWS exposure share: ${ewsPortfolio.high_ews_exposure_share != null ? pct(ewsPortfolio.high_ews_exposure_share) : '—'}`,
+      `PAR30 trend: ${ewsTrend.ratio_delta != null ? pct(ewsTrend.ratio_delta) : '—'} · ${ewsTrend.direction || '—'}`,
+      `Prioritized alerts: ${ewsAlerts.length}`,
       '',
       'BACKTEST EVIDENCE',
       `Recorded result: ${backtest ? 'Available' : 'Not recorded'}`,
@@ -220,6 +229,7 @@ export default function ExecutiveRiskReport() {
         </article>
       </div>
 
+      <article className="ri-exec-panel"><div className="ri-exec-panel-head"><div><span>EARLY WARNING SYSTEM</span><h3>Portfolio deterioration signals</h3></div><b>{ewsLoading ? 'CALCULATING' : ewsError ? 'UNAVAILABLE' : 'DETERMINISTIC'}</b></div><div className="ri-exec-grid ri-exec-mini"><article><span>High EWS exposure</span><strong>{ewsPortfolio.high_ews_exposure == null ? '—' : num(ewsPortfolio.high_ews_exposure)}</strong></article><article><span>Exposure share</span><strong>{ewsPortfolio.high_ews_exposure_share == null ? '—' : pct(ewsPortfolio.high_ews_exposure_share)}</strong></article><article><span>PAR30 Δ</span><strong>{ewsTrend.ratio_delta == null ? '—' : pct(ewsTrend.ratio_delta)}</strong></article></div>{ewsError ? <p className="ri-exec-muted">{ewsError}</p> : <p className="ri-exec-muted">Signals are weighted by exposure and based on observed portfolio trajectories. They are not predictive probabilities.</p>}</article>
       <article className="ri-exec-panel ri-exec-backtest">
         <div className="ri-exec-panel-head">
           <div><span>BACKTEST EVIDENCE</span><h3>Historical validation</h3></div>
