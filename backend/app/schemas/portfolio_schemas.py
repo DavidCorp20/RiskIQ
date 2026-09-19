@@ -84,6 +84,7 @@ class PortfolioDashboardResponse(BaseModel):
     structure: dict[str, Any] = Field(default_factory=dict)
     concentration: dict[str, Any] = Field(default_factory=dict)
     vintage_view: dict[str, Any] = Field(default_factory=dict)
+    insights: list[dict[str, str]] = Field(default_factory=list)
 
     @field_validator("kpis")
     @classmethod
