@@ -118,3 +118,5 @@ export const getRiskEvent=eventId=>request('/api/v1/risk-events/'+encodeURICompo
 export const getRiskIntelligence=datasetId=>request('/api/v1/risk-intelligence/'+encodeURIComponent(datasetId))
 
 export const runStressScenario=(baseline,scenario,sensitivities={})=>request('/api/v1/stress-testing/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseline,scenario,sensitivities})})
+
+export const getPortfolioDashboard=(datasetId,options={})=>{const params=new URLSearchParams();if(options.segment)params.set('segment',options.segment);if(options.cutoffDate)params.set('cutoff_date',options.cutoffDate);const suffix=params.toString()?`?${params.toString()}`:'';return request(`/api/v1/portfolio/${encodeURIComponent(datasetId)}/dashboard${suffix}`)}
