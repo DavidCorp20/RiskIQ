@@ -105,8 +105,10 @@ class DataQualityEngine:
                     empty_cells += 1
                     continue
 
+                numeric = self._to_float(value)
+
                 if field in self.NUMERIC_FIELDS:
-                    if self._to_float(value) is None:
+                    if numeric is None:
                         invalid_cells += 1
                         add(
                             f"INVALID_NUMBER_{field.upper()}",
@@ -117,7 +119,6 @@ class DataQualityEngine:
                         )
                         continue
 
-                    numeric = float(self._to_float(value))
                     if field == "dpd" and numeric < 0:
                         add("NEGATIVE_DPD", "high", "Los días de mora no pueden ser negativos.", field=field, row_index=index)
                     elif field in {"outstanding_principal", "scheduled_amount", "paid_amount", "ead"} and numeric < 0:
@@ -219,7 +220,7 @@ class DataQualityEngine:
                 })["missing_fields"].append(field)
             add("MISSING_CANONICAL_FIELD", "critical", "Falta un campo canónico requerido.", field=",".join(missing_required))
 
-        status = "blocked" if critical or missing_required else ("warning" if score < 80 else "passed")
+        status = "blocked" if critical or missing_required else ("warning" if high or medium or score < 80 else "passed")
 
         return QualityResult(
             quality_score=score,
