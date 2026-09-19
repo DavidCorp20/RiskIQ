@@ -119,14 +119,14 @@ class DecisionRecommendationRepository:
         if self._indexes_ready:
             return
         self.collection.ensure_indexes()
-        self.collection._collection.create_index([("recommendation_id", 1)], unique=True)
-        self.collection._collection.create_index([("dataset_id", 1), ("created_at", -1)])
-        self.collection._collection.create_index([("status", 1), ("action_level", 1)])
-        self.collection._collection.create_index([("loan_id", 1), ("created_at", -1)])
+        self.collection.ensure_unique_index([("recommendation_id", 1)], name="uniq_recommendation_id")
+        self.collection.ensure_unique_index([("dataset_id", 1), ("created_at", -1)], name="idx_recommendation_dataset_created")
+        self.collection.ensure_unique_index([("status", 1), ("action_level", 1)], name="idx_recommendation_status_level")
+        self.collection.ensure_unique_index([("loan_id", 1), ("created_at", -1)], name="idx_recommendation_loan_created")
         self.ledger.ensure_indexes()
-        self.ledger._collection.create_index([("ledger_id", 1)], unique=True)
-        self.ledger._collection.create_index([("recommendation_id", 1)])
-        self.ledger._collection.create_index([("dataset_id", 1), ("created_at", -1)])
+        self.ledger.ensure_unique_index([("ledger_id", 1)], name="uniq_decision_ledger_id")
+        self.ledger.ensure_unique_index([("recommendation_id", 1)], name="idx_decision_ledger_recommendation")
+        self.ledger.ensure_unique_index([("dataset_id", 1), ("created_at", -1)], name="idx_decision_ledger_dataset_created")
         self._indexes_ready = True
 
     def save(self, recommendation: DecisionRecommendation) -> dict[str, Any]:
