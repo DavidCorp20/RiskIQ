@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.api.ai_routes import router as ai_router
 from app.api.ews_routes import router as ews_router
 from app.predictive.routes import router as predictive_router
@@ -36,47 +35,11 @@ from app.api.snapshot_routes import router as snapshot_router
 from app.api.vintage_routes import router as vintage_router
 from app.api.workspace_routes import router as workspace_router
 from app.api.v1.endpoints.smart_ingest import router as smart_ingest_router
+from app.reports.routes import router as reports_router
 from app.config import settings
-
-app = FastAPI(title="RiskIQ API", version="0.1.0", description="Credit Risk & Portfolio Decision Intelligence API")
+app=FastAPI(title="RiskIQ API",version="0.1.0",description="Credit Risk & Portfolio Decision Intelligence API")
 cors_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-app.include_router(router,prefix="/api")
-app.include_router(data_router,prefix="/api")
-app.include_router(dataset_router,prefix="/api")
-app.include_router(segment_router,prefix="/api")
-app.include_router(dataset_intelligence_router,prefix="/api")
-app.include_router(projection_router,prefix="/api")
-app.include_router(quality_router,prefix="/api")
-app.include_router(diagnosis_router,prefix="/api")
-app.include_router(indicator_router,prefix="/api")
-app.include_router(risk_router,prefix="/api")
-app.include_router(risk_intelligence_router,prefix="/api")
-app.include_router(risk_event_router,prefix="/api")
-app.include_router(npl_router,prefix="/api")
-app.include_router(intelligence_router,prefix="/api")
-app.include_router(vintage_router,prefix="/api")
-app.include_router(snapshot_router,prefix="/api")
-app.include_router(history_router,prefix="/api")
-app.include_router(pipeline_router,prefix="/api")
-app.include_router(decision_router,prefix="/api")
-app.include_router(decision_card_router,prefix="/api")
-app.include_router(decision_center_router,prefix="/api")
-app.include_router(decision_recommendation_router,prefix="/api")
-app.include_router(simulation_router,prefix="/api")
-app.include_router(rule_builder_router,prefix="/api")
-app.include_router(governance_router,prefix="/api")
-app.include_router(policy_metrics_router,prefix="/api")
-app.include_router(audit_router,prefix="/api")
-app.include_router(learning_router,prefix="/api")
-app.include_router(market_router,prefix="/api")
-app.include_router(ai_router,prefix="/api")
-app.include_router(ews_router,prefix="/api")
-app.include_router(predictive_router,prefix="/api")
-app.include_router(stress_testing_router,prefix="/api")
-app.include_router(workspace_router,prefix="/api")
-app.include_router(smart_ingest_router,prefix="/api")
-
-@app.get("/health", tags=["system"])
-def health()->dict[str,str]:
-    return {"status":"ok","service":"riskiq-api"}
+app.add_middleware(CORSMiddleware,allow_origins=cors_origins,allow_credentials=True,allow_methods=["*"],allow_headers=["*"])
+for r in [router,data_router,dataset_router,segment_router,dataset_intelligence_router,projection_router,quality_router,diagnosis_router,indicator_router,risk_router,risk_intelligence_router,risk_event_router,npl_router,intelligence_router,vintage_router,snapshot_router,history_router,pipeline_router,decision_router,decision_card_router,decision_center_router,decision_recommendation_router,simulation_router,rule_builder_router,governance_router,policy_metrics_router,audit_router,learning_router,market_router,ai_router,ews_router,predictive_router,stress_testing_router,workspace_router,smart_ingest_router,reports_router]:app.include_router(r,prefix="/api")
+@app.get("/health",tags=["system"])
+def health()->dict[str,str]:return {"status":"ok","service":"riskiq-api"}
