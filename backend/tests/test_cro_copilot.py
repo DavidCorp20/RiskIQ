@@ -62,6 +62,7 @@ async def test_analytical_mode_sends_deterministic_evidence_and_history() -> Non
     assert context["FACTS"]
     assert len(context["CONVERSATION"]) == 2
     assert context["CURRENT_QUESTION"] == "Analiza el PAR30 de la cartera"
+    assert "EWS_JSON" in context
 
 
 @pytest.mark.asyncio
@@ -90,3 +91,42 @@ async def test_conversation_is_preserved_in_service_context() -> None:
 
     context = service.build_context(_risk(), conversation=history)
     assert context["conversation"] == history
+
+
+@pytest.mark.asyncio
+async def test_ews_is_injected_only_in_analytical_mode() -> None:
+    provider = FakeProvider()
+    risk = _risk()
+    risk["ews"] = {
+        "available": True,
+        "methodology": "portfolio-ews-v1",
+        "predictive_probability": False,
+        "portfolio": {
+            "high_ews_loans": 1,
+            "high_ews_exposure": 750.0,
+            "high_ews_exposure_share": 0.375,
+        },
+        "top_alerts": [{"loan_id": "L1", "score": 82.0, "band": "critical"}],
+        "guardrails": {"deterministic": True, "weighted_ratios": True, "predictive_probability": False},
+    }
+
+    result = await RiskCopilotService(provider).answer("¿Qué alertas tempranas debería revisar?", risk)
+
+    assert result["conversation_mode"] == "analytical"
+    _, context = provider.calls[0]
+    assert context["EWS_JSON"]["available"] is True
+    assert context["EWS_JSON"]["predictive_probability"] is False
+    assert "alertas" in context["EWS_JSON"]["top_alerts"][0] or context["EWS_JSON"]["top_alerts"][0]["loan_id"] == "L1"
+
+
+@pytest.mark.asyncio
+async def test_conversational_mode_does_not_send_ews() -> None:
+    provider = FakeProvider()
+    risk = _risk()
+    risk["ews"] = {"available": True, "portfolio": {"high_ews_loans": 1}}
+
+    result = await RiskCopilotService(provider).answer("Hola, ¿cómo estás?", risk)
+
+    assert result["conversation_mode"] == "conversational"
+    _, context = provider.calls[0]
+    assert "EWS_JSON" not in context
