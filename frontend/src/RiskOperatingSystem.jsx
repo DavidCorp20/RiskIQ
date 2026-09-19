@@ -630,6 +630,15 @@ function RiskCurve({ values }) {
   )
 }
 
+function productBarTone(name) {
+  const value = String(name || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+  if (value.includes('vehicul')) return 'product-vehicular'
+  if (value.includes('consumo')) return 'product-consumo'
+  if (value.includes('hipotec')) return 'product-hipotecario'
+  if (value.includes('microcredit') || value.includes('microcredito')) return 'product-microcredito'
+  return 'product-default'
+}
+
 function ConcentrationChart({ data }) {
   const rows = data.slice(0, 6)
   const max = Math.max(...rows.map(x => Number(x.exposure_share || 0)), 0.01)
