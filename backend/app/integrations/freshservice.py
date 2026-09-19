@@ -319,6 +319,10 @@ class ComplianceAutomationService:
                 if value is not None
             },
         }
+        if settings.freshservice_requester_email:
+            ticket_payload["email"] = settings.freshservice_requester_email
+        if settings.freshservice_workspace_id is not None:
+            ticket_payload["workspace_id"] = settings.freshservice_workspace_id
 
         if current and current[0].get("freshservice_ticket_id"):
             ticket_id = current[0]["freshservice_ticket_id"]
