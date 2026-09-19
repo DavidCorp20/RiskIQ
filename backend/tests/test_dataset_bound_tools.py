@@ -48,9 +48,10 @@ def test_simulator_rejects_dataset_without_snapshot(monkeypatch):
     assert "Run the selected dataset" in str(exc.value)
 
 
-def test_copilot_requires_real_dataset(monkeypatch):
+@pytest.mark.asyncio
+async def test_copilot_requires_real_dataset(monkeypatch):
     monkeypatch.setattr(ai_routes, "persistence", FakePersistence())
-    result = ai_routes.copilot({
+    result = await ai_routes.copilot({
         "dataset_id": "ds-1",
         "question": "¿Qué está pasando?",
         "risk_facts": {"dataset_id": "ds-1", "facts": {"par30": {"label": "PAR30", "value": 0.10}}, "alerts": [], "summary": {}},
@@ -60,10 +61,11 @@ def test_copilot_requires_real_dataset(monkeypatch):
     assert result["grounding"]["customer_actions_executed"] is False
 
 
-def test_copilot_rejects_cross_dataset_context(monkeypatch):
+@pytest.mark.asyncio
+async def test_copilot_rejects_cross_dataset_context(monkeypatch):
     monkeypatch.setattr(ai_routes, "persistence", FakePersistence())
     with pytest.raises(Exception) as exc:
-        ai_routes.copilot({
+        await ai_routes.copilot({
             "dataset_id": "ds-1",
             "question": "¿Qué pasó?",
             "risk_facts": {"dataset_id": "other", "facts": [], "alerts": [], "summary": {}},
