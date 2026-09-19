@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import app.api.portfolio_routes as portfolio_routes
@@ -12,10 +13,7 @@ class FakeRepository:
 
     def find(self, filters=None, limit=100):
         filters = filters or {}
-        return [
-            row for row in self.rows
-            if all(row.get(key) == value for key, value in filters.items())
-        ]
+        return [row for row in self.rows if all(row.get(key) == value for key, value in filters.items())]
 
 
 class FakePersistence:
@@ -29,10 +27,7 @@ def test_dashboard_builds_contract_and_clamps_intensity():
         {"dataset_id": "d1", "loan_id": "L2", "snapshot_date": "2026-01-31", "segment": "Microcredito", "outstanding_principal": 2000, "dpd": 45, "origination_date": "2025-01-01"},
         {"dataset_id": "d1", "loan_id": "L3", "snapshot_date": "2026-01-31", "segment": "Pyme", "outstanding_principal": 3000, "dpd": 95, "origination_date": "2024-06-01"},
     ]
-
-    service = RiskAnalyticsDashboardService(persistence=FakePersistence(rows))
-    result = service.build_portfolio_dashboard("d1")
-
+    result = RiskAnalyticsDashboardService(persistence=FakePersistence(rows)).build_portfolio_dashboard("d1")
     assert result["contract_version"] == "portfolio-dashboard-v1"
     assert result["kpis"]["exposure"]["formatted"] == "$ 6,000"
     assert result["kpis"]["active_loans"]["formatted"] == "3"
@@ -54,10 +49,7 @@ def test_dashboard_respects_segment_and_cutoff():
         {"dataset_id": "d1", "loan_id": "L1", "snapshot_date": "2026-02-28", "segment": "A", "outstanding_principal": 800, "dpd": 35},
         {"dataset_id": "d1", "loan_id": "L2", "snapshot_date": "2026-02-28", "segment": "B", "outstanding_principal": 2000, "dpd": 90},
     ]
-
-    service = RiskAnalyticsDashboardService(persistence=FakePersistence(rows))
-    result = service.build_portfolio_dashboard("d1", segment="A", cutoff_date="2026-01-31")
-
+    result = RiskAnalyticsDashboardService(persistence=FakePersistence(rows)).build_portfolio_dashboard("d1", segment="A", cutoff_date="2026-01-31")
     assert result["kpis"]["exposure"]["formatted"] == "$ 1,000"
     assert result["kpis"]["active_loans"]["formatted"] == "1"
     assert result["snapshot_date"] == "2026-01-31"
@@ -69,7 +61,10 @@ def test_dashboard_endpoint_exposes_exact_contract(monkeypatch):
         {"dataset_id": "d1", "loan_id": "L2", "snapshot_date": "2026-01-31", "segment": "A", "outstanding_principal": 2000, "dpd": 45, "origination_date": "2025-01-01"},
     ]
     monkeypatch.setattr(portfolio_routes, "service", RiskAnalyticsDashboardService(persistence=FakePersistence(rows)))
-    response = TestClient(portfolio_routes.router).get("/v1/portfolio/d1/dashboard")
+    app = FastAPI()
+    app.include_router(portfolio_routes.router)
+    with TestClient(app) as client:
+        response = client.get("/v1/portfolio/d1/dashboard")
     assert response.status_code == 200
     body = response.json()
     assert {"contract_version", "dataset_id", "snapshot_date", "kpis", "rating_distribution", "heatmap", "vintage", "risk_drivers", "filters", "structure", "concentration", "vintage_view", "insights"} <= set(body)
