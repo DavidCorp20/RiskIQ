@@ -15,6 +15,7 @@ from app.analytics.snapshot_engine import SnapshotEngine
 from app.data.persistence import PortfolioPersistenceService
 from app.market.models import HistoricalSeries, TimeSeriesPoint
 from app.market.service import MarketContextService
+from app.services.risk_intelligence_provider import RiskIntelligenceProvider
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
 service = RiskCopilotService()
@@ -26,6 +27,7 @@ npl = NPLAnalyticsService()
 portfolio_ews = PortfolioEWSService()
 snapshot_engine = SnapshotEngine()
 market_context = MarketContextService()
+risk_intelligence_provider = RiskIntelligenceProvider()
 
 
 def _require_dataset(dataset_id: str) -> dict[str, Any]:
@@ -182,6 +184,7 @@ async def copilot(payload: dict) -> dict:
         else:
             risk_facts["market_correlation"] = []
 
+    risk_intelligence = await risk_intelligence_provider.build(dataset_id)
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
         question=str(payload.get("question", "")),
@@ -189,6 +192,7 @@ async def copilot(payload: dict) -> dict:
         drivers=drivers,
         decisions=decisions,
         conversation=conversation,
+        risk_intelligence=risk_intelligence,
     )
     answer["dataset_id"] = dataset_id
     answer["grounding"] = {
