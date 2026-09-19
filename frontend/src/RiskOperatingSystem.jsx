@@ -173,7 +173,7 @@ export default function RiskOperatingSystem() {
 
           <div>
             <span className="ros-kicker">RISK OPERATING SYSTEM / {page.toUpperCase()}</span>
-            <h1>{title}</h1>
+            <h1>{page === 'overview' ? 'Centro de Mando [Bank-Grade v2]' : title}</h1>
           </div>
 
           <div className="ros-top-actions">
@@ -387,7 +387,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
         </div>
       </header>
 
-      <section className="!divide-slate-100 rounded-lg border !border-slate-200 !bg-white sm:flex sm:divide-x sm:divide-y-0">
+      <section style={{ backgroundColor: '#0f172a', color: '#ffffff' }} className="!divide-slate-100 rounded-lg border !border-slate-200 !bg-white sm:flex sm:divide-x sm:divide-y-0">
         <MetricItem label="Exposición total" value={money(snap.outstanding_balance)} detail="saldo pendiente" />
         <MetricItem label="PAR30" value={pct(snap.par30)} detail={money(m.bad_balance_30_plus) + ' en 30+'} tone={Number(snap.par30) > 0.1 ? 'critical' : Number(snap.par30) > 0.05 ? 'warning' : 'stable'} />
         <MetricItem label="PAR60" value={pct(snap.par60)} detail={money(m.bad_balance_60_plus) + ' en 60+'} tone={Number(snap.par60) > 0.05 ? 'critical' : Number(snap.par60) > 0.02 ? 'warning' : 'stable'} />
