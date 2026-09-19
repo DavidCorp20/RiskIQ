@@ -69,6 +69,15 @@ def transition_policy(policy_id: str, payload: dict, background_tasks: Backgroun
     actor = str(payload.get("actor") or "system"); now = _now()
     event = {"policy_id": policy_id, "version": version, "from": current_status, "to": target, "actor": actor, "at": now, "reason": str(payload.get("reason") or "")}
     events_repo.insert(event)
+
+    critical = target in CRITICAL_POLICY_STATUSES
+    compliance_service.enqueue(
+        event_type="policy_transition",
+        event=event,
+        critical=critical,
+    )
+    background_tasks.add_task(compliance_service.process_pending, 20)
+
     return {"transitioned": True, "policy_id": policy_id, "version": version, "status": target, "event": event, "governance": {"status": target, "actor": actor, "updated_at": now}, "immutable": True}
 
 @router.post("/policies/{policy_id}/clone")
