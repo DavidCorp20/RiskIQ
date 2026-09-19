@@ -10,6 +10,7 @@ import Builder from './Builder'
 import DecisionCenter from './DecisionCenter'
 import RiskAiAgent from './components/RiskAiAgent'
 import ExecutiveRiskReport from './ExecutiveRiskReport'
+import PortfolioDashboard from './PortfolioDashboard'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
 import EnterpriseCommandCenter from './EnterpriseCommandCenter'
 import './enterprise-command-center.css'
@@ -197,7 +198,7 @@ export default function RiskOperatingSystem() {
         ) : (
           <div className="ros-content">
             {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} adv={adv} vintage={vintage} onGo={go} />}
-            {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <Portfolio snap={snap} ri={ri} trend={trend} history={history} />}
+            {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <PortfolioDashboard datasetId={dataset?.dataset_id} />}
             {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <Concentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
             {page === 'migration' && <Migration history={history} adv={adv} />}
