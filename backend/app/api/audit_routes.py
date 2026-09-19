@@ -12,10 +12,27 @@ reconciliation_service = ReconciliationAuditService()
 
 
 @router.post("/decisions")
-def record_decision(payload: dict) -> dict:
+def record_decision(payload: dict, background_tasks: BackgroundTasks) -> dict:
     decision = payload.get("decision", payload)
     actor = str(payload.get("actor", "system"))
-    return service.record(decision, actor)
+    recorded = service.record(decision, actor)
+    critical = bool(decision.get("critical", True))
+    compliance_service.enqueue(
+        event_type="decision_execution",
+        event={
+            "decision_id": recorded.get("decision_id"),
+            "status": recorded.get("status") or decision.get("status") or "executed",
+            "actor": recorded.get("actor") or actor,
+            "policy_id": recorded.get("policy_id"),
+            "policy_version": recorded.get("policy_version"),
+            "recommendation": recorded.get("recommendation"),
+            "evidence": recorded.get("evidence") or {},
+            "critical": critical,
+        },
+        critical=critical,
+    )
+    background_tasks.add_task(compliance_service.process_pending, 20)
+    return recorded
 
 
 @router.get("/decisions")
@@ -30,6 +47,19 @@ def resolve_decision(decision_id: str, payload: dict) -> dict:
         return service.resolve(decision_id, payload.get("outcome", payload))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Decision not found") from exc
+
+
+@router.get("/freshservice/status")
+def freshservice_status() -> dict:
+    compliance_service._ensure_indexes()
+    pending = compliance_service.outbox.find({"status": {"$in": ["pending", "retry"]}}, limit=1000)
+    sent = compliance_service.outbox.find({"status": "sent"}, limit=1000)
+    return {"enabled": compliance_service.client.enabled, "pending": len(pending), "sent": len(sent), "integration": "freshservice"}
+
+
+@router.post("/freshservice/sync")
+async def freshservice_sync(limit: int = 20) -> dict:
+    return await compliance_service.process_pending(max(1, min(limit, 100)))
 
 
 @router.get("/reconciliation")
