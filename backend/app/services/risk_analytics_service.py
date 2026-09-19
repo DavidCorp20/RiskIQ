@@ -95,6 +95,8 @@ class RiskAnalyticsDashboardService:
         }
         vintage_view = self._vintage_view(vintage)
 
+        insights = self._executive_insights(kpis)
+
         response = PortfolioDashboardResponse(
             dataset_id=dataset_id,
             snapshot_date=self.analytics.snapshot_label(current),
