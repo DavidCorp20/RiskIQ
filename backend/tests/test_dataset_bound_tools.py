@@ -19,6 +19,7 @@ class FakeCollection:
 class FakePersistence:
     def __init__(self):
         self.datasets = FakeCollection([{"dataset_id": "ds-1", "source_name": "portfolio.csv"}])
+        self.portfolio_records = FakeCollection([])
         self.snapshots = FakeCollection([
             {"dataset_id": "ds-1", "snapshot_date": "2026-09-10", "outstanding_balance": 100000, "par30": 0.10, "par90": 0.03},
             {"dataset_id": "ds-1", "snapshot_date": "2026-09-01", "outstanding_balance": 95000, "par30": 0.08, "par90": 0.02},
