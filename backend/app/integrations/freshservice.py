@@ -200,15 +200,18 @@ class ComplianceAutomationService:
 
         for item in pending:
             try:
-                await self._process_event(item)
+                result = await self._process_event(item)
+                external_id = result.get("freshservice_ticket_id") if isinstance(result, dict) else None
                 self.outbox.update(
                     {"event_key": item["event_key"]},
                     {
                         "$set": {
-                            "status": "sent",
+                            "status": "delivered",
+                            "external_id": external_id,
                             "last_error": None,
                             "updated_at": _now(),
-                        }
+                        },
+                        "$inc": {"attempts": 1},
                     },
                 )
                 succeeded += 1
@@ -234,20 +237,20 @@ class ComplianceAutomationService:
             "disabled": 0,
         }
 
-    async def _process_event(self, item: dict[str, Any]) -> None:
+    async def _process_event(self, item: dict[str, Any]) -> dict[str, Any]:
         event_type = str(item["event_type"])
         event = dict(item.get("event") or {})
 
         if event_type == "policy_transition":
-            await self._sync_policy_transition(event)
+            return await self._sync_policy_transition(event)
         elif event_type == "decision_execution":
-            await self._sync_decision_execution(event)
+            return await self._sync_decision_execution(event)
         elif event_type == "decision_review_transition":
-            await self._sync_decision_review_transition(event)
+            return await self._sync_decision_review_transition(event)
         else:
             raise ValueError(f"Unsupported compliance event: {event_type}")
 
-    async def _sync_policy_transition(self, event: dict[str, Any]) -> None:
+    async def _sync_policy_transition(self, event: dict[str, Any]) -> dict[str, Any]:
         policy_id = str(event.get("policy_id") or "")
         version = int(event.get("version") or 1)
         target_status = str(event.get("to") or "").upper()
@@ -258,7 +261,7 @@ class ComplianceAutomationService:
         title = f"RiskIQ Compliance | Policy {policy_id} v{version}"
         description = self._policy_description(event)
 
-        await self._upsert_ticket(
+        return await self._upsert_ticket(
             sync_key=sync_key,
             subject=title,
             description=description,
@@ -272,7 +275,7 @@ class ComplianceAutomationService:
             },
         )
 
-    async def _sync_decision_review_transition(self, event: dict[str, Any]) -> None:
+    async def _sync_decision_review_transition(self, event: dict[str, Any]) -> dict[str, Any]:
         decision_id = str(event.get("decision_id") or "")
         if not decision_id:
             raise ValueError("decision_id is required")
@@ -280,7 +283,7 @@ class ComplianceAutomationService:
         action_level = str(event.get("action_level") or "").lower()
         title = f"RiskIQ Compliance | Decision Review {decision_id} | {status}"
         description = self._decision_review_description(event)
-        await self._upsert_ticket(
+        return await self._upsert_ticket(
             sync_key=f"decision-review:{decision_id}:{status}",
             subject=title,
             description=description,
@@ -296,7 +299,7 @@ class ComplianceAutomationService:
             },
         )
 
-    async def _sync_decision_execution(self, event: dict[str, Any]) -> None:
+    async def _sync_decision_execution(self, event: dict[str, Any]) -> dict[str, Any]:
         decision_id = str(event.get("decision_id") or "")
         if not decision_id:
             raise ValueError("decision_id is required")
@@ -305,7 +308,7 @@ class ComplianceAutomationService:
         title = f"RiskIQ Compliance | Decision {decision_id}"
         description = self._decision_description(event)
 
-        await self._upsert_ticket(
+        return await self._upsert_ticket(
             sync_key=f"decision:{decision_id}",
             subject=title,
             description=description,
@@ -360,6 +363,7 @@ class ComplianceAutomationService:
                 raise RuntimeError("Freshservice did not return a ticket id")
 
         now = _now()
+        document_status = current[0].get("status", "synced") if current else "synced"
         document = {
             "sync_key": sync_key,
             "freshservice_ticket_id": ticket_id,
@@ -367,7 +371,8 @@ class ComplianceAutomationService:
             "priority": priority,
             "last_payload": ticket_payload,
             "last_response": ticket,
-            "status": "synced",
+            "status": document_status,
+            "synced_at": now,
             "updated_at": now,
         }
 
@@ -446,6 +451,8 @@ class ComplianceAutomationService:
                         "freshservice_status": status,
                         "freshservice_updated_at": ticket.get("updated_at"),
                         "last_webhook_at": _now(),
+                        "status": "resolved" if str(status).lower() in {"4", "resolved", "closed"} else str(status).lower(),
+                        "synced_at": _now(),
                     }
                 },
             )
