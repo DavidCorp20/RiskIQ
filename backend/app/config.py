@@ -12,6 +12,8 @@ class Settings:
     freshservice_base_url: str = os.getenv("FRESHSERVICE_BASE_URL", "")
     freshservice_api_key: str = os.getenv("FRESHSERVICE_API_KEY", "")
     freshservice_webhook_secret: str = os.getenv("FRESHSERVICE_WEBHOOK_SECRET", "")
+    freshservice_requester_email: str = os.getenv("FRESHSERVICE_REQUESTER_EMAIL", "")
+    freshservice_workspace_id: int | None = int(os.getenv("FRESHSERVICE_WORKSPACE_ID", "0")) or None
     freshservice_critical_policy_statuses: str = os.getenv(
         "FRESHSERVICE_CRITICAL_POLICY_STATUSES",
         "APPROVED,DEPLOYED,RETIRED",
