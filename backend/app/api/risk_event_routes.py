@@ -6,9 +6,11 @@ from app.risk_events.models import ActionStatus,RiskEventStatus
 from app.risk_events.repository import RiskActionRepository,RiskEventRepository
 from app.risk_events.schemas import RiskActionStatusUpdate,RiskEventDetectionRequest,RiskEventStatusUpdate
 from app.risk_events.adapters.factory import ActionAdapterFactory
+from app.risk_events.lifecycle import LifecycleStatus,RiskEventLifecycle,transition,apply_recurrence,sla_deadline
+from app.data.mongo import MongoRepository
 
 router=APIRouter(prefix="/v1/risk-events",tags=["risk-events"])
-event_engine=RiskEventEngine(); action_engine=ActionEngine(); events=RiskEventRepository(); actions=RiskActionRepository()
+event_engine=RiskEventEngine(); action_engine=ActionEngine(); events=RiskEventRepository(); actions=RiskActionRepository(); lifecycle_store=MongoRepository("risk_event_lifecycle")
 
 @router.post("/detect")
 async def detect(request:RiskEventDetectionRequest,background_tasks:BackgroundTasks):
@@ -56,3 +58,18 @@ def copilot_grounding(event_id:str):
     event=events.get(event_id)
     if not event:raise HTTPException(status_code=404,detail="Risk event not found")
     return {"event_id":event["event_id"],"dataset_id":event["dataset_id"],"event_type":event["event_type"],"severity":event["severity"],"status":event["status"],"metric":event["metric"],"observed_value":event["observed_value"],"threshold":event.get("threshold"),"exposure":event.get("exposure"),"evidence":event.get("evidence") or {},"read_only":True,"ai_mutable_fields":[]}
+
+@router.post("/{event_id}/lifecycle/transition")
+def transition_lifecycle(event_id:str,payload:dict):
+    event=events.get(event_id)
+    if not event: raise HTTPException(status_code=404,detail="Risk event not found")
+    existing=lifecycle_store.find({"event_id":event_id},limit=1)
+    base=RiskEventLifecycle(event_key=event["event_key"],severity=str(event.get("severity","LOW")),confidence=float(payload.get("confidence",0.0)),expected_financial_impact=float(event.get("exposure",0.0)),owner_id=payload.get("owner_id"),sla_deadline_utc=sla_deadline(str(event.get("severity","LOW"))),recurrence_count=int(payload.get("recurrence_count",0)))
+    if existing:
+        base=RiskEventLifecycle(event_key=str(existing[0]["event_key"]),status=LifecycleStatus(existing[0]["status"]),severity=str(existing[0].get("severity","LOW")),confidence=float(existing[0].get("confidence",0)),expected_financial_impact=float(existing[0].get("expected_financial_impact",0)),owner_id=existing[0].get("owner_id"),sla_deadline_utc=__import__("datetime").datetime.fromisoformat(existing[0]["sla_deadline_utc"]) if existing[0].get("sla_deadline_utc") else None,resolution_notes=existing[0].get("resolution_notes"),recurrence_count=int(existing[0].get("recurrence_count",0)))
+    try: target=LifecycleStatus(str(payload["target_status"]).upper()); updated=transition(base,target)
+    except (KeyError,ValueError) as exc: raise HTTPException(status_code=422,detail=str(exc)) from exc
+    document={"event_id":event_id,"event_key":updated.event_key,"status":updated.status.value,"severity":updated.severity,"confidence":updated.confidence,"expected_financial_impact":updated.expected_financial_impact,"owner_id":updated.owner_id,"sla_deadline_utc":updated.sla_deadline_utc.isoformat() if updated.sla_deadline_utc else None,"resolution_notes":updated.resolution_notes,"recurrence_count":updated.recurrence_count}
+    if existing:lifecycle_store.update({"event_id":event_id},{"$set":document})
+    else:lifecycle_store.insert(document)
+    return {"event_id":event_id,"lifecycle":document,"contract":"risk-intelligence-v1"}
