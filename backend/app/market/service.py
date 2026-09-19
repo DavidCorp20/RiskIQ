@@ -111,7 +111,7 @@ class MarketContextService:
         if errors and (indicators or events):
             status = "partial"
 
-        return MarketContext(
+        normalized = MarketContext(
             as_of=datetime.now(timezone.utc).isoformat(),
             market_indicators=indicators,
             macro_events=events,
@@ -120,3 +120,9 @@ class MarketContextService:
             cache="miss",
             ttl_seconds=self.cache_ttl_seconds,
         ).model_dump(mode="json")
+        # Backward-compatible view for the existing Copilot/frontend contract.
+        normalized["data"] = {
+            "market_indicators": normalized["market_indicators"],
+            "macro_events": normalized["macro_events"],
+        }
+        return normalized
