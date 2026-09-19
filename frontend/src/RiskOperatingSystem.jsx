@@ -100,7 +100,7 @@ export default function RiskOperatingSystem() {
 
   return (
     <div className="ros-shell">
-      <aside className={"ros-sidebar " + (mobile ? "open" : "")}>
+      <aside className={"ros-sidebar !bg-slate-900 !text-white " + (mobile ? "open" : "")}>
         <div className="ros-brand">
           <div className="ros-mark">R</div>
           <div>
@@ -165,8 +165,8 @@ export default function RiskOperatingSystem() {
         </div>
       </aside>
 
-      <main className="ros-main">
-        <header className="ros-top">
+      <main className="ros-main !bg-slate-50">
+        <header className="ros-top !border-slate-200 !bg-white">
           <button className="ros-menu" aria-label="Abrir navegación" onClick={() => setMobile(v => !v)}>
             {mobile ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
           </button>
@@ -242,7 +242,7 @@ function Empty() {
 
 function Section({ eyebrow, title, action, children }) {
   return (
-    <section className="ros-section">
+    <section className="ros-section !overflow-hidden !rounded-lg !border !border-slate-200 !bg-white !text-slate-900 !shadow-sm">
       <div className="section-head">
         <div>
           <span>{eyebrow}</span>
@@ -387,7 +387,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
         </div>
       </header>
 
-      <section className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white sm:flex sm:divide-x sm:divide-y-0">
+      <section className="!divide-slate-100 rounded-lg border !border-slate-200 !bg-white sm:flex sm:divide-x sm:divide-y-0">
         <MetricItem label="Exposición total" value={money(snap.outstanding_balance)} detail="saldo pendiente" />
         <MetricItem label="PAR30" value={pct(snap.par30)} detail={money(m.bad_balance_30_plus) + ' en 30+'} tone={Number(snap.par30) > 0.1 ? 'critical' : Number(snap.par30) > 0.05 ? 'warning' : 'stable'} />
         <MetricItem label="PAR60" value={pct(snap.par60)} detail={money(m.bad_balance_60_plus) + ' en 60+'} tone={Number(snap.par60) > 0.05 ? 'critical' : Number(snap.par60) > 0.02 ? 'warning' : 'stable'} />
@@ -395,7 +395,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
       </section>
 
       <div className="grid gap-5 lg:grid-cols-12">
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white lg:col-span-8">
+        <section className="min-w-0 rounded-lg !border !border-slate-200 !bg-white !shadow-sm lg:col-span-8">
           <div className="border-b border-slate-200 px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -444,7 +444,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
           </div>
         </section>
 
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white lg:col-span-4">
+        <section className="min-w-0 rounded-lg !border !border-slate-200 !bg-white !shadow-sm lg:col-span-4">
           <div className="border-b border-slate-200 px-5 py-4">
             <div className="text-xs font-medium uppercase tracking-wider text-slate-500">CONCENTRACIÓN</div>
             <h3 className="mt-1 text-base font-semibold text-slate-900">Concentración de cartera</h3>
@@ -457,9 +457,9 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
                     <span className="truncate font-medium text-slate-700">{x.name}</span>
                     <span className="tabular-nums text-slate-500">{pct(x.exposure_share)}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-1.5 overflow-hidden rounded-full !bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-slate-700 transition-all"
+                      className="h-full rounded-full !bg-slate-700 transition-all"
                       style={{ width: `${Math.min(100, (Number(x.exposure_share || 0) / maxShare) * 100)}%` }}
                     />
                   </div>
@@ -480,7 +480,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
         </section>
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <section className="overflow-hidden rounded-lg !border !border-slate-200 !bg-white !shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="text-xs font-medium uppercase tracking-wider text-slate-500">EVIDENCIA</div>
@@ -493,7 +493,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
         <RiskTable priorities={priorities.slice(0, 5)} />
       </section>
 
-      <section className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex flex-col gap-4 rounded-lg !border !border-slate-200 !bg-white !p-5 !shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-wider text-slate-500">SIGUIENTE ANÁLISIS</div>
           <h3 className="mt-1 text-base font-semibold text-slate-900">
@@ -651,8 +651,8 @@ function ConcentrationChart({ data }) {
               <span>{x.name}</span>
               <b>{pct(x.exposure_share)}</b>
             </div>
-            <div className="bar-track">
-              <i style={{ width: `${Math.min(100, (Number(x.exposure_share || 0) / max) * 100)}%` }} />
+            <div className="bar-track !bg-slate-100">
+              <i className="!bg-slate-700" style={{ width: `${Math.min(100, (Number(x.exposure_share || 0) / max) * 100)}%` }} />
             </div>
             <small>PAR30 {pct(x.par30)} · aporte 30+ {pct(x.contribution_to_portfolio_bad_30)}</small>
           </div>
