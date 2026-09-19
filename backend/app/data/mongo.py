@@ -38,14 +38,31 @@ class MongoRepository:
         self._collection.create_index([("created_at", ASCENDING)])
         self._collection.create_index([("dataset_id", ASCENDING)])
 
+    def ensure_index(
+        self,
+        fields: list[tuple[str, int]],
+        *,
+        name: str | None = None,
+        unique: bool = False,
+    ) -> None:
+        """Create an index with explicit uniqueness semantics."""
+        self._collection.create_index(fields, unique=unique, name=name)
+
+    def ensure_indexes_for(
+        self,
+        indexes: list[tuple[list[tuple[str, int]], str]],
+    ) -> None:
+        """Create ordinary, non-unique indexes used for query performance."""
+        for fields, name in indexes:
+            self.ensure_index(fields, name=name, unique=False)
+
     def ensure_unique_index(
         self,
         fields: list[tuple[str, int]],
         *,
         name: str | None = None,
     ) -> None:
-        """Expose index creation without leaking the Mongo collection to services/tests."""
-        self._collection.create_index(fields, unique=True, name=name)
+        self.ensure_index(fields, name=name, unique=True)
 
     def insert(self, document: dict[str, Any]) -> str:
         payload = _bson_safe(dict(document))
