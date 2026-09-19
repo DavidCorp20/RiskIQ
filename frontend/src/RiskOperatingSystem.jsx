@@ -11,6 +11,8 @@ import DecisionCenter from './DecisionCenter'
 import RiskAiAgent from './components/RiskAiAgent'
 import ExecutiveRiskReport from './ExecutiveRiskReport'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
+import EnterpriseCommandCenter from './EnterpriseCommandCenter'
+import './enterprise-command-center.css'
 
 const pct = v => `${(Number(v || 0) * 100).toFixed(1)}%`
 const money = v => `$${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -194,11 +196,10 @@ export default function RiskOperatingSystem() {
           <Empty />
         ) : (
           <div className="ros-content">
-            {page === 'overview' && <Overview snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} onGo={go} />}
+            {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} adv={adv} vintage={vintage} onGo={go} />}
             {page === 'executive-report' && <ExecutiveRiskReport />}
             {page === 'portfolio' && <Portfolio snap={snap} ri={ri} trend={trend} history={history} />}
-            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}
-            {page === 'concentration' && <Concentration data={concentration} />}
+            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <Concentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
             {page === 'migration' && <Migration history={history} adv={adv} />}
             {page === 'stress' && (
@@ -397,8 +398,7 @@ function Overview({ snap, ri, quality, concentration, priorities, trend, history
       <div className="grid gap-5 lg:grid-cols-12">
         <section className="min-w-0 rounded-lg !border !border-slate-200 !bg-white !shadow-sm lg:col-span-8">
           <div className="border-b border-slate-200 px-5 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
+            <div className="flex items-center justify-between gap-3">              <div>
                 <div className="text-xs font-medium uppercase tracking-wider text-slate-500">PRINCIPAL DETERIORO</div>
                 <h3 className="mt-1 text-base font-semibold text-slate-900">Principal deterioro y riesgo crítico</h3>
               </div>
@@ -597,8 +597,7 @@ function Analytics({ snap, ri, concentration, vintage, history, adv, quality }) 
         </Section>
         <Section eyebrow="PORTFOLIO SIGNALS" title="Indicadores derivados">
           <SignalMatrix snap={snap} history={history} adv={adv} />
-        </Section>
-      </div>
+        </Section>      </div>
     </>
   )
 }
@@ -797,8 +796,7 @@ function Migration({ history, adv }) {
             </p>
           </div>
           <div className="direction">{m.direction || 'BASELINE'}</div>
-        </div>
-      </Section>
+        </div>      </Section>
       <Section eyebrow="ROLL RATE & SNAPSHOTS" title="Transición entre estados">
         <div className="timeline-empty">
           <strong>{history?.count || 0} snapshot(s) registrado(s)</strong>
