@@ -27,4 +27,27 @@ class Settings:
     freshservice_max_keepalive_connections: int=int(os.getenv("FRESHSERVICE_MAX_KEEPALIVE_CONNECTIONS","5"))
     dsi_audit_signing_secret: str=os.getenv("DSI_AUDIT_SIGNING_SECRET","")
 
+    # Provider-agnostic Action Layer
+    riskiq_action_adapter: str=os.getenv("RISKIQ_ACTION_ADAPTER","FRESHSERVICE" if freshservice_enabled else "INTERNAL")
+    riskiq_action_webhook_url: str=os.getenv("RISKIQ_ACTION_WEBHOOK_URL","")
+    riskiq_action_webhook_secret: str=os.getenv("RISKIQ_ACTION_WEBHOOK_SECRET","")
+    riskiq_action_timeout_seconds: float=float(os.getenv("RISKIQ_ACTION_TIMEOUT_SECONDS","8"))
+    riskiq_action_max_retries: int=int(os.getenv("RISKIQ_ACTION_MAX_RETRIES","3"))
+    riskiq_action_retry_backoff_seconds: float=float(os.getenv("RISKIQ_ACTION_RETRY_BACKOFF_SECONDS","0.5"))
+    riskiq_action_max_retry_delay_seconds: float=float(os.getenv("RISKIQ_ACTION_MAX_RETRY_DELAY_SECONDS","30"))
+
+    # SMTP notifications
+    riskiq_smtp_host: str=os.getenv("RISKIQ_SMTP_HOST","")
+    riskiq_smtp_port: int=int(os.getenv("RISKIQ_SMTP_PORT","587"))
+    riskiq_smtp_username: str=os.getenv("RISKIQ_SMTP_USERNAME","")
+    riskiq_smtp_password: str=os.getenv("RISKIQ_SMTP_PASSWORD","")
+    riskiq_smtp_from: str=os.getenv("RISKIQ_SMTP_FROM","")
+    riskiq_smtp_starttls: bool=os.getenv("RISKIQ_SMTP_STARTTLS","true").lower()=="true"
+    riskiq_alert_email: str=os.getenv("RISKIQ_ALERT_EMAIL","")
+
+    # Runtime observability
+    sentry_dsn: str=os.getenv("SENTRY_DSN","")
+    sentry_traces_sample_rate: float=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE","0.05"))
+    riskiq_performance_warning_ms: int=int(os.getenv("RISKIQ_PERFORMANCE_WARNING_MS","3000"))
+
 settings=Settings()
