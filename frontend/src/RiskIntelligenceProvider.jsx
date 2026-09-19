@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getDatasetHistory, listDatasets, runDataset } from './api'
 
 const RiskIntelligenceContext = createContext(null)
@@ -10,6 +10,11 @@ export function RiskIntelligenceProvider({ children }) {
   const [history, setHistory] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const datasetRef = useRef(null)
+
+  useEffect(() => {
+    datasetRef.current = dataset
+  }, []
 
   const refreshDatasets = useCallback(async () => {
     const response = await listDatasets()
@@ -19,7 +24,7 @@ export function RiskIntelligenceProvider({ children }) {
   }, [])
 
   const executeDataset = useCallback(async (target = null) => {
-    const active = target || dataset
+    const active = target || datasetRef.current
     if (!active?.dataset_id) return null
 
     setLoading(true)
