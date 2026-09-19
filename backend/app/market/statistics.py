@@ -77,13 +77,14 @@ class TimeSeriesStatistics:
             isfinite(coefficient)
             and isfinite(p_value)
             and -1.0 <= coefficient <= 1.0
+            and abs(coefficient) >= 0.50
             and 0.0 <= p_value <= self.alpha
         )
 
         note = (
             f"n={n}, |r|={abs(coefficient):.4f}, p={p_value:.6g}, alpha={self.alpha}."
             if validated
-            else f"n={n}, |r|={abs(coefficient):.4f}, p={p_value:.6g}; statistical threshold not met."
+            else f"n={n}, |r|={abs(coefficient):.4f}, p={p_value:.6g}; correlation threshold not met."
         )
 
         return StatisticalEvidence(
