@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { getDatasetHistory, listDatasets, runDataset, getDecisionRecommendations, createDecisionRecommendation } from './api'
 import { usePortfolioEWS } from './hooks/usePortfolioEWS'
+import { useRiskEvents } from './hooks/useRiskEvents'
 
 const RiskIntelligenceContext = createContext(null)
 
@@ -16,6 +17,7 @@ export function RiskIntelligenceProvider({ children }) {
   const [decisionError, setDecisionError] = useState('')
   const datasetRef = useRef(null)
   const { data: ews, loading: ewsLoading, error: ewsError, refresh: refreshEWS } = usePortfolioEWS(dataset?.dataset_id || '')
+  const { events: riskEvents, actions: riskActions, actionByEvent, loading: riskEventsLoading, error: riskEventsError, refresh: refreshRiskEvents } = useRiskEvents(dataset?.dataset_id || '')
 
   useEffect(() => {
     datasetRef.current = dataset
@@ -143,6 +145,12 @@ export function RiskIntelligenceProvider({ children }) {
     activeDatasetId: dataset?.dataset_id || '',
     ews,
     ewsLoading,
+    riskEvents,
+    riskActions,
+    actionByEvent,
+    riskEventsLoading,
+    riskEventsError,
+    refreshRiskEvents,
     ewsError,
     refreshEWS,
     decisionRecommendations,
@@ -163,6 +171,12 @@ export function RiskIntelligenceProvider({ children }) {
     ews,
     ewsLoading,
     ewsError,
+    riskEvents,
+    riskActions,
+    actionByEvent,
+    riskEventsLoading,
+    riskEventsError,
+    refreshRiskEvents,
     refreshEWS,
     decisionRecommendations,
     decisionLoading,
