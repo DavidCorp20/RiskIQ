@@ -34,6 +34,15 @@ class MongoRepository:
         self._collection.create_index([("created_at", ASCENDING)])
         self._collection.create_index([("dataset_id", ASCENDING)])
 
+    def ensure_unique_index(
+        self,
+        fields: list[tuple[str, int]],
+        *,
+        name: str | None = None,
+    ) -> None:
+        """Expose index creation without leaking the Mongo collection to services/tests."""
+        self._collection.create_index(fields, unique=True, name=name)
+
     def insert(self, document: dict[str, Any]) -> str:
         payload = _bson_safe(dict(document))
         payload.setdefault("created_at", datetime.now(timezone.utc).isoformat())
