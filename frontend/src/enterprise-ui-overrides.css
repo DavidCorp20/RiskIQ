@@ -98,3 +98,205 @@ nav.overflow-x-auto.shadow-inner > div > button > span:first-child{display:inlin
 nav.overflow-x-auto.shadow-inner > div > button > span:last-child{display:inline-block !important;flex:0 0 auto !important;width:auto !important;min-width:max-content !important;color:inherit !important;font-size:13px !important;font-weight:inherit !important;line-height:1.25 !important;white-space:nowrap !important}
 nav.overflow-x-auto.shadow-inner > div > button:has(> span:first-child){background:transparent !important}
 @media(max-width:900px){nav.overflow-x-auto.shadow-inner > div{flex-wrap:nowrap !important;width:max-content !important;min-width:100% !important}nav.overflow-x-auto.shadow-inner > div > button{flex:0 0 auto !important}}
+
+
+/* ==========================================================================
+   Bank-grade command center visual system
+   ========================================================================== */
+.ros-shell,
+.ros-main { background:#f8fafc !important; color:#0f172a; }
+
+.ros-sidebar {
+  background:#0f172a !important;
+  border-right:1px solid #1e293b !important;
+}
+
+.ros-sidebar .ros-mark {
+  border-color:#475569;
+  background:#f8fafc;
+  color:#0f172a;
+  box-shadow:0 1px 2px rgba(15,23,42,.16);
+}
+
+.ros-sidebar .ros-portfolio {
+  background:#111c33 !important;
+  border-color:#334155 !important;
+}
+
+.ros-sidebar nav .side-group-items button {
+  border-left:3px solid transparent !important;
+  border-radius:8px !important;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+
+.ros-sidebar nav .side-group-items button.active {
+  background:#1e293b !important;
+  border-left-color:#6366f1 !important;
+  color:#fff !important;
+}
+
+.ros-sidebar nav .side-group-items button.active .ros-nav-icon {
+  color:#818cf8 !important;
+}
+
+.ros-sidebar nav .side-group-items button:hover {
+  background:#1e293b !important;
+}
+
+.ros-main { min-width:0; }
+
+.ros-top {
+  background:rgba(255,255,255,.96) !important;
+  border-bottom:1px solid #e2e8f0 !important;
+}
+
+.ros-content { padding-top:28px; }
+
+.ros-section,
+.ros-metric,
+.analytics-command,
+.migration-hero {
+  border-color:rgba(203,213,225,.72) !important;
+  background:#fff !important;
+  box-shadow:0 1px 2px rgba(15,23,42,.035),0 8px 24px rgba(15,23,42,.035) !important;
+}
+
+.ros-section { border-radius:12px !important; }
+
+.ros-metric {
+  border-radius:10px !important;
+  min-height:96px;
+}
+
+.ros-metric > span {
+  color:#64748b !important;
+  font-size:11px !important;
+  font-weight:700 !important;
+  letter-spacing:.075em;
+  text-transform:uppercase;
+}
+
+.ros-metric strong {
+  color:#0f172a !important;
+  font-size:clamp(1.5rem,2vw,1.875rem) !important;
+  font-weight:750 !important;
+  letter-spacing:-.025em;
+}
+
+.ros-metric small { color:#64748b !important; }
+
+.posture-badge {
+  min-width:180px;
+  border-left-color:#e2e8f0 !important;
+}
+
+.posture-badge strong {
+  display:inline-flex;
+  width:max-content;
+  margin-top:6px;
+  padding:5px 9px;
+  border:1px solid;
+  border-radius:999px;
+  font-size:11px !important;
+  font-weight:750 !important;
+  letter-spacing:.055em;
+}
+
+.posture-badge.critical strong {
+  color:#b42318 !important;
+  background:#fef3f2;
+  border-color:#fecdca;
+}
+
+.posture-badge.high strong {
+  color:#b54708 !important;
+  background:#fffaeb;
+  border-color:#fedf89;
+}
+
+.posture-badge.watch strong {
+  color:#b54708 !important;
+  background:#fffaeb;
+  border-color:#fedf89;
+}
+
+.posture-badge.control strong {
+  color:#067647 !important;
+  background:#ecfdf3;
+  border-color:#abefc6;
+}
+
+.metric-strip {
+  gap:8px !important;
+}
+
+.metric-strip.embedded {
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:4px;
+  box-shadow:0 1px 2px rgba(15,23,42,.03);
+}
+
+.metric-strip.embedded .ros-metric {
+  border:0 !important;
+  box-shadow:none !important;
+  border-radius:8px !important;
+}
+
+.ros-section .section-head span,
+.hero-eyebrow,
+.analytics-command > div > span,
+.decision-hero > div > span {
+  color:#64748b !important;
+  font-size:10px !important;
+  font-weight:750 !important;
+  letter-spacing:.09em;
+}
+
+.ros-section h2,
+.ros-top h1 { color:#0f172a !important; }
+
+.bar-track {
+  height:9px !important;
+  background:#e2e8f0 !important;
+  border-radius:999px !important;
+}
+
+.bar-track i {
+  border-radius:999px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+}
+
+.bar-track.product-vehicular i { background:#4f46e5 !important; }
+.bar-track.product-consumo i { background:#2563eb !important; }
+.bar-track.product-hipotecario i { background:#0f766e !important; }
+.bar-track.product-microcredito i { background:#d97706 !important; }
+.bar-track.product-default i { background:#475569 !important; }
+
+.bar-row small {
+  display:block;
+  margin-top:5px;
+  color:#94a3b8;
+  font-size:11px;
+}
+
+.priority-pill {
+  border:1px solid #e2e8f0 !important;
+  background:#f8fafc !important;
+  color:#334155 !important;
+}
+
+.ros-next {
+  border:1px solid #1e293b !important;
+  background:#0f172a !important;
+  box-shadow:0 8px 24px rgba(15,23,42,.12);
+}
+
+@media(max-width:800px) {
+  .posture-badge {
+    min-width:0;
+    border-left:0 !important;
+    border-top:1px solid #e2e8f0 !important;
+  }
+}
