@@ -22,9 +22,6 @@ class FakeRepo:
     def ensure_unique_index(self, fields, *, name=None):
         return None
 
-    def ensure_unique_index(self, fields, *, name=None):
-        return None
-
     def find(self, filters=None, limit=100):
         filters = filters or {}
         rows = []
@@ -90,7 +87,8 @@ def test_approved_recommendation_writes_immutable_ledger():
         "recommendation_approved",
     ]
     assert all(entry["immutable"] is True for entry in ledger)
-    assert ledger[-1]["metadata"]["comment"] == "Approved after committee review."
+    approved_entry = next(entry for entry in ledger if entry["event"] == "recommendation_approved")
+    assert approved_entry["metadata"]["comment"] == "Approved after committee review."
 
 
 def test_rejected_recommendation_writes_immutable_ledger():
@@ -114,8 +112,9 @@ def test_rejected_recommendation_writes_immutable_ledger():
         recommendation_id=saved["recommendation_id"],
     )
     assert any(entry["event"] == "recommendation_rejected" for entry in ledger)
-    assert ledger[-1]["state"] == "rejected"
-    assert ledger[-1]["immutable"] is True
+    rejected_entry = next(entry for entry in ledger if entry["event"] == "recommendation_rejected")
+    assert rejected_entry["state"] == "rejected"
+    assert rejected_entry["immutable"] is True
 
 
 def test_compliance_outbox_is_written_when_freshservice_is_disabled(monkeypatch):
