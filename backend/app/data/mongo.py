@@ -85,5 +85,12 @@ class MongoRepository:
         result = self._collection.delete_many(filters or {})
         return int(result.deleted_count)
 
+    def ensure_unique_index(self, fields: list[tuple[str, int]], *, name: str | None = None) -> None:
+        self._collection.create_index(fields, unique=True, name=name)
+
+    def ensure_indexes_for(self, indexes: list[tuple[list[tuple[str, int]], str]]) -> None:
+        for fields, name in indexes:
+            self._collection.create_index(fields, name=name)
+
     def close(self) -> None:
         self._client.close()
