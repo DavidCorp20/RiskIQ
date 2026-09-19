@@ -35,7 +35,7 @@ async def test_conversational_mode_does_not_send_risk_evidence() -> None:
     )
 
     assert result["conversation_mode"] == "conversational"
-    assert result["prompt_version"] == "cro-dual-mode-v1"
+    assert result["prompt_version"] == "cro-dual-mode-market-correlation-v2"
     assert result["grounded"] is True
     _, context = provider.calls[0]
     assert "EVIDENCE_JSON" not in context
@@ -130,3 +130,87 @@ async def test_conversational_mode_does_not_send_ews() -> None:
     assert result["conversation_mode"] == "conversational"
     _, context = provider.calls[0]
     assert "EWS_JSON" not in context
+
+
+@pytest.mark.asyncio
+async def test_market_correlation_evidence_is_injected_only_in_analytical_mode() -> None:
+    provider = FakeProvider()
+    evidence = [{
+        "portfolio_metric": "par30",
+        "market_metric": "nasdaq_100",
+        "segment": "microcredito",
+        "transformation": "change",
+        "method": "spearman",
+        "sample_size": 36,
+        "coefficient": -0.61,
+        "p_value": 0.0001,
+        "classification": "CORRELATED",
+        "direction": "negative",
+        "evidence_rule": "n >= 12 AND |r| >= 0.50 AND p < 0.05",
+    }]
+    risk = _risk()
+    risk["market_correlation"] = evidence
+
+    result = await RiskCopilotService(provider).answer(
+        "Analiza si el PAR30 está correlacionado con Nasdaq-100",
+        risk,
+    )
+
+    assert result["conversation_mode"] == "analytical"
+    assert result["market_correlation_evidence"] == evidence
+    _, context = provider.calls[0]
+    assert context["MARKET_CORRELATION_EVIDENCE"][0]["coefficient"] == -0.61
+    assert context["MARKET_CORRELATION_EVIDENCE"][0]["p_value"] == 0.0001
+    assert context["MARKET_CORRELATION_EVIDENCE"][0]["sample_size"] == 36
+    assert "CAUSALITY_CONFIRMED" not in context["MARKET_CORRELATION_EVIDENCE"][0]["classification"]
+
+
+@pytest.mark.asyncio
+async def test_market_correlation_is_not_sent_in_conversational_mode() -> None:
+    provider = FakeProvider()
+    risk = _risk()
+    risk["market_correlation"] = [{
+        "portfolio_metric": "par30",
+        "market_metric": "nasdaq_100",
+        "method": "spearman",
+        "sample_size": 36,
+        "coefficient": -0.61,
+        "p_value": 0.0001,
+        "classification": "CORRELATED",
+    }]
+
+    result = await RiskCopilotService(provider).answer("Hola", risk)
+
+    assert result["conversation_mode"] == "conversational"
+    _, context = provider.calls[0]
+    assert "MARKET_CORRELATION_EVIDENCE" not in context
+
+
+@pytest.mark.asyncio
+async def test_market_correlation_fallback_preserves_three_sections() -> None:
+    class FailingProvider(AIProvider):
+        async def generate(self, prompt: str, context: dict) -> dict:
+            raise RuntimeError("provider unavailable")
+
+    risk = _risk()
+    risk["market_correlation"] = [{
+        "portfolio_metric": "par30",
+        "market_metric": "nasdaq_100",
+        "method": "spearman",
+        "sample_size": 36,
+        "coefficient": -0.61,
+        "p_value": 0.0001,
+        "classification": "CORRELATED",
+        "direction": "negative",
+    }]
+
+    result = await RiskCopilotService(FailingProvider()).answer(
+        "Analiza la relación entre PAR30 y Nasdaq-100",
+        risk,
+    )
+
+    assert result["provider"] == "market_correlation_evidence_mode"
+    assert "Hechos Observados y Estadísticos" in result["answer"]
+    assert "Interpretación Contextual" in result["answer"]
+    assert "Limitaciones Metodológicas" in result["answer"]
+    assert "causalidad" in result["answer"].lower()
