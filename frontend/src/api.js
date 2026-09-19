@@ -110,3 +110,7 @@ export const listIndicators=(datasetId='')=>{const params=new URLSearchParams();
 export const saveIndicator=(indicator,datasetId='')=>request('/api/v1/indicators',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...indicator,dataset_id:datasetId||indicator?.dataset_id||activeDatasetId()})})
 export const evaluateIndicators=(facts,indicatorIds=[],datasetId='')=>request('/api/v1/indicators/evaluate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({facts,indicator_ids:indicatorIds,dataset_id:datasetId||activeDatasetId()})})
 export const getPortfolioEWS=(datasetId,options={})=>request('/api/v1/ews/portfolio-summary',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dataset_id:datasetId,...options})})
+
+export const listRiskEvents=(datasetId='')=>request('/api/v1/risk-events'+(datasetId?'?dataset_id='+encodeURIComponent(datasetId):''))
+export const listRiskActions=(eventId='',status='')=>{const p=new URLSearchParams();if(eventId)p.set('event_id',eventId);if(status)p.set('status',status);return request('/api/v1/risk-events/actions/list'+(p.toString()?'?'+p.toString():''))}
+export const getRiskEvent=eventId=>request('/api/v1/risk-events/'+encodeURIComponent(eventId))
