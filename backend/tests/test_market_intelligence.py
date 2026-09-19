@@ -89,7 +89,7 @@ def test_validated_correlation_is_not_causality():
         statistical_evidence=StatisticalEvidence(
             metric="PAR30",
             market_indicator="NQ=F",
-            coefficient=-0.48,
+            coefficient=-0.61,
             p_value=0.01,
             sample_size=48,
             method="pearson",
