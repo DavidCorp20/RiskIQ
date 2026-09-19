@@ -22,7 +22,7 @@ function Evidence({ items }) {
   )
 }
 
-export default function RiskAiAgent({ result, datasetId, onClose }) {
+export default function RiskAiAgent({ onClose }) {
   const {
     context,
     input,
