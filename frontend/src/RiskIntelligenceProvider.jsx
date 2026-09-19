@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { getDatasetHistory, listDatasets, runDataset, getDecisionRecommendations, createDecisionRecommendation } from './api'
+import { getDatasetHistory, listDatasets, runDataset, getDecisionRecommendations, createDecisionRecommendation, getRiskIntelligence } from './api'
 import { usePortfolioEWS } from './hooks/usePortfolioEWS'
 import { useRiskEvents } from './hooks/useRiskEvents'
 
@@ -15,6 +15,7 @@ export function RiskIntelligenceProvider({ children }) {
   const [decisionRecommendations, setDecisionRecommendations] = useState([])
   const [decisionLoading, setDecisionLoading] = useState(false)
   const [decisionError, setDecisionError] = useState('')
+  const [riskIntelligence, setRiskIntelligence] = useState(null)
   const datasetRef = useRef(null)
   const { data: ews, loading: ewsLoading, error: ewsError, refresh: refreshEWS } = usePortfolioEWS(dataset?.dataset_id || '')
   const { events: riskEvents, actions: riskActions, actionByEvent, loading: riskEventsLoading, error: riskEventsError, refresh: refreshRiskEvents } = useRiskEvents(dataset?.dataset_id || '')
@@ -65,8 +66,10 @@ export function RiskIntelligenceProvider({ children }) {
 
     try {
       const resultData = await runDataset(active.dataset_id)
+      const intelligenceData = await getRiskIntelligence(active.dataset_id)
       const historyData = await getDatasetHistory(active.dataset_id)
       setResult(resultData)
+      setRiskIntelligence(intelligenceData)
       setHistory(historyData)
       await refreshDecisionRecommendations(active.dataset_id)
       setDataset(current => ({
@@ -139,6 +142,7 @@ export function RiskIntelligenceProvider({ children }) {
     history,
     loading,
     error,
+    riskIntelligence,
     refreshDatasets,
     executeDataset,
     selectDataset,
@@ -165,6 +169,7 @@ export function RiskIntelligenceProvider({ children }) {
     history,
     loading,
     error,
+    riskIntelligence,
     refreshDatasets,
     executeDataset,
     selectDataset,
