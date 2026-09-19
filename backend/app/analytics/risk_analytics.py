@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date
 from typing import Any
+
+from app.market.correlation import RiskMarketCorrelationEngine
+from app.market.models import HistoricalSeries, TimeSeriesPoint
+from app.market.statistics import CorrelationMethod
 
 
 class RiskAnalyticsService:
@@ -15,7 +20,7 @@ class RiskAnalyticsService:
         ("hard_90_plus", 90, None),
     )
 
-    def analyze(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    def analyze(self, rows: list[dict[str, Any]], market_series: HistoricalSeries | None = None) -> dict[str, Any]:
         current = self.latest_snapshot(rows)
         active = [r for r in current if self._number(r.get("outstanding_principal")) > 0]
         exposure = sum(self._number(r.get("outstanding_principal")) for r in active)
@@ -41,6 +46,7 @@ class RiskAnalyticsService:
                 })
 
         cro_evidence = self._cro_evidence(rows, active, exposure, buckets)
+        market_correlation = self.analyze_market_correlation(rows, market_series) if market_series else []
 
         return {
             "available": bool(active),
@@ -51,6 +57,7 @@ class RiskAnalyticsService:
             "vintage": vintages,
             "drivers": drivers,
             "cro_evidence": cro_evidence,
+            "market_correlation": market_correlation,
             "methodology": {
                 "deterministic": True,
                 "causality_inferred": False,
@@ -61,6 +68,67 @@ class RiskAnalyticsService:
             },
             "snapshot": self.snapshot_label(current),
         }
+
+    def analyze_market_correlation(
+        self,
+        rows: list[dict[str, Any]],
+        market_series: HistoricalSeries | None,
+        *,
+        min_sample_size: int = 12,
+        alpha: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Correlate observed monthly PAR changes with external market returns.
+
+        This method only emits statistical evidence from the deterministic
+        correlation engine. It never infers causality.
+        """
+        if market_series is None or not market_series.points:
+            return []
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            snapshot = self._snapshot_key(row)
+            if snapshot:
+                grouped[snapshot].append(row)
+        portfolio_series: dict[str, list[TimeSeriesPoint]] = {"par30": [], "par60": [], "par90": []}
+        for snapshot, snapshot_rows in sorted(grouped.items()):
+            active = self._dedupe_by_loan(snapshot_rows)
+            exposure = sum(self._number(r.get("outstanding_principal")) for r in active)
+            if exposure <= 0:
+                continue
+            parsed = date.fromisoformat(snapshot)
+            for metric, threshold in (("par30", 30), ("par60", 60), ("par90", 90)):
+                balance = sum(self._number(r.get("outstanding_principal")) for r in active if self._number(r.get("dpd")) >= threshold)
+                portfolio_series[metric].append(TimeSeriesPoint(date=parsed, value=balance / exposure))
+        engine = RiskMarketCorrelationEngine(alpha=alpha, min_sample_size=min_sample_size)
+        findings: list[dict[str, Any]] = []
+        for metric, points in portfolio_series.items():
+            if len(points) < min_sample_size:
+                continue
+            portfolio = HistoricalSeries(name=metric, source="RiskIQ portfolio snapshots", points=points)
+            evidence = engine.analyze_series(
+                portfolio=portfolio,
+                market=market_series,
+                portfolio_transformation="change",
+                market_transformation="pct_change",
+                methods=[CorrelationMethod.SPEARMAN],
+            )
+            for item in evidence:
+                coefficient = item.coefficient or 0.0
+                findings.append({
+                    "portfolio_metric": metric,
+                    "market_metric": item.market_indicator,
+                    "transformation": "par_change_vs_market_return",
+                    "method": item.method,
+                    "sample_size": item.sample_size,
+                    "coefficient": item.coefficient,
+                    "p_value": item.p_value,
+                    "classification": "CORRELATED" if item.validated else "POSSIBLE_EXPLANATION",
+                    "direction": "positive" if coefficient > 0 else "negative" if coefficient < 0 else "none",
+                    "evidence_rule": f"n >= {min_sample_size} AND p < {alpha}",
+                    "validated": item.validated,
+                    "validation_notes": item.validation_notes,
+                })
+        return findings
 
     @classmethod
     def latest_snapshot(cls, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
