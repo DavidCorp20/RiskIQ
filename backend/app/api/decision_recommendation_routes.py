@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.analytics.ews_engine import EWSEngine
 from app.analytics.portfolio_ews import PortfolioEWSService
 from app.data.persistence import PortfolioPersistenceService
+from app.integrations.freshservice import compliance_service
 from app.decision.decision_recommendations import (
     DecisionRecommendationEngine,
     DecisionRecommendationRepository,
@@ -105,8 +106,55 @@ def recommend_decisions(payload: dict) -> dict:
     }
 
 
+def _queue_compliance_review(
+    item: dict,
+    status: str,
+    actor: str,
+    justification: str,
+    background_tasks: BackgroundTasks,
+) -> dict:
+    """Bridge review transitions into the durable compliance outbox.
+
+    The decision ledger is authoritative. Any Freshservice/outbox failure is
+    captured and reported without rolling back the approved/rejected state.
+    """
+    event = {
+        "decision_id": item.get("recommendation_id"),
+        "dataset_id": item.get("dataset_id"),
+        "status": status,
+        "review_state": status,
+        "actor": actor,
+        "justification": justification,
+        "evidence_hash": item.get("evidence_hash"),
+        "evidence": item.get("evidence") or {},
+        "policy_id": item.get("policy_id"),
+        "policy_version": item.get("policy_version"),
+        "action": item.get("action"),
+        "action_level": item.get("action_level"),
+        "critical": str(item.get("action_level") or "").lower() in {"medium", "high"},
+    }
+    try:
+        outbox_item = compliance_service.enqueue(
+            event_type="decision_review_transition",
+            event=event,
+            critical=bool(event["critical"]),
+        )
+        background_tasks.add_task(compliance_service.process_pending, 20)
+        return {
+            "queued": True,
+            "status": outbox_item.get("status", "pending"),
+            "event_key": outbox_item.get("event_key"),
+        }
+    except Exception as exc:
+        return {
+            "queued": False,
+            "status": "deferred",
+            "error": str(exc)[:500],
+        }
+
+
 @router.post("/{recommendation_id}/approve")
-def approve_decision(recommendation_id: str, payload: dict) -> dict:
+def approve_decision(recommendation_id: str, payload: dict, background_tasks: BackgroundTasks) -> dict:
     actor = str(payload.get("actor") or "user").strip() or "user"
     comment = str(payload.get("comment") or payload.get("justification") or "").strip()
     if not comment:
@@ -122,11 +170,12 @@ def approve_decision(recommendation_id: str, payload: dict) -> dict:
         raise HTTPException(status_code=404, detail="recommendation not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"status": "approved", "item": item, "customer_action_executed": False}
+    compliance_sync = _queue_compliance_review(item, "approved", actor, comment, background_tasks)
+    return {"status": "approved", "item": item, "compliance": compliance_sync, "customer_action_executed": False}
 
 
 @router.post("/{recommendation_id}/reject")
-def reject_decision(recommendation_id: str, payload: dict) -> dict:
+def reject_decision(recommendation_id: str, payload: dict, background_tasks: BackgroundTasks) -> dict:
     actor = str(payload.get("actor") or "user").strip() or "user"
     comment = str(payload.get("comment") or payload.get("justification") or "").strip()
     if not comment:
@@ -142,7 +191,8 @@ def reject_decision(recommendation_id: str, payload: dict) -> dict:
         raise HTTPException(status_code=404, detail="recommendation not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"status": "rejected", "item": item, "customer_action_executed": False}
+    compliance_sync = _queue_compliance_review(item, "rejected", actor, comment, background_tasks)
+    return {"status": "rejected", "item": item, "compliance": compliance_sync, "customer_action_executed": False}
 
 
 @router.get("")
