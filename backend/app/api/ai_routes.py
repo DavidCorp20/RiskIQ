@@ -146,11 +146,14 @@ async def copilot(payload: dict) -> dict:
         records = persistence.portfolio_records.find({"dataset_id": dataset_id}, limit=100000)
         if records:
             risk_facts["ews"] = portfolio_ews.summarize(records)
-            # Correlation evidence is accepted only from a server-side analytics result.
-            # If the correlation engine is wired into risk_analytics, its findings are
-            # propagated here; client-supplied correlation payloads are discarded.
-            server_correlation = risk_facts.get("market_correlation")
-            risk_facts["market_correlation"] = server_correlation if isinstance(server_correlation, list) else []
+            # Never trust market-correlation evidence from the browser. When the
+            # quantitative correlation engine is exposed through RiskAnalyticsService,
+            # its server-side result becomes the sole source for the Copilot.
+            server_analysis = risk_analytics.analyze(records)
+            server_correlation = server_analysis.get("market_correlation", [])
+            risk_facts["market_correlation"] = (
+                server_correlation if isinstance(server_correlation, list) else []
+            )
 
     conversation = payload.get("conversation") if isinstance(payload.get("conversation"), list) else []
     answer = await service.answer(
