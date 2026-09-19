@@ -57,9 +57,6 @@ def recommend_decisions(payload: dict) -> dict:
                 or recommendation_engine.POLICY_VERSION
             ),
         )
-        saved = [repository.save(
-            recommendation_engine_item
-        ) for recommendation_engine_item in []]
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
