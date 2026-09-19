@@ -105,6 +105,46 @@ def recommend_decisions(payload: dict) -> dict:
     }
 
 
+@router.post("/{recommendation_id}/approve")
+def approve_decision(recommendation_id: str, payload: dict) -> dict:
+    actor = str(payload.get("actor") or "user").strip() or "user"
+    comment = str(payload.get("comment") or payload.get("justification") or "").strip()
+    if not comment:
+        raise HTTPException(status_code=422, detail="comment or justification is required")
+    try:
+        item = repository.transition(
+            recommendation_id,
+            status="approved",
+            actor=actor,
+            comment=comment,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="recommendation not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"status": "approved", "item": item, "customer_action_executed": False}
+
+
+@router.post("/{recommendation_id}/reject")
+def reject_decision(recommendation_id: str, payload: dict) -> dict:
+    actor = str(payload.get("actor") or "user").strip() or "user"
+    comment = str(payload.get("comment") or payload.get("justification") or "").strip()
+    if not comment:
+        raise HTTPException(status_code=422, detail="comment or justification is required")
+    try:
+        item = repository.transition(
+            recommendation_id,
+            status="rejected",
+            actor=actor,
+            comment=comment,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="recommendation not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"status": "rejected", "item": item, "customer_action_executed": False}
+
+
 @router.get("")
 def list_decisions(
     dataset_id: str | None = None,
