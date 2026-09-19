@@ -3,6 +3,7 @@ from typing import Any
 from .pd_engine import PDEngine
 from .survival_engine import SurvivalEngine
 from .transition_engine import TransitionEngine
+from .validation import validate_model
 router=APIRouter(prefix="/v1/predictive",tags=["predictive"])
 transition=TransitionEngine();pd=PDEngine();survival=SurvivalEngine()
 
@@ -28,3 +29,10 @@ def feature_importance(payload:dict):
 def survival_curve(payload:dict[str,Any]):
     try:return survival.kaplan_meier(payload.get("rows") or [],payload.get("event_field","default"),payload.get("duration_field","duration")).model_dump()
     except (ValueError,TypeError) as exc:raise HTTPException(422,str(exc))
+
+@router.post("/validate")
+def validate_predictive_model(payload:dict[str,Any]):
+    try:
+        return validate_model(model_id=str(payload.get("model_id","unknown")),model_version=str(payload.get("model_version","0")),validation_window=str(payload.get("validation_window","unspecified")),scores=list(payload.get("scores") or []),labels=list(payload.get("labels") or []),expected_population=payload.get("expected_population"),actual_population=payload.get("actual_population"),thresholds=payload.get("thresholds"))
+    except (ValueError,TypeError) as exc:
+        raise HTTPException(422,str(exc))
