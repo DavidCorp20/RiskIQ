@@ -20,6 +20,7 @@ def health() -> dict[str, str]:
 
 
 from app.api.core_routes import router as core_router
+from app.api.analyst_routes import router as analyst_router
 from app.api.ai_routes import router as ai_router
 from app.api.ews_routes import router as ews_router
 from app.predictive.routes import router as predictive_router
@@ -80,6 +81,7 @@ app.add_middleware(
 for r in [
     router,
     core_router,
+    analyst_router,
     data_router,
     dataset_router,
     segment_router,
