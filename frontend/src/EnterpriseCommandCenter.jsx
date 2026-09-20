@@ -97,7 +97,7 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
     </div>
 
     <div className="enterprise-kpis">
-      <Kpi label="Total Exposure" value={money(snap.outstanding_balance)} detail="Outstanding balance" tone="info" series={historical.series?.exposure}/>
+      <Kpi label="Total Exposure" value={money(snap.outstanding_balance)} detail={`${deltaLabel("outstanding_balance")}`} tone="info" series={historical.series?.exposure} delta={historical.delta?.("outstanding_balance")}/>
       <Kpi label="PAR30" value={pct(snap.par30)} detail={`${money(ri?.materiality?.bad_balance_30_plus)} · ${deltaLabel("par30")}`} tone={severity("par30")} series={historical.series?.par30} delta={historical.delta?.("par30")}/>
       <Kpi label="PAR60" value={pct(snap.par60)} detail={`${money(ri?.materiality?.bad_balance_60_plus)} · ${deltaLabel("par60")}`} tone="warning" series={historical.series?.par60} delta={historical.delta?.("par60")}/>
       <Kpi label="PAR90" value={pct(snap.par90)} detail={`${money(ri?.materiality?.bad_balance_90_plus)} · ${deltaLabel("par90")}`} tone={severity("par90")} series={historical.series?.par90} delta={historical.delta?.("par90")}/>
