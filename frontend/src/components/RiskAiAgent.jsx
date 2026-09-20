@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Activity, Bot, Send, Sparkles } from 'lucide-react'
 import { askCopilot } from '../api'
+import RiskAiWidgets from './RiskAiWidgets'
 import './risk-ai-agent.css'
 
 const pct = (value) => `${(Number(value || 0) * 100).toFixed(1)}%`
@@ -73,6 +74,8 @@ export default function RiskAiAgent({ result, datasetId, onClose }) {
         content: response?.answer || 'El backend no devolvió una respuesta interpretable.',
         evidence: response?.evidence || [],
         source: response?.provider || response?.mode || 'RiskIQ AI',
+        visualization: response?.visualization || response?.widget || null,
+        bullets: response?.bullets || response?.executive_bullets || [],
       }])
     } catch (error) {
       setMessages((current) => [...current, {
@@ -133,7 +136,7 @@ export default function RiskAiAgent({ result, datasetId, onClose }) {
           <div key={message.id} className={`risk-ai-message ${message.role === 'user' ? 'user' : 'agent'}`}>
             <div className="risk-ai-bubble">
               <div className="risk-ai-content">{message.content}</div>
-              {message.role !== 'user' && <Evidence items={message.evidence} />}
+              {message.role !== 'user' && <Evidence items={message.evidence} />}\n              {message.role !== 'user' && <RiskAiWidgets visualization={message.visualization ? {...message.visualization, bullets: message.bullets} : null} />}
               {message.role !== 'user' && <div className="risk-ai-source">{message.source}</div>}
             </div>
           </div>
