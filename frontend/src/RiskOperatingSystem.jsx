@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Bot, CheckCircle2,
   ChevronDown, ChevronRight, CircleDollarSign, Database, GitBranch,
   LayoutDashboard, Menu, Play, Scale, Settings2, ShieldCheck, Target,
-  Wallet, X
+  Wallet, X, Table2, Banknote
 } from 'lucide-react'
 import { runSimulator } from './api'
 import Builder from './Builder'
@@ -16,6 +16,12 @@ import { usePortfolioHistory } from './hooks/usePortfolioHistory'
 import EnterpriseCommandCenter, { HealthThresholdPanel } from './EnterpriseCommandCenter'
 import ExecutiveConcentration from './components/Concentration'
 import ExecutiveDataQuality from './components/DataQuality'
+import DataExplorer from './DataExplorer'
+import CollectionsDashboard from './CollectionsDashboard'
+import FinancialDashboard from './FinancialDashboard'
+import { getDatasetRecords } from './api'
+import { useCollections } from './hooks/useCollections'
+import { useUnitEconomics } from './hooks/useUnitEconomics'
 import './enterprise-command-center.css'
 
 const pct = v => `${(Number(v || 0) * 100).toFixed(1)}%`
@@ -41,7 +47,10 @@ const nav = [
   ['decisions', 'Decision Center', 'Human review'],
   ['engine', 'Decision Engine', 'Low-code policies'],
   ['risk-ai-agent', 'Risk AI Agent', 'AI risk copilot'],
-  ['quality', 'Calidad de datos', 'Data quality']
+  ['quality', 'Calidad de datos', 'Data quality'],
+  ['data-explorer', 'Data Explorer', 'Exploración y ajustes'],
+  ['collections', 'Cobranzas', 'Collections operations'],
+  ['financials', 'Finanzas', 'Unit economics']
 ]
 
 const groups = [
@@ -50,7 +59,8 @@ const groups = [
   { label: 'Scenarios', items: ['stress'] },
   { label: 'Decisioning', items: ['decisions', 'engine'] },
   { label: 'Risk AI Agent', items: ['risk-ai-agent'] },
-  { label: 'Governance', items: ['quality'] }
+  { label: 'Governance', items: ['quality', 'data-explorer'] },
+  { label: 'Financial Operations', items: ['collections', 'financials'] }
 ]
 
 const navIcons = {
@@ -65,7 +75,10 @@ const navIcons = {
   decisions: CheckCircle2,
   engine: Settings2,
   'risk-ai-agent': Bot,
-  quality: ShieldCheck
+  quality: ShieldCheck,
+  'data-explorer': Table2,
+  collections: Activity,
+  financials: Banknote
 }
 
 export default function RiskOperatingSystem() {
@@ -86,6 +99,15 @@ export default function RiskOperatingSystem() {
   const [mobile, setMobile] = useState(false)
   const [openGroup, setOpenGroup] = useState('Control')
   const portfolioHistory = usePortfolioHistory(history)
+  const collections = useCollections(dataset?.dataset_id || '')
+  const [recordsForEconomics, setRecordsForEconomics] = useState([])
+  const economics = useUnitEconomics(recordsForEconomics, snap)
+  useEffect(() => {
+    let live = true
+    if (!dataset?.dataset_id) { setRecordsForEconomics([]); return undefined }
+    getDatasetRecords(dataset.dataset_id).then(r => { if (live) setRecordsForEconomics(r?.records || []) }).catch(() => { if (live) setRecordsForEconomics([]) })
+    return () => { live = false }
+  }, [dataset?.dataset_id])
 
   const snap = result?.snapshot || {}
   const ri = result?.risk_intelligence || {}
@@ -229,6 +251,9 @@ export default function RiskOperatingSystem() {
             {page === 'engine' && <Engine />}
             {page === 'risk-ai-agent' && <RiskAiAgent datasetId={dataset?.dataset_id} result={result} />}
             {page === 'quality' && <ExecutiveDataQuality quality={quality} />}
+            {page === 'data-explorer' && <DataExplorer datasetId={dataset?.dataset_id} />}
+            {page === 'collections' && <CollectionsDashboard model={collections} />}
+            {page === 'financials' && <FinancialDashboard model={economics} />}
           </div>
         )}
       </main>
