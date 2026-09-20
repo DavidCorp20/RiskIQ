@@ -99,6 +99,7 @@ export default function RiskOperatingSystem() {
   const [mobile, setMobile] = useState(false)
   const [openGroup, setOpenGroup] = useState('Control')
   const portfolioHistory = usePortfolioHistory(history)
+  const snap = result?.snapshot || {}
   const collections = useCollections(dataset?.dataset_id || '')
   const [recordsForEconomics, setRecordsForEconomics] = useState([])
   const economics = useUnitEconomics(recordsForEconomics, snap)
@@ -108,8 +109,6 @@ export default function RiskOperatingSystem() {
     getDatasetRecords(dataset.dataset_id).then(r => { if (live) setRecordsForEconomics(r?.records || []) }).catch(() => { if (live) setRecordsForEconomics([]) })
     return () => { live = false }
   }, [dataset?.dataset_id])
-
-  const snap = result?.snapshot || {}
   const ri = result?.risk_intelligence || {}
   const adv = result?.advanced_analytics || {}
   const vintage = result?.vintage || {}
