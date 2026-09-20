@@ -12,6 +12,7 @@ import RiskAiAgent from './components/RiskAiAgent'
 import ExecutiveRiskReport from './ExecutiveRiskReport'
 import PortfolioDashboard from './PortfolioDashboard'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
+import { usePortfolioHistory } from './hooks/usePortfolioHistory'
 import EnterpriseCommandCenter from './EnterpriseCommandCenter'
 import ExecutiveConcentration from './components/Concentration'
 import ExecutiveDataQuality from './components/DataQuality'
@@ -36,7 +37,7 @@ const nav = [
   ['concentration', 'Concentración', 'Risk concentration'],
   ['cohorts', 'Vintage & cohortes', 'Cohort intelligence'],
   ['migration', 'Migración', 'Roll rate & velocity'],
-  ['stress', 'Stress testing', 'Scenario lab'],
+  ['stress', 'Stress Testing', 'Scenario lab'],
   ['decisions', 'Decision Center', 'Human review'],
   ['engine', 'Decision Engine', 'Low-code policies'],
   ['risk-ai-agent', 'Risk AI Agent', 'AI risk copilot'],
@@ -84,6 +85,7 @@ export default function RiskOperatingSystem() {
   const [sim, setSim] = useState(null)
   const [mobile, setMobile] = useState(false)
   const [openGroup, setOpenGroup] = useState('Control')
+  const portfolioHistory = usePortfolioHistory(history)
 
   const snap = result?.snapshot || {}
   const ri = result?.risk_intelligence || {}
@@ -178,7 +180,7 @@ export default function RiskOperatingSystem() {
 
           <div>
             <span className="ros-kicker">RISK OPERATING SYSTEM / {page.toUpperCase()}</span>
-            <h1>{page === 'overview' ? 'Centro de Mando [Bank-Grade v2]' : title}</h1>
+            <h1>{page === 'overview' ? 'Centro de Mando' : title}</h1>
           </div>
 
           <div className="ros-top-actions">
@@ -199,7 +201,7 @@ export default function RiskOperatingSystem() {
           <Empty />
         ) : (
           <div className="ros-content">
-            {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} adv={adv} vintage={vintage} onGo={go} />}
+            {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} historyModel={portfolioHistory} adv={adv} vintage={vintage} onGo={go} />}
             {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <PortfolioDashboard datasetId={dataset?.dataset_id} />}
             {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <ExecutiveConcentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
