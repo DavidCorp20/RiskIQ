@@ -17,3 +17,5 @@
 .dc-facts div{padding:9px}.dc-facts span{font-size:8px}.dc-facts b{font-size:10px}
 .dc-governance{padding:13px}.dc-governance strong{font-size:10px}.dc-governance small{font-size:9px}
 .dc-ledger-row b{font-size:9px}.dc-ledger-row small,.dc-ledger-row code{font-size:8px}
+
+.dc-operational-case{cursor:default;background:#f8fafc}.dc-operational-case.alert{box-shadow:inset 3px 0 #f59e0b}.dc-operational-case.manual{box-shadow:inset 3px 0 #7c3aed}.dc-operational-case:hover{background:#f1f5f9}
