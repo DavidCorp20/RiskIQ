@@ -3,6 +3,26 @@ from __future__ import annotations
 import os
 
 
+def _float_env(name: str, default: float) -> float:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
     mongo_url: str = os.getenv("MONGO_URL", "mongodb://localhost:27017")
@@ -12,7 +32,7 @@ class Settings:
     # AI
     ai_provider: str = os.getenv("AI_PROVIDER", "gemini")
     ai_model: str = os.getenv("AI_MODEL", "gemini-3.8-flash")
-    ai_timeout_seconds: float = float(os.getenv("AI_TIMEOUT_SECONDS", "20"))
+    ai_timeout_seconds: float = _float_env("AI_TIMEOUT_SECONDS", 20.0)
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
 
     # Freshservice compliance automation. Configuration is inert when disabled,
@@ -25,15 +45,15 @@ class Settings:
         "FRESHSERVICE_CRITICAL_POLICY_STATUSES",
         "APPROVED,DEPLOYED,RETIRED",
     )
-    freshservice_timeout_seconds: float = float(os.getenv("FRESHSERVICE_TIMEOUT_SECONDS", "8"))
-    freshservice_max_retries: int = int(os.getenv("FRESHSERVICE_MAX_RETRIES", "3"))
+    freshservice_timeout_seconds: float = _float_env("FRESHSERVICE_TIMEOUT_SECONDS", 8.0)
+    freshservice_max_retries: int = _int_env("FRESHSERVICE_MAX_RETRIES", 3)
     freshservice_retry_backoff_seconds: float = float(
         os.getenv("FRESHSERVICE_RETRY_BACKOFF_SECONDS", "0.5")
     )
     freshservice_max_retry_delay_seconds: float = float(
         os.getenv("FRESHSERVICE_MAX_RETRY_DELAY_SECONDS", "30")
     )
-    freshservice_max_connections: int = int(os.getenv("FRESHSERVICE_MAX_CONNECTIONS", "10"))
+    freshservice_max_connections: int = _int_env("FRESHSERVICE_MAX_CONNECTIONS", 10)
     freshservice_max_keepalive_connections: int = int(
         os.getenv("FRESHSERVICE_MAX_KEEPALIVE_CONNECTIONS", "5")
     )
@@ -46,8 +66,8 @@ class Settings:
 
     # Market intelligence
     market_context_enabled: bool = os.getenv("MARKET_CONTEXT_ENABLED", "true").lower() == "true"
-    market_context_cache_ttl_seconds: int = int(os.getenv("MARKET_CONTEXT_CACHE_TTL_SECONDS", "60"))
-    market_context_timeout_seconds: float = float(os.getenv("MARKET_CONTEXT_TIMEOUT_SECONDS", "3"))
+    market_context_cache_ttl_seconds: int = _int_env("MARKET_CONTEXT_CACHE_TTL_SECONDS", 60)
+    market_context_timeout_seconds: float = _float_env("MARKET_CONTEXT_TIMEOUT_SECONDS", 3.0)
     market_nq_symbol: str = os.getenv("MARKET_NQ_SYMBOL", "NQ=F")
     market_nq_url: str = os.getenv(
         "MARKET_NQ_URL",
@@ -64,8 +84,8 @@ class Settings:
     riskiq_action_adapter: str = os.getenv("RISKIQ_ACTION_ADAPTER", "FRESHSERVICE")
     riskiq_action_webhook_url: str = os.getenv("RISKIQ_ACTION_WEBHOOK_URL", "")
     riskiq_action_webhook_secret: str = os.getenv("RISKIQ_ACTION_WEBHOOK_SECRET", "")
-    riskiq_action_timeout_seconds: float = float(os.getenv("RISKIQ_ACTION_TIMEOUT_SECONDS", "8"))
-    riskiq_action_max_retries: int = int(os.getenv("RISKIQ_ACTION_MAX_RETRIES", "3"))
+    riskiq_action_timeout_seconds: float = _float_env("RISKIQ_ACTION_TIMEOUT_SECONDS", 8.0)
+    riskiq_action_max_retries: int = _int_env("RISKIQ_ACTION_MAX_RETRIES", 3)
     riskiq_action_retry_backoff_seconds: float = float(
         os.getenv("RISKIQ_ACTION_RETRY_BACKOFF_SECONDS", "0.5")
     )
@@ -74,7 +94,7 @@ class Settings:
     )
 
     smtp_host: str = os.getenv("RISKIQ_SMTP_HOST", "")
-    smtp_port: int = int(os.getenv("RISKIQ_SMTP_PORT", "587"))
+    smtp_port: int = _int_env("RISKIQ_SMTP_PORT", 587)
     smtp_username: str = os.getenv("RISKIQ_SMTP_USERNAME", "")
     smtp_password: str = os.getenv("RISKIQ_SMTP_PASSWORD", "")
     smtp_from: str = os.getenv("RISKIQ_SMTP_FROM", "")
@@ -84,8 +104,8 @@ class Settings:
     dsi_audit_signing_secret: str = os.getenv("DSI_AUDIT_SIGNING_SECRET", "")
 
     sentry_dsn: str = os.getenv("SENTRY_DSN", "")
-    sentry_traces_sample_rate: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.05"))
-    performance_warning_ms: float = float(os.getenv("RISKIQ_PERFORMANCE_WARNING_MS", "3000"))
+    sentry_traces_sample_rate: float = _float_env("SENTRY_TRACES_SAMPLE_RATE", 0.05)
+    performance_warning_ms: float = _float_env("RISKIQ_PERFORMANCE_WARNING_MS", 3000.0)
 
 
 settings = Settings()
