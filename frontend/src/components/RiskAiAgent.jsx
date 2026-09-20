@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Activity, Bot, Send, Sparkles } from 'lucide-react'
 import { askCopilot } from '../api'
+import './risk-ai-agent.css'
 
 const pct = (value) => `${(Number(value || 0) * 100).toFixed(1)}%`
 const money = (value) => `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
