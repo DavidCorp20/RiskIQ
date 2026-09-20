@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { usePortfolioHistory } from './hooks/usePortfolioHistory'
 import {
   AreaChart, Area, BarChart, Bar, CartesianGrid, Cell, ComposedChart,
   Line, ResponsiveContainer, Sankey, Tooltip, XAxis, YAxis
@@ -65,8 +66,12 @@ function buildFlow(adv, snap) {
   return {nodes,links:normalized}
 }
 
-export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=[], priorities=[], history=null, adv={}, vintage={}, quality={}, onGo }) {
+export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=[], priorities=[], history=null, historyModel=null, adv={}, vintage={}, quality={}, onGo }) {
+  const fallbackHistory = usePortfolioHistory(history)
+  const historical = historyModel || fallbackHistory
   const trend=useMemo(()=>buildTrend(history,snap),[history,snap])
+  const displayTrend = historical.rows?.length ? historical.rows.map(row => ({ label: row.snapshot_date || row.date || row.period, exposure: safe(row.outstanding_balance ?? row.exposure ?? row.balance), par30: safe(row.par30 ?? row.par30_ratio), par90: safe(row.par90 ?? row.par90_ratio) })) : trend
+  const deltaLabel = key => { const value = historical.delta?.(key); if (value == null) return 'Sin comparable'; const sign = value > 0 ? '+' : ''; return sign + (value * 100).toFixed(1) + ' pp vs anterior' }
   const flows=useMemo(()=>buildFlow(adv,snap),[adv,snap])
   const cohorts=Array.isArray(vintage?.vintages) ? vintage.vintages : []
   const maxExposure=Math.max(...concentration.map(x=>safe(x.exposure_share)),0.01)
@@ -95,9 +100,9 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
     </div>
 
     <div className="enterprise-grid enterprise-grid-8-4">
-      <Card eyebrow="PORTFOLIO TREND" title="Origination & deterioration" className="enterprise-chart-card">
-        {trend.length>1 ? <ResponsiveContainer width="100%" height={290}>
-          <ComposedChart data={trend} margin={{top:12,right:12,left:0,bottom:0}}>
+      <Card eyebrow="PORTFOLIO TREND" title="Evolución de la cartera" className="enterprise-chart-card">
+        {displayTrend.length>1 ? <ResponsiveContainer width="100%" height={290}>
+          <ComposedChart data={displayTrend} margin={{top:12,right:12,left:0,bottom:0}}>
             <CartesianGrid stroke={COLORS.grid} vertical={false}/>
             <XAxis dataKey="label" tick={{fontSize:11,fill:COLORS.muted}} axisLine={false} tickLine={false}/>
             <YAxis yAxisId="money" tick={{fontSize:11,fill:COLORS.muted}} axisLine={false} tickLine={false}/>
