@@ -3,6 +3,7 @@ import { getLatestBacktestEvidence, listDecisionRules, listPolicyVersions } from
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
 import EvidenceMethodology from './EvidenceMethodology'
 import ExecutiveIntelligencePanel from './ExecutiveIntelligencePanel'
+import { useExport } from './hooks/useExport'
 
 const pct = value => `${(Number(value || 0) * 100).toFixed(1)}%`
 const num = value => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
@@ -13,6 +14,7 @@ export default function ExecutiveRiskReport() {
   const [rules, setRules] = useState([])
   const [policy, setPolicy] = useState(null)
   const [backtest, setBacktest] = useState(null)
+  const { exportCsv, exportPdf } = useExport(`riskiq-executive-report-${datasetId || 'portfolio'}`)
 
   useEffect(() => {
     let live = true
@@ -100,51 +102,30 @@ export default function ExecutiveRiskReport() {
     [snapshot]
   )
 
-  const exportReport = () => {
-    const lines = [
-      'RISKIQ · EXECUTIVE RISK REPORT',
-      '',
-      `Dataset: ${datasetId || '—'}`,
-      `Generated: ${new Date().toISOString()}`,
-      '',
-      'RISK POSITION',
-      ...position.map(item => `${item[0]}: ${item[1]} — ${item[2]}`),
-      '',
-      'RISK DRIVERS',
-      ...(drivers.slice(0, 5).map((driver, index) =>
-        `${index + 1}. ${driver.label || driver.name || driver.driver || 'Risk driver'}${driver.value != null ? ` · ${num(driver.value)}` : ''}`
-      ) || ['No deterministic drivers recorded.']),
-      '',
-      'DECISION & POLICY',
-      `Policy: ${policy?.name || rules[0]?.name || 'No policy selected'}`,
-      `Version: ${policy?.version != null ? `v${policy.version}` : '—'}`,
-      `Lifecycle: ${policy?.status || '—'}`,
-      'Decision control: Human review required',
-      '',
-      'EARLY WARNING EVIDENCE',
-      `High EWS exposure: ${num(ewsPortfolio.high_ews_exposure)}`,
-      `High EWS exposure share: ${ewsPortfolio.high_ews_exposure_share != null ? pct(ewsPortfolio.high_ews_exposure_share) : '—'}`,
-      `PAR30 trend: ${ewsTrend.ratio_delta != null ? pct(ewsTrend.ratio_delta) : '—'} · ${ewsTrend.direction || '—'}`,
-      `Prioritized alerts: ${ewsAlerts.length}`,
-      '',
-      'BACKTEST EVIDENCE',
-      `Recorded result: ${backtest ? 'Available' : 'Not recorded'}`,
-      `Coverage: ${backtestRows.outcome_coverage != null ? pct(backtestRows.outcome_coverage) : '—'}`,
-      `Accuracy: ${backtestRows.accuracy != null ? pct(backtestRows.accuracy) : '—'}`,
-      `Bad rate: ${backtestRows.bad_rate != null ? pct(backtestRows.bad_rate) : '—'}`,
-      '',
-      'GOVERNANCE',
-      'This report presents recorded deterministic evidence only.'
-    ].join('\n')
+  const reportRows = useMemo(() => [
+    ...position.map(([metric, value, detail]) => ({ section: 'Risk Position', metric, value, detail })),
+    ...drivers.slice(0, 10).map((driver, index) => ({ section: 'Risk Drivers', metric: driver.label || driver.name || driver.driver || `Driver ${index + 1}`, value: driver.value ?? '', detail: driver.description || '' })),
+    { section: 'Decision & Policy', metric: 'Policy', value: policy?.name || rules[0]?.name || 'Not configured', detail: policy?.status || '' },
+    { section: 'Decision & Policy', metric: 'Version', value: policy?.version != null ? `v${policy.version}` : '—', detail: 'Governed policy version' },
+    { section: 'EWS', metric: 'High EWS exposure', value: ewsPortfolio.high_ews_exposure ?? '', detail: ewsPortfolio.high_ews_exposure_share != null ? pct(ewsPortfolio.high_ews_exposure_share) : '' },
+    { section: 'EWS', metric: 'PAR30 delta', value: ewsTrend.ratio_delta ?? '', detail: ewsTrend.direction || '' },
+    { section: 'Backtest', metric: 'Coverage', value: backtestRows.outcome_coverage ?? '', detail: '' },
+    { section: 'Backtest', metric: 'Accuracy', value: backtestRows.accuracy ?? '', detail: '' },
+    { section: 'Backtest', metric: 'Bad rate', value: backtestRows.bad_rate ?? '', detail: '' }
+  ], [position, drivers, policy, rules, ewsPortfolio, ewsTrend, backtestRows])
 
-    const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `riskiq-executive-risk-report-${datasetId || 'portfolio'}.txt`
-    anchor.click()
-    URL.revokeObjectURL(url)
+  if (!datasetId) {
+    return (
+      <section className="ri-exec-report">
+        <div className="ri-exec-empty">
+          <b>No portfolio selected</b>
+          <span>Select an active portfolio before generating the executive report.</span>
+        </div>
+      </section>
+    )
   }
+
+  const exportReportCsv = () => exportCsv(reportRows)
 
   if (!datasetId) {
     return (
@@ -172,7 +153,7 @@ export default function ExecutiveRiskReport() {
           <span className="ri-exec-status">
             {error ? 'EVIDENCE UNAVAILABLE' : loading ? 'REFRESHING EVIDENCE' : 'DETERMINISTIC EVIDENCE'}
           </span>
-          <button onClick={exportReport}>Export report</button>
+          <button onClick={exportReportCsv}>Export CSV</button><button onClick={()=>exportPdf(`RiskIQ Executive Report · ${datasetId}`)}>Export PDF</button>
         </div>
       </header>
 
@@ -262,7 +243,7 @@ export default function ExecutiveRiskReport() {
         <span>Generated {new Date().toLocaleString()}</span>
       </footer>
 
-      <style>{`.ri-exec-report{display:flex;flex-direction:column;gap:18px}.ri-exec-head{display:flex;justify-content:space-between;gap:24px;padding:26px 28px;border:1px solid #dce3ea;border-radius:16px;background:#fff}.ri-exec-kicker,.ri-exec-panel-head>div>span{font-size:10px;letter-spacing:.14em;font-weight:800;color:#637083}.ri-exec-head h2{margin:5px 0 7px;font-size:28px;color:#172334}.ri-exec-head p{margin:0;color:#687789}.ri-exec-actions{display:flex;align-items:flex-start;gap:10px}.ri-exec-actions button{border:0;border-radius:9px;padding:10px 14px;background:#172334;color:#fff;font-weight:700;cursor:pointer}.ri-exec-status{padding:9px 10px;border:1px solid #dce3ea;border-radius:9px;font-size:10px;font-weight:800;color:#536274;white-space:nowrap}.ri-exec-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#dce3ea;border:1px solid #dce3ea;border-radius:14px;overflow:hidden}.ri-exec-meta div{background:#fff;padding:15px 17px;display:flex;flex-direction:column;gap:5px}.ri-exec-meta span{font-size:9px;font-weight:800;letter-spacing:.12em;color:#7a8796}.ri-exec-meta b{font-size:13px;color:#233246;overflow:hidden;text-overflow:ellipsis}.ri-exec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.ri-exec-grid article{background:#fff;border:1px solid #dce3ea;border-radius:14px;padding:18px}.ri-exec-grid span{display:block;font-size:10px;font-weight:800;letter-spacing:.1em;color:#718094}.ri-exec-grid strong{display:block;margin:8px 0 5px;font-size:27px;color:#172334}.ri-exec-grid small{color:#718094}.ri-exec-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ri-exec-panel{background:#fff;border:1px solid #dce3ea;border-radius:14px;padding:20px}.ri-exec-panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px}.ri-exec-panel-head h3{margin:5px 0 0;font-size:17px;color:#1d2b3c}.ri-exec-panel-head>b{font-size:10px;color:#69788a}.ri-exec-panel ol{margin:0;padding-left:23px}.ri-exec-panel li{padding:10px 0;border-bottom:1px solid #edf0f3}.ri-exec-panel li:last-child{border-bottom:0}.ri-exec-panel li strong{display:block;color:#27374a}.ri-exec-panel li span{display:block;margin-top:3px;color:#718094;font-size:12px}.ri-exec-evidence{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#e5e9ee}.ri-exec-evidence div{background:#fff;padding:12px}.ri-exec-evidence span{display:block;font-size:10px;color:#718094}.ri-exec-evidence strong{display:block;margin-top:4px;color:#25364a}.ri-exec-backtest{padding-bottom:22px}.ri-exec-mini{grid-template-columns:repeat(3,1fr);margin-top:5px}.ri-exec-mini article{padding:14px}.ri-exec-mini strong{font-size:22px}.ri-exec-muted{color:#718094;font-size:13px}.ri-exec-foot{display:flex;justify-content:space-between;gap:20px;padding:17px 20px;border:1px solid #dce3ea;border-radius:14px;background:#f7f9fb}.ri-exec-foot div{display:flex;flex-direction:column;gap:4px}.ri-exec-foot b{font-size:12px;color:#233246}.ri-exec-foot span{font-size:12px;color:#657487}.ri-exec-alert{padding:12px 15px;border:1px solid #e6d7b0;border-radius:10px;background:#fffaf0;color:#765c20}.ri-exec-empty{min-height:240px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;border:1px dashed #cfd8e2;border-radius:14px;color:#687789}.ri-exec-empty b{color:#25364a}@media(max-width:900px){.ri-exec-head,.ri-exec-columns{display:grid;grid-template-columns:1fr}.ri-exec-meta,.ri-exec-grid{grid-template-columns:1fr 1fr}.ri-exec-actions{justify-content:flex-start}}`}</style>
+      <style>{`.ri-exec-report{display:flex;flex-direction:column;gap:18px}.ri-exec-head{display:flex;justify-content:space-between;gap:24px;padding:26px 28px;border:1px solid #dce3ea;border-radius:16px;background:#fff}.ri-exec-kicker,.ri-exec-panel-head>div>span{font-size:10px;letter-spacing:.14em;font-weight:800;color:#637083}.ri-exec-head h2{margin:5px 0 7px;font-size:28px;color:#172334}.ri-exec-head p{margin:0;color:#687789}.ri-exec-actions{display:flex;align-items:flex-start;gap:10px}.ri-exec-actions button{border:0;border-radius:9px;padding:10px 14px;background:#172334;color:#fff;font-weight:700;cursor:pointer}.ri-exec-status{padding:9px 10px;border:1px solid #dce3ea;border-radius:9px;font-size:10px;font-weight:800;color:#536274;white-space:nowrap}.ri-exec-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#dce3ea;border:1px solid #dce3ea;border-radius:14px;overflow:hidden}.ri-exec-meta div{background:#fff;padding:15px 17px;display:flex;flex-direction:column;gap:5px}.ri-exec-meta span{font-size:9px;font-weight:800;letter-spacing:.12em;color:#7a8796}.ri-exec-meta b{font-size:13px;color:#233246;overflow:hidden;text-overflow:ellipsis}.ri-exec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.ri-exec-grid article{background:#fff;border:1px solid #dce3ea;border-radius:14px;padding:18px}.ri-exec-grid span{display:block;font-size:10px;font-weight:800;letter-spacing:.1em;color:#718094}.ri-exec-grid strong{display:block;margin:8px 0 5px;font-size:27px;color:#172334}.ri-exec-grid small{color:#718094}.ri-exec-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ri-exec-panel{background:#fff;border:1px solid #dce3ea;border-radius:14px;padding:20px}.ri-exec-panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:15px}.ri-exec-panel-head h3{margin:5px 0 0;font-size:17px;color:#1d2b3c}.ri-exec-panel-head>b{font-size:10px;color:#69788a}.ri-exec-panel ol{margin:0;padding-left:23px}.ri-exec-panel li{padding:10px 0;border-bottom:1px solid #edf0f3}.ri-exec-panel li:last-child{border-bottom:0}.ri-exec-panel li strong{display:block;color:#27374a}.ri-exec-panel li span{display:block;margin-top:3px;color:#718094;font-size:12px}.ri-exec-evidence{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#e5e9ee}.ri-exec-evidence div{background:#fff;padding:12px}.ri-exec-evidence span{display:block;font-size:10px;color:#718094}.ri-exec-evidence strong{display:block;margin-top:4px;color:#25364a}.ri-exec-backtest{padding-bottom:22px}.ri-exec-mini{grid-template-columns:repeat(3,1fr);margin-top:5px}.ri-exec-mini article{padding:14px}.ri-exec-mini strong{font-size:22px}.ri-exec-muted{color:#718094;font-size:13px}.ri-exec-foot{display:flex;justify-content:space-between;gap:20px;padding:17px 20px;border:1px solid #dce3ea;border-radius:14px;background:#f7f9fb}.ri-exec-foot div{display:flex;flex-direction:column;gap:4px}.ri-exec-foot b{font-size:12px;color:#233246}.ri-exec-foot span{font-size:12px;color:#657487}.ri-exec-alert{padding:12px 15px;border:1px solid #e6d7b0;border-radius:10px;background:#fffaf0;color:#765c20}.ri-exec-empty{min-height:240px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;border:1px dashed #cfd8e2;border-radius:14px;color:#687789}.ri-exec-empty b{color:#25364a}@media(max-width:900px){.ri-exec-head,.ri-exec-columns{display:grid;grid-template-columns:1fr}.ri-exec-meta,.ri-exec-grid{grid-template-columns:1fr 1fr}.ri-exec-actions{justify-content:flex-start}}@media print{body{background:#fff!important}.ros-sidebar,.ros-top,.ri-exec-actions{display:none!important}.ros-main,.ros-content{margin:0!important;padding:0!important}.ri-exec-report{gap:10px}.ri-exec-head,.ri-exec-panel,.ri-exec-meta,.ri-exec-grid article,.ri-exec-foot{break-inside:avoid;box-shadow:none!important}.ri-exec-head{border:0;padding:0 0 12px}.ri-exec-report{color:#111827}.ri-exec-panel,.ri-exec-grid article,.ri-exec-meta div{border-color:#d1d5db!important}.ri-exec-kicker{color:#475569!important}}`}</style>
     </section>
   )
 }
