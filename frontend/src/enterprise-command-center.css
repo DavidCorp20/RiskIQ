@@ -40,3 +40,54 @@
 .engine-node-canvas{display:flex;align-items:stretch;gap:0;margin:16px 0;padding:18px;overflow-x:auto;border:1px solid #1e293b;border-radius:14px;background:#0f172a;box-shadow:0 12px 30px rgba(15,23,42,.12)}
 .engine-node-wrap{display:flex;align-items:center;min-width:145px}.engine-node{width:132px;min-height:94px;padding:12px;border:1px solid #334155;border-radius:10px;background:#172033;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.16)}.engine-node span{display:grid;place-items:center;width:24px;height:20px;border-radius:5px;background:#1d4ed8;font-size:9px;font-weight:800}.engine-node b{display:block;margin-top:9px;font-size:11px}.engine-node small{display:block;margin-top:3px;color:#94a3b8;font-size:9px;line-height:1.35}.engine-node-arrow{margin:0 7px;flex:0 0 auto;color:#64748b}
 @media(max-width:800px){.stress-visual-grid{grid-template-columns:1fr;padding:0 14px 14px}}
+
+/* Institutional historical risk layer */
+.enterprise-period-bar{display:flex;align-items:center;gap:16px;margin:0 0 12px;padding:10px 14px;border:1px solid #dbe3ec;border-radius:10px;background:#fff}
+.enterprise-period-bar>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:150px}
+.enterprise-period-bar span,.enterprise-health-panel>div:first-child>span{font-size:9px;font-weight:800;letter-spacing:.12em;color:#64748b}
+.enterprise-period-bar strong{font-size:13px;color:#0f172a}
+.enterprise-period-bar small{margin-left:auto;color:#64748b;font-size:11px}
+.enterprise-periods{display:flex;gap:4px;flex-wrap:wrap}
+.enterprise-periods button{border:1px solid #dbe3ec;background:#f8fafc;color:#475569;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer}
+.enterprise-periods button.active{background:#0f172a;color:#fff;border-color:#0f172a}
+.enterprise-kpi-label{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.enterprise-sparkline{width:74px;height:22px;overflow:visible}
+.enterprise-sparkline polyline{fill:none;stroke:#2563eb;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.enterprise-kpi em{display:block;margin-top:4px;font-size:10px;font-style:normal;font-weight:800}
+.enterprise-kpi .delta-good{color:#067647}
+.enterprise-kpi .delta-bad{color:#b42318}
+.enterprise-health-panel{display:grid;grid-template-columns:minmax(220px,.8fr) 1.8fr;gap:18px;align-items:center;margin:0 0 16px;padding:15px 16px;border:1px solid #dbe3ec;border-radius:10px;background:#fff}
+.enterprise-health-panel h3{margin:3px 0;color:#1e293b;font-size:14px}
+.enterprise-health-panel p{margin:3px 0 0;color:#64748b;font-size:11px;line-height:1.4}
+.enterprise-health-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.enterprise-health-grid label{display:flex;flex-direction:column;gap:5px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
+.enterprise-health-grid label>span{font-size:10px;font-weight:700;color:#475569}
+.enterprise-health-grid label>div{display:flex;align-items:center}
+.enterprise-health-grid input{width:72px;border:1px solid #cbd5e1;border-radius:6px;padding:5px 7px;background:#fff;color:#0f172a;font-size:12px}
+.enterprise-health-grid label>div b{margin-left:4px;color:#64748b;font-size:11px}
+.enterprise-health-grid em{font-size:9px;font-style:normal;font-weight:800;letter-spacing:.06em}
+.enterprise-health-grid em.healthy{color:#067647}
+.enterprise-health-grid em.watch{color:#b54708}
+.enterprise-health-grid em.breach{color:#b42318}
+.vintage-heatmap{display:flex;flex-direction:column;gap:6px}
+.vintage-heat-header,.vintage-heat-row{display:grid;grid-template-columns:1.3fr 1fr 1fr 1.2fr;gap:8px;align-items:center}
+.vintage-heat-header{padding:0 8px 4px;color:#64748b;font-size:9px;font-weight:800;letter-spacing:.08em}
+.vintage-heat-row>span,.vintage-heat-row>small{font-size:11px;color:#475569}
+.heat-cell{padding:8px;border-radius:6px;text-align:center;font-size:11px;font-weight:800;border:1px solid transparent}
+.heat-cell.healthy{background:#ecfdf3;color:#067647;border-color:#abefc6}
+.heat-cell.watch{background:#fffaeb;color:#b54708;border-color:#fedf89}
+.heat-cell.high{background:#fff4ed;color:#c4320a;border-color:#f9b08d}
+.heat-cell.critical{background:#fef3f2;color:#b42318;border-color:#fecdca}
+.vintage-heat-legend{display:flex;align-items:center;gap:5px;margin-top:5px;color:#64748b;font-size:9px}
+.vintage-heat-legend i{width:10px;height:10px;border-radius:3px}
+.vintage-heat-legend .healthy{background:#abefc6}.vintage-heat-legend .watch{background:#fedf89}.vintage-heat-legend .high{background:#f9b08d}.vintage-heat-legend .critical{background:#fecdca}
+.migration-matrix{overflow:auto}
+.migration-matrix-head,.migration-matrix-row{display:grid;grid-template-columns:1.25fr repeat(5,minmax(58px,1fr));gap:5px;align-items:center}
+.migration-matrix-head{padding:0 5px 6px;color:#64748b;font-size:9px;font-weight:800;letter-spacing:.07em}
+.migration-matrix-row{margin-bottom:5px}
+.migration-matrix-row strong{font-size:10px;color:#475569}
+.migration-matrix-row>div{padding:8px 4px;border-radius:5px;background:#f8fafc;text-align:center;color:#64748b;font-size:10px;font-weight:800}
+.migration-matrix-row>div.migration-watch{background:#fffaeb;color:#b54708}
+.migration-matrix-row>div.migration-hot{background:#fef3f2;color:#b42318}
+.migration-note{display:block;margin-top:8px;color:#64748b;font-size:10px}
+@media(max-width:900px){.enterprise-period-bar,.enterprise-health-panel{grid-template-columns:1fr;display:grid}.enterprise-period-bar small{margin-left:0}.enterprise-health-grid{grid-template-columns:1fr}.enterprise-periods{overflow:auto;flex-wrap:nowrap}}
