@@ -194,7 +194,7 @@ function Sparkline({values=[]}) {
   return <svg className="enterprise-sparkline" viewBox="0 0 100 24" aria-hidden="true"><polyline points={points}/></svg>
 }
 
-function HealthThresholdPanel({thresholds,updateThreshold,health}) {
+export function HealthThresholdPanel({thresholds,updateThreshold,health}) {
   const items=[['par30','PAR30 máximo'],['par60','PAR60 máximo'],['par90','PAR90 máximo']]
   return <section className="enterprise-health-panel">
     <div><span>PARAMETRIZADOR DE SALUD</span><h3>Umbrales tolerables</h3><p>Los límites son operativos y no modifican el cálculo determinístico.</p></div>
