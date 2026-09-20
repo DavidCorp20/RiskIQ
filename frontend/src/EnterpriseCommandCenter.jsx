@@ -90,15 +90,22 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
       </div>
     </div>
 
-    <div className="enterprise-kpis">
-      <Kpi label="Total Exposure" value={money(snap.outstanding_balance)} detail="Outstanding balance" tone="info"/>
-      <Kpi label="Active Loans" value={Number(snap.active_loans||0).toLocaleString()} detail="Portfolio volume" tone="info"/>
-      <Kpi label="PAR30" value={pct(snap.par30)} detail={money(ri?.materiality?.bad_balance_30_plus)} tone={severity('par30')}/>
-      <Kpi label="PAR60" value={pct(snap.par60)} detail={money(ri?.materiality?.bad_balance_60_plus)} tone="warning"/>
-      <Kpi label="PAR90" value={pct(snap.par90)} detail={money(ri?.materiality?.bad_balance_90_plus)} tone={severity('par90')}/>
-      <Kpi label="Data Confidence" value={quality?.score ? `${quality.score}/100` : '—'} detail={quality?.confidence || 'Evidence quality'} tone="info"/>
+    <div className="enterprise-period-bar">
+      <div><span>HISTORIAL COMPARABLE</span><strong>{historical.periodLabel || "Mensual"}</strong></div>
+      <div className="enterprise-periods">{(historical.periods || []).map(item => <button key={item.id} className={historical.period === item.id ? "active" : ""} onClick={() => historical.setPeriod(item.id)}>{item.label}</button>)}</div>
+      <small>{historical.comparable ? `${historical.rows.length} cortes comparables` : "Histórico insuficiente para delta"}</small>
     </div>
 
+    <div className="enterprise-kpis">
+      <Kpi label="Total Exposure" value={money(snap.outstanding_balance)} detail="Outstanding balance" tone="info" series={historical.series?.exposure}/>
+      <Kpi label="PAR30" value={pct(snap.par30)} detail={`${money(ri?.materiality?.bad_balance_30_plus)} · ${deltaLabel("par30")}`} tone={severity("par30")} series={historical.series?.par30} delta={historical.delta?.("par30")}/>
+      <Kpi label="PAR60" value={pct(snap.par60)} detail={`${money(ri?.materiality?.bad_balance_60_plus)} · ${deltaLabel("par60")}`} tone="warning" series={historical.series?.par60} delta={historical.delta?.("par60")}/>
+      <Kpi label="PAR90" value={pct(snap.par90)} detail={`${money(ri?.materiality?.bad_balance_90_plus)} · ${deltaLabel("par90")}`} tone={severity("par90")} series={historical.series?.par90} delta={historical.delta?.("par90")}/>
+      <Kpi label="Active Loans" value={Number(snap.active_loans||0).toLocaleString()} detail="Portfolio volume" tone="info"/>
+      <Kpi label="Data Confidence" value={quality?.score ? `${quality.score}/100` : "—"} detail={quality?.confidence || "Evidence quality"} tone="info"/>
+    </div>
+
+    <HealthThresholdPanel thresholds={historical.thresholds} updateThreshold={historical.updateThreshold} health={historical.health} current={snap}/>
     <div className="enterprise-grid enterprise-grid-8-4">
       <Card eyebrow="PORTFOLIO TREND" title="Evolución de la cartera" className="enterprise-chart-card">
         {displayTrend.length>1 ? <ResponsiveContainer width="100%" height={290}>
