@@ -18,7 +18,6 @@ export default function ExecutiveRiskReport() {
   const [backtest, setBacktest] = useState(null)
   const [records, setRecords] = useState([])
   const { adjustments } = useManualAdjustments(datasetId)
-  const economics = useUnitEconomics(records, snapshot)
   const { exportCsv, exportPdf } = useExport(`riskiq-executive-report-${datasetId || 'portfolio'}`)
 
   useEffect(() => {
@@ -90,6 +89,7 @@ export default function ExecutiveRiskReport() {
   }, [datasetId])
 
   const snapshot = result?.snapshot || {}
+  const economics = useUnitEconomics(records, snapshot)
   useEffect(() => {
     let live = true
     if (!datasetId) { setRecords([]); return undefined }
