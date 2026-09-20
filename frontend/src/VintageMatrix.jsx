@@ -1,6 +1,1 @@
-export default function VintageMatrix({data=[]}){
- return <section className="portfolio-panel">
-  <div className="portfolio-panel-heading"><div><span>VINTAGE</span><h3>Vintage Matrix</h3></div><small>PAR30 por cohorte de originación</small></div>
-  {data.length?<div className="portfolio-table-wrap"><table className="portfolio-vintage-table"><thead><tr><th>Vintage</th><th>PAR30</th><th>Exposure</th><th>Risk intensity</th></tr></thead><tbody>{data.map(x=><tr key={x.vintage}><td><strong>{x.vintage}</strong></td><td>{x.formatted_value}</td><td>{x.formatted_exposure}</td><td>{x.risk_intensity ?? '—'}</td></tr>)}</tbody></table></div>:<div className="portfolio-empty">No hay Vintage calculable en el corte seleccionado.</div>}
- </section>
-}
+export { default } from './components/VintageMatrix'
