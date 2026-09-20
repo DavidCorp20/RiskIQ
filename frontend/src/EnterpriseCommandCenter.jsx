@@ -175,6 +175,67 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
   </div>
 }
 
-function Kpi({label,value,detail,tone}) {
-  return <div className={`enterprise-kpi ${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
+function Kpi({label,value,detail,tone,series=[],delta=null}) {
+  const improving = delta == null ? null : delta <= 0
+  return <div className={`enterprise-kpi ${tone}`}>
+    <div className="enterprise-kpi-label"><span>{label}</span>{series?.length > 1 && <Sparkline values={series}/>}</div>
+    <strong>{value}</strong>
+    <small>{detail}</small>
+    {delta != null && <em className={improving ? 'delta-good' : 'delta-bad'}>{improving ? '▼' : '▲'} {Math.abs(delta*100).toFixed(1)} pp</em>}
+  </div>
+}
+
+function Sparkline({values=[]}) {
+  const clean=values.map(safe)
+  const max=Math.max(...clean,1)
+  const min=Math.min(...clean,0)
+  const span=max-min || 1
+  const points=clean.map((v,i)=>{const x=2+(i/Math.max(clean.length-1,1))*96; const y=22-((v-min)/span)*18; return `${x},${y}`}).join(' ')
+  return <svg className="enterprise-sparkline" viewBox="0 0 100 24" aria-hidden="true"><polyline points={points}/></svg>
+}
+
+function HealthThresholdPanel({thresholds,updateThreshold,health}) {
+  const items=[['par30','PAR30 máximo'],['par60','PAR60 máximo'],['par90','PAR90 máximo']]
+  return <section className="enterprise-health-panel">
+    <div><span>PARAMETRIZADOR DE SALUD</span><h3>Umbrales tolerables</h3><p>Los límites son operativos y no modifican el cálculo determinístico.</p></div>
+    <div className="enterprise-health-grid">
+      {items.map(([key,label])=>{
+        const state=health(key)
+        return <label key={key}>
+          <span>{label}</span>
+          <div><input type="number" min="0" max="100" step="0.5" value={(thresholds[key]*100).toFixed(1)} onChange={e=>updateThreshold(key,Number(e.target.value)/100)}/><b>%</b></div>
+          <em className={state}>{state==='breach'?'FUERA DE LÍMITE':state==='watch'?'VIGILAR':'SALUDABLE'}</em>
+        </label>
+      })}
+    </div>
+  </section>
+}
+
+function VintageHeatmap({cohorts=[]}) {
+  const rows=cohorts.slice(0,16)
+  const severity=value=>{const v=safe(value); if(v>=.15)return 'critical'; if(v>=.08)return 'high'; if(v>=.04)return 'watch'; return 'healthy'}
+  return <div className="vintage-heatmap">
+    <div className="vintage-heat-header"><span>COHORTE</span><b>PAR30</b><b>PAR90</b><small>EXPOSICIÓN</small></div>
+    {rows.map((x,i)=><div className="vintage-heat-row" key={x.vintage||x.period||i}>
+      <span>{x.vintage||x.period||'—'}</span>
+      <div className={`heat-cell ${severity(x.par30)}`}>{pct(x.par30)}</div>
+      <div className={`heat-cell ${severity(x.par90)}`}>{pct(x.par90)}</div>
+      <small>{money(x.balance||x.exposure)}</small>
+    </div>)}
+    <div className="vintage-heat-legend"><span>Menor riesgo</span><i className="healthy"/><i className="watch"/><i className="high"/><i className="critical"/><span>Mayor riesgo</span></div>
+  </div>
+}
+
+function MigrationMatrix({migration={}}) {
+  const labels=[['current','Corriente'],['early_1_29','1–29'],['early_30_59','30–59'],['late_60_89','60–89'],['hard_90_plus','90+']]
+  const rows=migration.roll_rates||[]
+  const lookup=new Map(rows.map(x=>[`${x.from_bucket}|${x.to_bucket}`,x]))
+  return <div className="migration-matrix">
+    <div className="migration-matrix-head"><span>DESDE / HACIA</span>{labels.map(x=><b key={x[0]}>{x[1]}</b>)}</div>
+    {labels.map(([from,label])=><div className="migration-matrix-row" key={from}>
+      <strong>{label}</strong>
+      {labels.map(([to])=>{const item=lookup.get(`${from}|${to}`);const value=item?.roll_rate_by_balance||0;return <div key={to} className={value>=.2?'migration-hot':value>=.1?'migration-watch':''} title={item?(`${item.observations} observaciones · ${money(item.transition_balance)}`):'Sin transición'}>{item?pct(value):'—'}</div>})}
+    </div>)}
+    <small className="migration-note">Evidencia observada entre snapshots; no es un forecast.</small>
+  </div>
 }
