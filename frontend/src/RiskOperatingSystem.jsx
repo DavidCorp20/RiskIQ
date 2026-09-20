@@ -13,6 +13,8 @@ import ExecutiveRiskReport from './ExecutiveRiskReport'
 import PortfolioDashboard from './PortfolioDashboard'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
 import EnterpriseCommandCenter from './EnterpriseCommandCenter'
+import ExecutiveConcentration from './components/Concentration'
+import ExecutiveDataQuality from './components/DataQuality'
 import './enterprise-command-center.css'
 
 const pct = v => `${(Number(v || 0) * 100).toFixed(1)}%`
@@ -199,7 +201,7 @@ export default function RiskOperatingSystem() {
           <div className="ros-content">
             {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} adv={adv} vintage={vintage} onGo={go} />}
             {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <PortfolioDashboard datasetId={dataset?.dataset_id} />}
-            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <Concentration data={concentration} />}
+            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <ExecutiveConcentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
             {page === 'migration' && <Migration history={history} adv={adv} />}
             {page === 'stress' && (
@@ -224,7 +226,7 @@ export default function RiskOperatingSystem() {
             {page === 'decisions' && <DecisionCenter priorities={priorities} result={result} datasetId={dataset?.dataset_id} />}
             {page === 'engine' && <Engine />}
             {page === 'risk-ai-agent' && <RiskAiAgent datasetId={dataset?.dataset_id} result={result} />}
-            {page === 'quality' && <Quality quality={quality} />}
+            {page === 'quality' && <ExecutiveDataQuality quality={quality} />}
           </div>
         )}
       </main>
@@ -711,40 +713,6 @@ function SignalMatrix({ snap, history, adv }) {
   )
 }
 
-function Concentration({ data }) {
-  return (
-    <Section eyebrow="RISK CONCENTRATION" title="Contribución al deterioro">
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Segmento</th>
-              <th>Exposición</th>
-              <th>Share</th>
-              <th>PAR30</th>
-              <th>Contribución 30+</th>
-              <th>Priority</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((x, i) => (
-              <tr key={x.name}>
-                <td><b>{i === 0 ? '01 ' : ''}{x.name}</b></td>
-                <td>{money(x.exposure)}</td>
-                <td>{pct(x.exposure_share)}</td>
-                <td>{pct(x.par30)}</td>
-                <td><strong>{pct(x.contribution_to_portfolio_bad_30)}</strong></td>
-                <td><span className="priority-pill">{x.priority_score}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!data.length && <div className="empty-analysis">No hay una dimensión de segmentación suficiente.</div>}
-      </div>
-    </Section>
-  )
-}
-
 function Cohorts({ vintage }) {
   const vs = vintage?.vintages || []
   return (
@@ -801,40 +769,6 @@ function Stress({ shock, setShock, sim, run }) {
 function Engine() {
   const nodes=[['01','Data validation','Quality gate'],['02','Normalization','Canonical facts'],['03','Formulas','Derived metrics'],['04','Scorecard','Risk score'],['05','Rules','Policy evaluation'],['06','Decision','Outcome'],['07','Governance','Approval'],['08','Audit','Evidence ledger'],['09','Action','Human-controlled']]
   return <div className="engine-page"><div className="engine-intro"><div><span>DECISION ENGINE · LOW-CODE</span><h2>Programa cómo RiskIQ decide</h2><p>Pipeline visual de validación, cálculo, política, gobierno y trazabilidad.</p></div><div className="engine-chip">AUDITABLE · HUMAN CONTROL</div></div><div className="engine-node-canvas">{nodes.map(([n,title,detail],i)=><div className="engine-node-wrap" key={n}><div className="engine-node"><span>{n}</span><b>{title}</b><small>{detail}</small></div>{i<nodes.length-1&&<ArrowRight className="engine-node-arrow" size={18}/>}</div>)}</div><Builder/></div>
-}
-
-function Quality({ quality }) {
-  return (
-    <>
-      <Section eyebrow="DATA QUALITY" title={`Confianza analítica · ${quality.score || 0}/100`}>
-        <div className="quality-head">
-          <div className="quality-score">
-            {quality.score || 0}
-            <small>/100</small>
-          </div>
-          <div>
-            <strong>{quality.confidence || 'Sin clasificar'}</strong>
-            <p>La confianza refleja calidad y disponibilidad de evidencia, no gravedad del riesgo.</p>
-          </div>
-        </div>
-      </Section>
-      <div className="analysis-grid">
-        <Section eyebrow="LIMITATIONS" title="Qué todavía no podemos afirmar">
-          <ul className="clean-list">
-            {[...(quality.warnings || []), ...(quality.limitations || [])].map((x, i) => (
-              <li key={i}>{x}</li>
-            ))}
-          </ul>
-        </Section>
-        <Section eyebrow="GOVERNANCE" title="Principios de evidencia">
-          <ul className="clean-list">
-            <li>Un corte único se presenta como baseline.</li>
-            <li>Las acciones requieren revisión humana.</li>
-          </ul>
-        </Section>
-      </div>
-    </>
-  )
 }
 
 function DataRows({ rows }) {
