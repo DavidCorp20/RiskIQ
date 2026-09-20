@@ -78,3 +78,14 @@
  .decision-engine.riskiq-decision .ri-policy-bar{grid-template-columns:1fr}
  .decision-engine.riskiq-decision .ri-policy-bar>div+div{border-left:0;border-top:1px solid #e2e8f0}
 }
+
+/* Bank-grade Decision Engine workspace */
+.ri-workspace{max-width:100%;overflow:hidden}
+.ri-stage-nav{background:#f8fafc;border:1px solid #dbe3ec;border-radius:10px;padding:5px;box-shadow:none}
+.ri-stage-nav button{min-height:34px;padding:7px 10px;border-radius:7px}
+.ri-stage-nav button.active{background:#fff;border-color:#cbd5e1;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.ri-stage-card,.ri-panel,.ri-outcome-card{border-radius:10px!important;box-shadow:0 1px 2px rgba(15,23,42,.04)!important}
+.ri-policy-bar{border-radius:10px!important;background:#fff!important}
+.ri-portfolio-kpis>div{border-radius:9px!important}
+.ri-technical pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-break:break-word}
+@media(max-width:900px){.ri-stage-nav{overflow-x:auto;flex-wrap:nowrap}.ri-stage-nav button{flex:0 0 auto}}
