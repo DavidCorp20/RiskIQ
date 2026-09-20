@@ -13,7 +13,7 @@ import ExecutiveRiskReport from './ExecutiveRiskReport'
 import PortfolioDashboard from './PortfolioDashboard'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
 import { usePortfolioHistory } from './hooks/usePortfolioHistory'
-import EnterpriseCommandCenter from './EnterpriseCommandCenter'
+import EnterpriseCommandCenter, { HealthThresholdPanel } from './EnterpriseCommandCenter'
 import ExecutiveConcentration from './components/Concentration'
 import ExecutiveDataQuality from './components/DataQuality'
 import './enterprise-command-center.css'
@@ -203,7 +203,7 @@ export default function RiskOperatingSystem() {
           <div className="ros-content">
             {page === 'overview' && <EnterpriseCommandCenter snap={snap} ri={ri} quality={quality} concentration={concentration} priorities={priorities} trend={trend} history={history} historyModel={portfolioHistory} adv={adv} vintage={vintage} onGo={go} />}
             {page === 'executive-report' && <ExecutiveRiskReport />}            {page === 'portfolio' && <PortfolioDashboard datasetId={dataset?.dataset_id} />}
-            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} />}            {page === 'concentration' && <ExecutiveConcentration data={concentration} />}
+            {page === 'analytics' && <Analytics snap={snap} ri={ri} concentration={concentration} vintage={vintage} history={history} adv={adv} quality={quality} historyModel={portfolioHistory} />}            {page === 'concentration' && <ExecutiveConcentration data={concentration} />}
             {page === 'cohorts' && <Cohorts vintage={vintage} />}
             {page === 'migration' && <Migration history={history} adv={adv} />}
             {page === 'stress' && (
@@ -559,7 +559,7 @@ function Portfolio({ snap, ri, trend, history }) {
   )
 }
 
-function Analytics({ snap, ri, concentration, vintage, history, adv, quality }) {
+function Analytics({ snap, ri, concentration, vintage, history, adv, quality, historyModel }) {
   const m = ri.materiality || {}
   const par = [snap.par7, snap.par30, snap.par60, snap.par90].map(Number)
   const top3 = concentration.slice(0, 3).reduce((a, x) => a + Number(x.exposure_share || 0), 0)
@@ -580,6 +580,7 @@ function Analytics({ snap, ri, concentration, vintage, history, adv, quality }) 
           <small>{quality.confidence || '—'}</small>
         </div>
       </div>
+      <HealthThresholdPanel thresholds={historyModel.thresholds} updateThreshold={historyModel.updateThreshold} health={historyModel.health} current={snap}/>
       <div className="metric-strip analytics-metrics">
         <Metric label="PAR90 / PAR30" value={ratio ? ratio.toFixed(2) + 'x' : '—'} detail="severidad relativa" accent="risk" />
         <Metric label="Top 3 share" value={pct(top3)} detail="concentración" />
