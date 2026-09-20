@@ -7,6 +7,8 @@ import {
   rejectDecision
 } from './api'
 import {useRiskIntelligence} from './RiskIntelligenceProvider'
+import {useCollections} from './hooks/useCollections'
+import {useManualAdjustments} from './hooks/useManualAdjustments'
 import './decision-center.css'
 import './step7-governance.css'
 
@@ -52,6 +54,13 @@ export default function DecisionCenter(){
   const [reviewComment,setReviewComment]=useState('')
   const [reviewError,setReviewError]=useState('')
   const [notice,setNotice]=useState('')
+  const collections=useCollections(dataset?.dataset_id || '')
+  const {adjustments}=useManualAdjustments(dataset?.dataset_id || '')
+  const operationalAlerts=useMemo(()=>[
+    ...(collections.priorities||[]).slice(0,20).map(item=>({id:'collections-'+item.id,type:'management_alert',title:'Nuevo PAR30',subject:item.customer_id||item.id,detail:`${item.from_bucket} → ${item.to_bucket} · ${money(item.balance)} · DPD ${item.dpd}`,severity:item.dpd>=90?'high':item.dpd>=60?'medium':'low'})),
+    ...(collections.cures||[]).slice(0,20).map(item=>({id:'cure-'+(item.loan_id||item.id||'unknown'),type:'management_alert',title:'Cure observado',subject:item.customer_id||item.loan_id||item.id,detail:`Salida de mora · ${money(item.outstanding_principal??item.outstanding_balance??item.balance)}`,severity:'low'})),
+    ...(adjustments||[]).slice(0,30).map(item=>({id:'manual-'+item.adjustment_id,type:'manual_exception',title:'Excepción manual',subject:item.row_id,detail:item.reason||'Reclasificación manual',severity:'medium',created_at:item.created_at}))
+  ],[collections,adjustments])
 
   const cards=useMemo(
     ()=>[...(decisionRecommendations||[])].sort((a,b)=>severityRank(a)-severityRank(b)||String(b.created_at||'').localeCompare(String(a.created_at||''))),
@@ -133,7 +142,8 @@ export default function DecisionCenter(){
     high:cards.filter(x=>x.action_level==='high').length,
     medium:cards.filter(x=>x.action_level==='medium').length,
     low:cards.filter(x=>x.action_level==='low').length,
-    pending:cards.filter(x=>['pending_approval','proposed'].includes(x.status)).length
+    pending:cards.filter(x=>['pending_approval','proposed'].includes(x.status)).length,
+    operational:operationalAlerts.length
   }
 
   return <section className="dc-shell">
@@ -158,6 +168,7 @@ export default function DecisionCenter(){
       <div><span>MEDIUM</span><strong>{counts.medium}</strong></div>
       <div><span>LOW</span><strong>{counts.low}</strong></div>
       <div><span>HUMAN REVIEW</span><strong>ON</strong></div>
+      <div><span>OPERATIONAL</span><strong>{counts.operational}</strong></div>
     </div>
 
     <div className="dc-toolbar">
@@ -181,7 +192,15 @@ export default function DecisionCenter(){
       </div>:
       <div className="dc-layout">
         <div className="dc-list">
-          <div className="dc-list-head"><span>RECOMMENDATION QUEUE</span><b>{cards.length} casos</b></div>
+          <div className="dc-list-head"><span>REVIEW QUEUE</span><b>{cards.length + operationalAlerts.length} eventos</b></div>
+          {operationalAlerts.map(alert=><div key={alert.id} className={"dc-case dc-operational-case "+(alert.type==="manual_exception"?"manual":"alert")}>
+            <div className="dc-case-priority"><span className={"dc-severity "+(alert.severity==="high"?"critical":alert.severity==="medium"?"high":"low")}>{alert.type==="manual_exception"?"EXCEPCIÓN":"ALERTA"}</span></div>
+            <div className="dc-case-evidence"><strong>{alert.title}</strong><small>{alert.detail}</small><em>{alert.subject}</em></div>
+            <div className="dc-case-impact"><strong>Gestión humana</strong><small>No modifica Decision Engine</small></div>
+            <div className="dc-case-status"><span>PENDIENTE</span></div>
+            <div className="dc-case-actions"><span>{alert.type==="manual_exception"?"Auditar":"Revisar"}</span></div>
+            <ChevronRight className="dc-case-chevron" size={15}/>
+          </div>)}
           {cards.map((card,i)=>{
             const selectedRow=selected?.recommendation_id===card.recommendation_id
             const requiresReview=card.requires_human_approval
