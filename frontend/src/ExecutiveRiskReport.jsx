@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { getLatestBacktestEvidence, listDecisionRules, listPolicyVersions } from './api'
+import { getDatasetRecords, getLatestBacktestEvidence, listDecisionRules, listPolicyVersions } from './api'
 import { useRiskIntelligence } from './RiskIntelligenceProvider'
 import EvidenceMethodology from './EvidenceMethodology'
 import ExecutiveIntelligencePanel from './ExecutiveIntelligencePanel'
 import { useExport } from './hooks/useExport'
+import { useManualAdjustments } from './hooks/useManualAdjustments'
+import { useUnitEconomics } from './hooks/useUnitEconomics'
 
 const pct = value => `${(Number(value || 0) * 100).toFixed(1)}%`
 const num = value => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })
@@ -14,6 +16,9 @@ export default function ExecutiveRiskReport() {
   const [rules, setRules] = useState([])
   const [policy, setPolicy] = useState(null)
   const [backtest, setBacktest] = useState(null)
+  const [records, setRecords] = useState([])
+  const { adjustments } = useManualAdjustments(datasetId)
+  const economics = useUnitEconomics(records, snapshot)
   const { exportCsv, exportPdf } = useExport(`riskiq-executive-report-${datasetId || 'portfolio'}`)
 
   useEffect(() => {
@@ -85,6 +90,13 @@ export default function ExecutiveRiskReport() {
   }, [datasetId])
 
   const snapshot = result?.snapshot || {}
+  useEffect(() => {
+    let live = true
+    if (!datasetId) { setRecords([]); return undefined }
+    getDatasetRecords(datasetId).then(response => { if (live) setRecords(response?.records || []) }).catch(() => { if (live) setRecords([]) })
+    return () => { live = false }
+  }, [datasetId])
+
   const analysis = result?.analysis || result?.risk_analytics?.deterministic || {}
   const drivers = analysis.drivers || []
   const backtestRows = backtest?.summary || backtest?.metrics || backtest || {}
@@ -109,6 +121,11 @@ export default function ExecutiveRiskReport() {
     { section: 'Decision & Policy', metric: 'Version', value: policy?.version != null ? `v${policy.version}` : '—', detail: 'Governed policy version' },
     { section: 'EWS', metric: 'High EWS exposure', value: ewsPortfolio.high_ews_exposure ?? '', detail: ewsPortfolio.high_ews_exposure_share != null ? pct(ewsPortfolio.high_ews_exposure_share) : '' },
     { section: 'EWS', metric: 'PAR30 delta', value: ewsTrend.ratio_delta ?? '', detail: ewsTrend.direction || '' },
+    { section: 'Financial', metric: 'Expected Loss', value: economics.expectedLoss, detail: 'PD × LGD × EAD' },
+    { section: 'Financial', metric: 'Cost of Risk', value: economics.cor, detail: 'Expected Loss / Exposure' },
+    { section: 'Financial', metric: 'Gross Financial Income', value: economics.grossIncome, detail: economics.hasYield ? 'Exposure-weighted yield' : 'No yield data' },
+    { section: 'Financial', metric: 'Net Risk Income', value: economics.netRiskIncome, detail: 'Gross income - Expected Loss' },
+    ...adjustments.map(item => ({ section: 'Manual Adjustments', metric: item.row_id, value: item.reason, detail: JSON.stringify(item.changes) })),
     { section: 'Backtest', metric: 'Coverage', value: backtestRows.outcome_coverage ?? '', detail: '' },
     { section: 'Backtest', metric: 'Accuracy', value: backtestRows.accuracy ?? '', detail: '' },
     { section: 'Backtest', metric: 'Bad rate', value: backtestRows.bad_rate ?? '', detail: '' }
