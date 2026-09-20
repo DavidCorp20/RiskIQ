@@ -159,26 +159,11 @@ export default function EnterpriseCommandCenter({ snap={}, ri={}, concentration=
     </div>
 
     <div className="enterprise-grid enterprise-grid-6-6">
-      <Card eyebrow="VINTAGE / COHORTS" title="Cohort risk profile">
-        {cohorts.length ? <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={cohorts.slice(0,12)} margin={{left:0,right:8}}>
-            <CartesianGrid stroke={COLORS.grid} vertical={false}/>
-            <XAxis dataKey="vintage" tick={{fontSize:10,fill:COLORS.muted}} axisLine={false} tickLine={false}/>
-            <YAxis tickFormatter={v=>`${(v*100).toFixed(0)}%`} tick={{fontSize:10,fill:COLORS.muted}} axisLine={false} tickLine={false}/>
-            <Tooltip content={<TooltipContent/>}/>
-            <Bar dataKey="par30" name="PAR30" fill={COLORS.warning} radius={[4,4,0,0]}/>
-            <Bar dataKey="par90" name="PAR90" fill={COLORS.critical} radius={[4,4,0,0]}/>
-          </BarChart>
-        </ResponsiveContainer> : <EmptyChart message="Se requieren cohortes de originación para construir esta vista."/>}
-      </Card>
+      <Card eyebrow="VINTAGE / COHORTS" title="Cohort risk heatmap">
+        {cohorts.length ? <VintageHeatmap cohorts={cohorts}/> : <EmptyChart message="Se requieren cohortes de originación para construir esta vista."/>}</Card>
 
       <Card eyebrow="MIGRATION / ROLL RATES" title="Observed portfolio flow">
-        {flows ? <ResponsiveContainer width="100%" height={280}>
-          <Sankey data={flows} nodePadding={28} nodeWidth={12} linkCurvature={.45} margin={{left:8,right:8,top:10,bottom:10}}>
-            <Tooltip/>
-          </Sankey>
-        </ResponsiveContainer> : <EmptyChart message="La migración requiere snapshots consecutivos por crédito. Se muestra solo cuando existe evidencia observada."/>}
-      </Card>
+        {adv?.migration?.available ? <MigrationMatrix migration={adv.migration}/> : <EmptyChart message="La migración requiere al menos dos snapshots por crédito. No se infiere una transición sin evidencia observada."/>}</Card>
     </div>
 
     <Card eyebrow="EXECUTIVE ACTION" title="Decision focus">
