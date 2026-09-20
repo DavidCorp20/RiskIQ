@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Bot, CheckCircle2,
   ChevronDown, ChevronRight, CircleDollarSign, Database, GitBranch,
@@ -6,6 +6,7 @@ import {
   Wallet, X, Table2, Banknote
 } from 'lucide-react'
 import { runSimulator } from './api'
+import { BarChart, CartesianGrid, ResponsiveContainer, Sankey, Tooltip, XAxis, YAxis } from 'recharts'
 import Builder from './Builder'
 import DecisionCenter from './DecisionCenter'
 import RiskAiAgent from './components/RiskAiAgent'
